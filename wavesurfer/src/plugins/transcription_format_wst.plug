@@ -1,0 +1,162 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2002-2005 Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin transcription_format_wst \
+    -description "Format handler for the native WaveSurfer transcription format. This is used by the transcription plug-in to import and export transcription files in this format. The WaveSurfer format consists of the fields \'start_time end_time label\', where the time boundaries are in seconds (decimal) and label is the rest of the line." \
+    -before      transcription
+
+# -----------------------------------------------------------------------------
+
+namespace eval trans {
+ lappend Info(formats) WaveSurferText \
+     transcription_format_wst::load \
+     transcription_format_wst::save \
+     transcription_format_wst::test
+} 
+
+# -----------------------------------------------------------------------------
+
+namespace eval transcription_format_wst {
+ variable Info
+}
+
+proc transcription_format_wst::load {w pane} {
+ variable Info
+ upvar ::wsurf::trans::${pane}::var v
+ set Info(tfas) $::wsurf::transcription_format_ws::Info(tfas)
+ set map {}
+ set i 0
+ set header ""
+ set end 0
+ set tfa ""
+ set labelfile ""
+ set v(source) ""
+ 
+ if {$Info(tfas) != ""} {
+  set paneNo -1
+  foreach pane2 [$w _getPanes] {
+   upvar ::wsurf::trans::${pane2}::var u
+   if {$u(drawTranscription)} {
+    if {$u(format) == "WaveSurfer"} {
+     incr paneNo
+    }
+    if {$pane == $pane2} break
+   }
+  }
+  if {[llength $Info(tfas)] > 1} {
+   if {[lindex $Info(tfas) $paneNo] != ""} {
+    set tfa [lindex $Info(tfas) $paneNo]
+   }
+  } else {
+    set tfa [lindex $Info(tfas) 0]
+  }
+ }
+ 
+ # First try reading label file if it exists
+ 
+ if {[file readable $v(fileName)] && \
+	 [file isfile $v(fileName)]} {
+  if {[catch {open $v(fileName)} in]} {
+   return $in
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $in -encoding $v(encoding)
+   }
+   if {[catch {set labelfile [read $in]}]} { return 0 }
+   close $in
+  }
+  set v(source) labelfile
+ } elseif {$tfa != ""} {
+
+  # Otherwise, if a TFA has been specified, search it
+  # If it seems to be a pipe proceed to open it, otherwise make sure it
+  # is a readable file
+  if {[string match {|*} $tfa] == 0} {
+   if {!([file readable $tfa] && \
+	     [file isfile $tfa])} {
+    return
+   }
+  }
+
+  if {[catch {open $tfa} in]} {
+   return $in
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $in -encoding $v(encoding)
+   }
+
+   gets $in row
+
+   set nComponents [expr [regexp -all {/} $row] - 1]
+   
+   if {[regexp -all {/} $v(fileName)] == 0 && $nComponents > 0 && \
+	   $v(fullName) != ""} {
+    set name [eval file join [lrange [file split $v(fullName)] \
+				  end-$nComponents end-1]]
+    append name "/$v(fileName)"
+    set exp *$name?
+   } else {
+    set exp *$v(fileName)?
+   }
+   
+   while {[string match $exp $row] == 0 && \
+	      [eof $in] == 0} {
+    gets $in row
+   }
+   gets $in row
+   while {[string match {"*"} $row] == 0 && [eof $in] == 0} {
+    append labelfile $row
+    append labelfile \n
+    gets $in row
+   }
+   if {[string match {|*} $tfa] == 1} {
+    while {[eof $in] == 0} {
+     gets $in row
+    }   
+   }
+   close $in
+   set v(source) tfafile
+   set v(tfa) $tfa
+  }
+ }
+ 
+ # Format decoding loop
+ set str ""
+ foreach row [split $labelfile \n] {
+  if {[scan $row {%f %f %[^\]} start end label] >= 3} {
+   if {$label == "<silence>"} continue
+   append str $label " "
+   if {$i == 0} {
+    set v(t1,start) 0.0
+   }
+   incr i
+  }
+ }
+ set v(t1,0,label) [string trim $str]
+ set v(t1,0,end) $end
+ lappend map 0
+ set v(t1,end)  $end
+ set v(nLabels) 1
+ set v(map)     $map
+ set v(header)  $header
+ set v(headerFmt) WaveSurferText
+}
+
+proc transcription_format_wst::save {w pane} {
+}
+
+proc transcription_format_wst::test {w pane rows} {
+# upvar ::wsurf::trans::${pane}::var v
+# if {$v(headerFmt) == "WaveSurferText"} {
+#  return WaveSurferText
+# } else {
+  return
+# }
+}

@@ -1,0 +1,53 @@
+wsurf::RegisterPlugin hum \
+    -description "Generate hum based on pitch contour" \
+    -addmenuentriesproc hum::addMenuEntries
+
+namespace eval hum {
+}
+
+proc hum::addMenuEntries {w pane m hook x y} {
+ if {[string match create $hook]} {
+ } elseif {[string length $hook] == 0}  {
+  if {$pane==""} return
+  upvar ::wsurf::dataplot::${pane}::var v
+  if {[info exists v(drawDataPlot)]} {
+   if {$v(drawDataPlot)} {
+    $m add command -label "Generate hum" \
+	-command [namespace code [list generate $w $pane]]
+   }
+  }
+ }
+}
+
+proc hum::generate {w pane} {
+ upvar ::wsurf::dataplot::${pane}::var v
+
+# set w [wsurf::GetCurrent]
+# set v ::wsurf::dataplot::${w}.workspace.pane_1::var
+ set g [snack::filter generator 100 2500 0.1 rectangle -1]
+ set f1 [snack::filter formant 500 50]
+ set f2 [snack::filter formant 1500 75]
+ set f3 [snack::filter formant 2500 100]
+ set f4 [snack::filter formant 3500 150]
+ set syn [snack::filter compose $g $f1 $f2 $f3 $f4]
+ set s [$w cget -sound]
+ set length [expr 80*[llength $v(col\#0,points)]]
+ set t [snack::sound]
+ $t length $length
+ set i 0
+ while {$i < $length} {
+  set pi [expr {1+2*int((double($i)/[$s cget -rate])/0.01+.5)}]
+#  set pv [lindex [set ${v}(col\#0,points)] $pi]
+ set pv [lindex $v(col\#0,points) $pi]
+  if {$pv == 0.0 || $pv == ""} {
+   incr i 160
+  } else {
+   set len [expr int([$s cget -rate]/$pv)]
+   $g configure [expr int($pv)] 2500 0.1 rectangle $len
+   $t filter $syn -start $i
+   incr i $len
+  }
+ }
+ $s copy $t
+ $t destroy
+}

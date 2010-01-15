@@ -1,0 +1,267 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2005 Kare Sjolander 
+#
+
+# -----------------------------------------------------------------------------
+
+# Register plug-in with the callbacks we want to use.
+
+wsurf::RegisterPlugin cepstrogram \
+    -description "Initial draft of a MFCC plottning plug-in" \
+    -addmenuentriesproc   cepstrogram::addMenuEntries \
+    -panecreatedproc      cepstrogram::paneCreated \
+    -panedeletedproc      cepstrogram::paneDeleted \
+    -redrawproc           cepstrogram::redraw \
+    -getboundsproc        cepstrogram::getBounds \
+    -cursormovedproc      cepstrogram::cursorMoved \
+    -propertiespageproc   cepstrogram::propertyPane \
+    -applypropertiesproc  cepstrogram::applyProperties \
+    -getconfigurationproc cepstrogram::getConfiguration \
+    -soundchangedproc     cepstrogram::soundChanged
+
+
+# -----------------------------------------------------------------------------
+# Create own namespace in which to keep all procedures and variables, global,
+# widget-specific, or pane-specific.
+
+namespace eval cepstrogram {
+} 
+
+
+# -----------------------------------------------------------------------------
+# Add the entry "Cepstrogram" to the "Create Pane" popup-menu,
+# with the command cepstrogram::createCepstrogram
+
+proc cepstrogram::addMenuEntries {w pane m hook x y} {
+ if {[string match create $hook]} {
+  $m.$hook add command -label "Cepstrogram" \
+      -command [namespace code [list createCepstrogram $w $pane]]
+ }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called when a new pane is created.
+# Note that we don't know at this point what will be rendered in this pane,
+# so we assume that this plug-in won't handle this pane and keep track of
+# that information in a variable. 
+
+proc cepstrogram::paneCreated {w pane} {
+ namespace eval [namespace current]::${pane} {
+  variable var
+ }
+ upvar [namespace current]::${pane}::var v
+ set v(drawCepstrogram) 0
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called when a pane is deleted, allowing
+# the plug-in to clean-up resources used for the pane.
+# The procedure deletes the pane's local namespace, which contains all
+# variables allocated for the pane.
+
+proc cepstrogram::paneDeleted {w pane} {
+  namespace delete [namespace current]::${pane}
+}
+
+
+# Create a new pane and add graphics to it showing voicing info
+
+proc cepstrogram::createCepstrogram {w pane} {
+  set pane [$w addPane -before $pane -height 200 -scrollheight 200 \
+      -unit "" -fillcolor lightyellow -framecolor blue]
+  addCepstrogram $w $pane
+}
+
+
+# Compute and draw voicing info in a given pane.
+
+proc cepstrogram::addCepstrogram {w pane args} {
+  upvar [namespace current]::${pane}::var v
+
+  array set a [list \
+      -energy   1 \
+      -regression 2 \
+      ]
+  array set a $args
+
+  set v(pitchList) {}
+  set v(onColor)   $a(-energy)
+  set v(offColor)  $a(-regression)
+
+  drawCepstrogram $w $pane
+}
+
+
+# Draw cepstrogram
+
+proc cepstrogram::drawCepstrogram {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  set c [$pane canvas]
+  set height [$pane cget -scrollheight]
+  $c delete cepstrogram
+  set i 0
+
+  # Frame interval is 10ms, get corresponding delta-x
+
+  set dx [$pane getCanvasX 0.01]
+  set dy [expr $height / 39.0]
+
+  sound param -encoding float
+  [$w cget -sound] speatures param -energy 1 -zeromean 1 -regression 2
+  for {set i 0} {$i < [param length]} {incr i} {
+   for {set j 0} {$j < 39} {incr j} {
+    set graylevel [expr ([lindex [param sample $i] $j] + 25) / 50]
+    if {$graylevel < 0.0} { set graylevel 0.0 }
+    $c create rectangle [expr {$i * $dx}] [expr {$height - $j * $dy}] [expr {($i + 1) * $dx}] [expr {$height - ($j + 1) * $dy}] -fill [util::RGBformat $graylevel $graylevel $graylevel] -tags [list cepstrogram]
+   } 
+  } 
+
+  $c lower cepstrogram
+
+  # We have now rendered plug-in specific stuff in this pane.
+  # Remember that this plug-in will handle this pane from now on.
+
+  set v(drawCepstrogram) 1
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the widget needs to redraw all panes.
+# For example, when the user zooms.
+
+proc cepstrogram::redraw {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  if {$v(drawCepstrogram)} {
+    drawCepstrogram $w $pane
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the widget needs to know the limits
+# of the information this plug-in shows in this particular pane.
+# Typically returns a list: start_time min_value end_time max_value
+
+proc cepstrogram::getBounds {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  if {$v(drawCepstrogram)} {
+    set snd [$w cget -sound]
+    list 0 0 [$snd length -unit seconds] 0
+  } else {
+    list
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the cursor is moved within the widget.
+
+proc cepstrogram::cursorMoved {w pane time value} {
+  upvar [namespace current]::${pane}::var v
+
+  if {$v(drawCepstrogram)} {
+    set i [expr {int($time*100 + .5)}]
+    set pitch [lindex $v(pitchList) $i]
+    if {$pitch == ""} return
+    if {$pitch != 0.0} {
+      set str "voiced segment"
+    } else {
+      set str "unvoiced segment"
+    }
+    $w messageProc [format "Cepstrogram - %s %s" [$w formatTime $time] $str]
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the properties dialog is opened for
+# this pane. It adds the tab "Cepstrogram" and calls cepstrogram::drawCepstrogramPage
+# to render the properties notebook-page.
+
+proc cepstrogram::propertyPane {w pane} {
+  upvar [namespace current]::${pane}::var v
+  
+  if {$pane==""} return
+  if {$v(drawCepstrogram)} {
+    return [list "Cepstrogram" [namespace code drawCepstrogramPage]]
+  }
+}
+
+
+# This procedure is called when the user clicks "OK" or "Apply" in the 
+# "Cepstrogram" notebook-page.
+
+proc cepstrogram::applyProperties {w pane} {
+  if {[string match *wavebar $pane]} return
+  upvar [namespace current]::${pane}::var v
+
+  if {[info exists v(drawCepstrogram)]} {
+    if {$v(drawCepstrogram)} {
+      foreach var [list onColor offColor] {
+	if {[string compare $v(t,$var) $v($var)] != 0} {
+	  set v($var) $v(t,$var)
+	  set doRedraw 1
+	}
+      }
+      if {[info exists doRedraw]} {
+	$w _redrawPane $pane
+      }
+    }
+  }
+}
+
+
+# This procedure draws the properties notebook-page for the "Cepstrogram" tab.
+
+proc cepstrogram::drawCepstrogramPage {w pane p} {
+  upvar [namespace current]::${pane}::var v
+
+  foreach f [winfo children $p] {
+    destroy $f
+  }
+
+  foreach var [list onColor offColor] {
+    set v(t,$var) $v($var)
+  }
+
+ colorPropItem $p.f1 "Voiced segment color:" 23 \
+     [namespace current]::${pane}::var(t,onColor)
+ colorPropItem $p.f2 "Unvoiced segment color:" 23 \
+     [namespace current]::${pane}::var(t,offColor)
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure returns the code needed to re-create this pane.
+
+proc cepstrogram::getConfiguration {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  set result {}
+  if {$pane != "" && $v(drawCepstrogram)} {
+    append result "\$widget cepstrogram::addCepstrogram \$pane\
+	-voicedcolor   $v(onColor)\
+	-unvoicedcolor $v(offColor)" "\n"
+  }
+  return $result
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the sound of this widget has changed.
+# For example, after a record operation.
+
+proc cepstrogram::soundChanged {w flag} {
+  foreach pane [$w _getPanes] {
+    upvar [namespace current]::${pane}::var v
+    if {$v(drawCepstrogram)} {
+      drawCepstrogram $w $pane
+    }
+  }
+}

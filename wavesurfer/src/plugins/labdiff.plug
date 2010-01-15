@@ -1,0 +1,222 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2002-2003 Kare Sjolander 
+#
+# -----------------------------------------------------------------------------
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+#
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin labdiff \
+    -description "This plug-in marks time boundary differences between two
+transcriptions with colored boxes. The two previous panes must
+be transcription panes. Three degrees of time differences can be
+marked. Using the default settings a difference of more than 10ms is
+marked with green, more than 20ms is marked with blue and more than
+40ms with red." \
+    -panecreatedproc      labdiff::paneCreated \
+    -addmenuentriesproc   labdiff::addMenuEntries \
+    -redrawproc           labdiff::redraw \
+    -propertiespageproc   labdiff::propertyPane \
+    -applypropertiesproc  labdiff::applyProperties \
+    -getconfigurationproc labdiff::getConfiguration \
+    -soundchangedproc     labdiff::soundChanged 
+# -----------------------------------------------------------------------------
+
+namespace eval labdiff {
+} 
+
+# -----------------------------------------------------------------------------
+
+proc labdiff::paneCreated {w pane} {
+ namespace eval [namespace current]::${pane} {
+  variable var
+ }
+ upvar [namespace current]::${pane}::var v
+
+ set v(drawDiff) 0
+}
+
+proc labdiff::addMenuEntries {w pane m hook x y} {
+ if {[string match query $hook]} {
+  return 0
+ }
+ if {[string match create $hook]} {
+  $m.$hook add command -label "Mark Label Diffs" \
+   -command [namespace code [list createDiff $w $pane]]
+ }
+}
+
+proc labdiff::createDiff {w pane} {
+ set pane [$w addPane -before $pane -height 20 -scrollheight 20]
+ addDiff $w $pane
+}
+
+proc labdiff::addDiff {w pane args} {
+ upvar [namespace current]::${pane}::var v
+
+ array set a [list \
+  -duration1 0.01 \
+  -color1 green \
+  -duration2 0.02 \
+  -color2 blue \
+  -duration3 0.04 \
+  -color3 red \
+ ]
+ array set a $args
+
+ set v(dur1) $a(-duration1)
+ set v(col1) $a(-color1)
+ set v(dur2) $a(-duration2)
+ set v(col2) $a(-color2)
+ set v(dur3) $a(-duration3)
+ set v(col3) $a(-color3)
+
+ set v(drawDiff) 1
+}
+
+proc labdiff::redraw {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ if {$v(drawDiff)} {
+  $pane drawTitle Diff
+  set c [$pane canvas]
+  set height [expr {[$pane cget -scrollheight] - 3}]
+  $c delete diff
+
+  set currentPaneIndex [lsearch [$w _getPanes] $pane]
+  set pp [lindex [$w _getPanes] [expr {$currentPaneIndex - 1}]]
+  upvar ::wsurf::trans::${pp}::var a
+  set ppp [lindex [$w _getPanes] [expr {$currentPaneIndex - 2}]]
+  upvar ::wsurf::trans::${ppp}::var b
+  set imin 0
+  if {[info exists a(nLabels)] && [info exists b(nLabels)]} {
+   set imin [util::min $a(nLabels) $b(nLabels)]
+  }
+  if {$imin == 0} {
+   $c create text 0 0 -anchor nw -tags [list diff] \
+       -text "Failure, need transcription labels in two previous panes"
+   return
+  }
+  for {set i 0} {$i < $imin} {incr i} {
+   set ind [lindex $a(map) $i]
+   set labn $a(t1,$ind,label)
+   set endn $a(t1,$ind,end)
+
+   set ind [lindex $b(map) $i]
+   set labm $b(t1,$ind,label)
+   set endm $b(t1,$ind,end)
+
+   if {[string compare $labn $labm] == 0} {
+    set d [expr {abs($endn - $endm)}]
+    if {$d > $v(dur3)} {
+     $c create rectangle [$pane getCanvasX $endn] 0 [$pane getCanvasX $endm] \
+	 $height -fill $v(col3) -tags [list diff]
+    } elseif {$d > $v(dur2)} {
+     $c create rectangle [$pane getCanvasX $endn] 0 [$pane getCanvasX $endm] \
+	 $height -fill $v(col2) -tags [list diff]
+    } elseif {$d > $v(dur1)} {
+     $c create rectangle [$pane getCanvasX $endn] 0 [$pane getCanvasX $endm] \
+	 $height -fill $v(col1) -tags [list diff]
+    }
+   }
+  }
+  $c lower diff
+ }
+}
+
+proc labdiff::soundChanged {w flag} {
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  if {$v(drawDiff)} {
+    $w _redrawPane $pane
+  }
+ }
+}
+
+proc labdiff::propertyPane {w pane} {
+ upvar [namespace current]::${pane}::var v
+ 
+ if {$pane==""} return
+ if {$v(drawDiff)} {
+  return [list "Labdiff" [namespace code drawDiffPage]]
+ }
+}
+
+proc labdiff::applyProperties {w pane} {
+ if {[string match *wavebar $pane]} return
+ upvar [namespace current]::${pane}::var v
+
+ if {[info exists v(drawDiff)]} {
+  if {$v(drawDiff)} {
+   foreach var [list dur1 col1 dur2 col2 dur3 col3] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set doRedraw 1
+    }
+   }
+   if {[info exists doRedraw]} {
+    $w _redrawPane $pane
+   }
+  }
+ }
+}
+
+proc labdiff::drawDiffPage {w pane path} {
+ upvar [namespace current]::${pane}::var v
+
+ foreach f [winfo children $path] {
+  destroy $f
+ }
+
+ foreach var [list dur1 col1 dur2 col2 dur3 col3] {
+  set v(t,$var) $v($var)
+ }
+
+ stringPropItem $path.f1 "Difference bigger than:" 25 6 "s" \
+   [namespace current]::${pane}::var(t,dur1)
+ colorPropItem $path.f2 "Color:" 25 \
+   [namespace current]::${pane}::var(t,col1)
+ stringPropItem $path.f3 "Difference bigger than:" 25 6 "s" \
+   [namespace current]::${pane}::var(t,dur2)
+ colorPropItem $path.f4 "Color:" 25 \
+   [namespace current]::${pane}::var(t,col2)
+ stringPropItem $path.f5 "Difference bigger than:" 25 6 "s" \
+   [namespace current]::${pane}::var(t,dur3)
+ colorPropItem $path.f6 "Color:" 25 \
+   [namespace current]::${pane}::var(t,col3)
+}
+
+proc labdiff::getConfiguration {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ set result {}
+ if {$pane==""} {return {}}
+ if {$v(drawDiff)} {
+
+ append result "\$widget labdiff::addDiff \$pane\
+          -color1 $v(col1)\
+          -duration1 $v(dur1)\
+          -color2 $v(col2)\
+          -duration2 $v(dur2)\
+          -color3 $v(col3)\
+          -duration3 $v(dur3)" "\n"
+ }
+ return $result
+}

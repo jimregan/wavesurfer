@@ -1,0 +1,215 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#
+# This is a sample plugin showing how to use the WaveSurfer plugin API.
+# It certainly does not claim to compute voiced segments, only to be used
+# as a source code example. Put this file in ~/.wavesurfer/1.8/plugins/
+#
+# -----------------------------------------------------------------------------
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+# -----------------------------------------------------------------------------
+
+# Register plug-in with the callbacks we want to use.
+
+wsurf::RegisterPlugin example1 \
+    -description "Example plug-in no 1, marks voiced speech segments" \
+    -addmenuentriesproc   example1::addMenuEntries \
+    -panecreatedproc      example1::paneCreated \
+    -panedeletedproc      example1::paneDeleted \
+    -redrawproc           example1::redraw \
+    -getboundsproc        example1::getBounds \
+    -getconfigurationproc example1::getConfiguration 
+
+
+# -----------------------------------------------------------------------------
+# Create own namespace in which to keep all procedures and variables, global,
+# widget-specific, or pane-specific.
+
+namespace eval example1 {
+ variable Info
+
+ set Info(OptionTable) [list \
+			    -voicedcolor   onColor  red \
+			    -unvoicedcolor offColor green \
+			   ]
+} 
+
+
+# -----------------------------------------------------------------------------
+# Add the entry "Example 1" to the "Create Pane" popup-menu,
+# with the command example1::createExample1
+
+proc example1::addMenuEntries {w pane m hook x y} {
+  if {[string match create $hook]} {
+    $m.$hook add command -label "Example 1" \
+	-command [namespace code [list createExample1 $w $pane]]
+  }
+}
+
+# -----------------------------------------------------------------------------
+# This procedure is called when a new pane is created.
+# Note that we don't know at this point what will be rendered in this pane,
+# so we assume that this plug-in won't handle this pane and keep track of
+# that information in a variable. 
+
+proc example1::paneCreated {w pane} {
+ namespace eval [namespace current]::${pane} {
+  variable var
+ }
+ upvar [namespace current]::${pane}::var v
+ set v(drawExample1) 0
+}
+
+# -----------------------------------------------------------------------------
+# This procedure is called when a pane is deleted, allowing
+# the plug-in to clean-up resources used for the pane.
+# The procedure deletes the pane's local namespace, which contains all
+# variables allocated for the pane.
+
+proc example1::paneDeleted {w pane} {
+  namespace delete [namespace current]::${pane}
+}
+
+
+# Create a new pane and add graphics to it showing voicing info
+
+proc example1::createExample1 {w pane} {
+  set pane [$w addPane -before $pane -height 20 -scrollheight 20 \
+      -unit "" -fillcolor lightyellow -framecolor blue]
+  addExample1Stuff $w $pane
+}
+
+
+# Compute and draw voicing info in a given pane.
+
+proc example1::addExample1Stuff {w pane args} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach {option key default} $Info(OptionTable) {
+  set a($option) $default
+ }
+ array set a $args
+ foreach {option key default} $Info(OptionTable) {
+  set v($key) $a($option)
+ }
+
+ set v(pitchList) {}
+
+ _computeExample1 $w $pane
+ _drawExample1 $w $pane
+}
+
+
+# Compute voicing info in a given pane.
+
+proc example1::_computeExample1 {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  set snd [$w cget -sound]
+  $w messageProc "Calculating voiced segments..."
+  if {[catch {set v(pitchList) [$snd pitch \
+      -progress [$w cget -progressproc]]} ret]} {
+
+    # User probably aborted this computation (or an error occurred)
+    
+    if {$ret != ""} {
+      $w messageProc "$ret"
+      error "$ret"
+    }
+    set v(pitchList) {}
+  } else {
+    $w messageProc "Done calculating voiced segments"
+  }
+}
+
+
+# Draw voicing info in a given pane.
+
+proc example1::_drawExample1 {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  set c [$pane canvas]
+  set height [$pane cget -scrollheight]
+  $c delete example1
+  set i 0
+
+  # Frame interval is 10ms, get corresponding delta-x
+
+  set dx [$pane getCanvasX 0.01]
+
+  foreach val $v(pitchList) {
+    if {$val == 0.0} {
+      set color $v(offColor)
+    } else {
+      set color $v(onColor)
+    }
+    $c create rectangle [expr {$i * $dx}] 0 [expr {($i + 1) * $dx}] $height \
+	-fill $color -outline "" -tags [list example1]
+    incr i
+  }
+  $c lower example1
+  $c create text 0 0 -text "This is an example plugin" -anchor nw
+
+  # We have now rendered plug-in specific stuff in this pane.
+  # Remember that this plug-in will handle this pane from now on.
+
+  set v(drawExample1) 1
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the widget needs to redraw all panes.
+# For example, when the user zooms.
+
+proc example1::redraw {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  if {$v(drawExample1)} {
+    _drawExample1 $w $pane
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the widget needs to know the limits
+# of the information this plug-in shows in this particular pane.
+# Typically returns a list: start_time min_value end_time max_value
+
+proc example1::getBounds {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  if {$v(drawExample1)} {
+    set snd [$w cget -sound]
+    list 0 0 [$snd length -unit seconds] 0
+  } else {
+    list
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure returns the code needed to re-create this pane.
+
+proc example1::getConfiguration {w pane} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ set result {}
+ if {$pane != "" && $v(drawExample1)} {  
+  append result "\$widget example1::addExample1Stuff \$pane"
+  
+  foreach {option key default} $Info(OptionTable) {
+   if {$v($key) != $default} {
+    append result " $option \"$v($key)\""
+   }
+  }
+ }
+ append result "\n"
+
+ return $result
+}

@@ -1,0 +1,152 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2001 Jonas Beskow and Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin transcription_format_phondat \
+    -description "PHONDAT/BOSS transcription formats handler\
+    used by the transcription plug-in."
+
+# -----------------------------------------------------------------------------
+
+namespace eval trans {
+  lappend Info(formats) PHONDAT \
+      transcription_format_phondat::load \
+      transcription_format_phondat::save \
+      transcription_format_phondat::test \
+      BOSS \
+      transcription_format_phondat::load \
+      transcription_format_phondat::save \
+      transcription_format_phondat::test
+}
+
+# -----------------------------------------------------------------------------
+
+namespace eval transcription_format_phondat {
+}
+
+proc transcription_format_phondat::load {w pane} {
+  upvar ::wsurf::trans::${pane}::var v
+
+  set map {}
+  set i 0
+  set header ""
+  set rate [[$w cget -sound] cget -rate]
+  set end 0
+  set lastlabel ""
+  set lastrest  ""
+  if {[catch {open $v(fileName)} in]} {
+    return $in
+  } else {
+    if {[info command encoding] != ""} {
+      fconfigure $in -encoding $v(encoding)
+    }
+    if {[catch {set labelfile [read $in]}]} { return 0 }
+    close $in
+
+    # Format decoding loop
+
+    if {[string match BOSS $v(format)]} {
+      set getHead 0
+    } else {
+      set getHead 1
+    }    
+
+    set first 0
+    foreach row [split $labelfile \n] {
+      if {$getHead == 1} {
+	set header [lappend header $row]
+	if {[string match hend $row]} { set getHead 0 }
+	continue
+      }
+      set rest ""
+      if {[scan $row {%d %s %s} start label rest] >= 2} {
+	if {$first == 0} {
+	  set v(t1,start) [expr {$start/double($rate)}]
+	  set lastlabel $label
+	  set lastrest  $rest
+	  set first 1
+	  continue
+	}
+	set end [expr {$start/double($rate)}]
+	set v(t1,$i,end)   $end
+	set v(t1,$i,label) $lastlabel
+	set v(t1,$i,rest)  $lastrest
+	set lastlabel $label
+	set lastrest  $rest
+	lappend map $i
+	incr i
+      }
+    }
+    incr i
+    set v(t1,$i,end)   [[$w cget -sound] length -unit seconds]
+    set v(t1,$i,label) $lastlabel
+    set v(t1,$i,rest)  $lastrest
+    lappend map $i
+  }
+  if {$i == 0} { set header "" }
+  set v(t1,end)    $end
+  set v(nLabels)   $i
+  set v(map)       $map
+  set v(header)    $header
+  set v(headerFmt) $v(format)
+}
+
+proc transcription_format_phondat::save {w pane} {
+  upvar ::wsurf::trans::${pane}::var v
+
+  set rate [[$w cget -sound] cget -rate]
+
+  if {[catch {open $v(fileName) w} out]} {
+    return $out
+  } else {
+    if {[info command encoding] != ""} {
+      fconfigure $out -encoding $v(encoding)
+    }
+    fconfigure $out -translation {auto lf}
+    if {[string match PHONDAT $v(format)]} {
+      if {[string compare $v(format) $v(headerFmt)] == 0
+      && $v(header) != ""} {
+	puts $out [join $v(header) \n]
+      } else {
+	puts $out "hend"
+      }
+    }
+    set start [expr {int($v(t1,start)*double($rate)+.5)}]
+    for {set i 0} {$i < $v(nLabels)} {incr i} {
+      set ind [lindex $v(map) $i]
+      set end [expr {int($v(t1,$ind,end)*double($rate)+.5)}]
+      set label $v(t1,$ind,label)
+      if {[info exists v(t1,$ind,rest)]} {
+	puts $out "$start $label $v(t1,$ind,rest)"
+      } else {
+	puts $out "$start $label"
+      }
+      set start $end
+    }
+    close $out
+  }
+  set v(headerFmt) $v(format)
+
+  $w messageProc \
+      "Wrote $v(fileName) in $v(headerFmt) format"
+  return
+}
+
+proc transcription_format_phondat::test {w pane rows} {
+ if {[regexp {^(\d+)\t.*$} [lindex $rows 0] a b] == 1} {
+  if {[info exists b]} {
+   return BOSS
+  }
+ }
+ for {set i 0} {$i < [llength $rows]} {incr i} {
+  if {[string equal "hend" [lindex $rows $i]]} {
+   return PHONDAT
+  }
+ }
+}

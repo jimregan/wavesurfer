@@ -1,0 +1,186 @@
+# -*-Mode:Tcl-*-
+
+wsurf::RegisterPlugin naq \
+    -description "Compute the Normalized Amplitude Quotient" \
+    -url "http://www.speech.kth.se/wavesurfer" \
+    -addmenuentriesproc   naq::addMenuEntries \
+    -propertiespageproc   naq::propertyPane \
+    -applypropertiesproc  naq::applyProperties \
+    -widgetcreatedproc    naq::widgetCreated \
+    -setselectionproc     naq::setSelection \
+    -getconfigurationproc naq::getConfiguration
+
+# -----------------------------------------------------------------------------
+
+namespace eval naq {
+ variable Info
+} 
+
+# ----------------------------------------------------------------------------
+
+proc naq::widgetCreated {w} {
+ variable Info
+ set Info($w,naq) 0
+}
+
+proc naq::addMenuEntries {w pane m hook x y} {
+ variable Info
+ if {[string match query $hook]} {
+  return 0
+ }
+ if {[string match create $hook]} {
+ } elseif {[string match main $hook]} {
+  $m add command -label "NAQ..." \
+      -command [namespace code [list openNAQwin $w $pane]]
+ }
+}
+
+proc naq::initFormantList {position} {
+ variable Info
+
+ # -numformants 7 -lpcorder 18
+ set form [$Info(sound) formant -start $position -end [expr $position+800]]
+ 
+ foreach {::f1 ::f2 ::f3 ::f4 ::b1 ::b2 ::b3 ::b4} [lindex $form 0] {}
+ set ::f5 4500
+ set ::f6 5500
+ set ::f7 6500
+ set ::b5 200
+ set ::b6 200
+ set ::b7 200
+}
+
+proc naq::aqnaqfromformantlist {s position} {
+ set formantlist [list $::f1 $::f2 $::f3 $::f4 $::f5 $::f6 $::f7 \
+		      $::b1 $::b2 $::b3 $::b4 $::b5 $::b6 $::b7]
+ set pitch [lindex [lindex [$s pitch -method esps \
+				-start [expr $position-160*5 ]\
+				-end    [expr $position+160*6]] 5] 0]
+ if {$pitch == 0.0 || $position == 0} { return [list 0 0 0 ] }
+#puts $formantlist
+ set inv [$s ina $position $formantlist]
+ set i 0
+ set sum 0.0
+ foreach e $inv {
+  deriv sample $i $e
+  set sum [expr $sum+$e]
+  acflo sample $i $sum
+  incr i
+ }
+
+ set cycl_l [expr 100]
+ set cycl_r [expr 100 + int(16000/$pitch+.5)]
+
+ set f_ac [expr [acflo max -start $cycl_l -end $cycl_r] - \
+	       [acflo min -start $cycl_l -end $cycl_r]]
+ set d_peak [expr - [deriv min -start $cycl_l -end $cycl_r]]
+
+ set AQ  [expr double($f_ac) / $d_peak / 16000.0]
+ set T   [expr 1.0/$pitch]
+ set NAQ [expr $AQ / $T]
+ return [list $AQ $NAQ $T]
+}
+
+proc naq::Display {w args} {
+ variable Info
+
+ set position $Info(start)
+ foreach {AQ NAQ T} [aqnaqfromformantlist $Info(sound) $position] break
+ if {[winfo exists .naq.lab]} {
+  .naq.lab configure -text "AQ: [format "%.7f" $AQ]  NAQ: [format "%.5f" $NAQ]  T: [format "%.5f" $T]"
+ }
+ deriv changed New
+ acflo changed New
+# .naq.c delete text
+# .naq.c create text 200 200 -text "deriv [deriv max -start 200 -end 400] [deriv min -start 200 -end 400]" -tags text
+# .naq.c create text 200 400 -text "acflo [acflo max -start 200 -end 400] [acflo min -start 200 -end 400]" -tags text
+
+# foreach {AQ NAQ T} [aqnaq Info(sound) $position] break
+# puts "A2: $AQ  NA2: $NAQ  T: $T"
+}
+
+proc naq::openNAQwin {w pane} {
+ variable Info
+
+ snack::sound deriv -encoding float
+ snack::sound acflo -encoding float
+ deriv length 512
+ acflo length 512
+
+ foreach {left right} [$w cget -selection] {}
+ set Info(sound) [$w cget -sound]
+ set Info(start) [expr {int($left*[$Info(sound) cget -rate])}]
+ initFormantList $Info(start)
+
+ catch {destroy .naq}
+ toplevel .naq
+ pack [canvas .naq.c -height 400 -width 400] -side left
+# .naq.c create waveform 0 0 -sound s -height 200 -pixels 10000 \
+     -start $Info(start)
+ .naq.c create waveform 0 0 -sound deriv -height 200 -pixels 10000
+ .naq.c create waveform 0 200 -sound acflo -height 200 -pixels 10000
+
+ foreach {name var max} {f1 ::f1 7000 f2 ::f2 7000 f3 ::f3 7000 f4 ::f4 7000 b1 ::b1 500 b2 ::b2 500 b3 ::b3 500 b4 ::b4 500} {
+  pack [frame .naq.$name] -side top -fill y -expand 1
+  pack [label .naq.$name.l -text [string toupper $name]] -side left
+  pack [scale .naq.$name.s -length 400 -from 10 -to $max -variable $var -orient horizontal -command [namespace code [list Display $w]]] -side left
+  if {$::useTile} {
+   .naq.$name.s set [set $var]
+  }
+ }
+ pack [label .naq.lab -text "ggg"] -side bottom
+ Display $w
+ set Info($w,naq) 1
+}
+
+proc naq::setSelection {w pane left right} {
+ variable Info
+ if {$Info($w,naq) == 0} return
+ set Info(sound) [$w cget -sound]
+ set Info(start) [expr {int($left*[$Info(sound) cget -rate])}]
+ initFormantList $Info(start)
+ Display $w
+}
+
+proc naq::propertyPane {w pane} {
+ variable Info
+ if {$pane==""} return
+
+ if {$Info($w,naq)} {
+  #  return [list "Naq" [namespace code drawNaqPage]]
+ }
+}
+
+proc naq::applyProperties {w pane} {
+ variable Info
+
+ if [info exists Info($w,naq)] {
+  if {$Info($w,naq)} {
+   foreach var [list] {
+    if {[string compare $Info($w,$pane,t,$var) $Info($w,$pane,$var)] != 0} {
+     set Info($w,$pane,$var) $Info($w,$pane,t,$var)
+     set doRedraw 1
+    }
+   }
+   if [info exists doRedraw] {
+    $w _redrawPane $pane
+   }
+  }
+ }
+}
+
+proc naq::drawNaqPage {w pane p} {
+ variable Info
+
+ foreach f [winfo children $p] {
+  destroy $f
+ }
+
+}
+
+proc naq::getConfiguration {w pane} {
+ variable Info
+ set result {}
+
+ return $result
+}

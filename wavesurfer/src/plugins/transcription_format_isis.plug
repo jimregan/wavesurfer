@@ -1,0 +1,123 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2001 Erhard Rank
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+
+# ----------------------------------------------------------------------------- 
+wsurf::RegisterPlugin transcription_format_isis \
+    -description "ISIS transcription format handler\
+    used by the transcription plug-in."
+
+# ----------------------------------------------------------------------------- 
+namespace eval trans {
+  lappend Info(formats) ISIS \
+      transcription_format_isis::load \
+      transcription_format_isis::save \
+      transcription_format_isis::test
+}
+
+# ----------------------------------------------------------------------------- 
+namespace eval transcription_format_isis {
+}
+
+proc transcription_format_isis::load {w pane} {
+  upvar ::wsurf::trans::${pane}::var v
+
+  set map {}
+  set i 0
+  set header ""
+  set rate [[$w cget -sound] cget -rate]
+  set end 0
+
+  if {[catch {open $v(fileName)} in]} {
+    return $in
+  } else {
+    if {[info command encoding] != ""} {
+      fconfigure $in -encoding $v(encoding)
+    }
+    if {[catch {set labelfile [read $in]}]} { return 0 }
+    close $in
+
+    # Format decoding loop
+
+    set getHead 1
+    foreach row [split $labelfile \n] {
+      if {$getHead == 1} {
+        set header [lappend header $row]
+        if {[regexp -line -- {FE:\s*(\d+)\s*} $row all frate]} {
+          if { $frate != "" } { set rate $frate }
+          set getHead 0
+        }
+        continue
+      }
+      set label ""
+      set rest ""
+      if {[regexp -nocase -expanded -line -- \
+          {(\d*)\s+([^\s]*)\s*(.*)} $row \
+          all end label rest]} {
+        set v(t1,$i,end) [expr {double($end)/double($rate)}]
+        set v(t1,$i,label) $label
+        set v(t1,$i,rest)  $rest
+        lappend map $i
+        incr i
+      }
+    }
+  }
+  if {$i == 0} { set header "" }
+  set v(t1,end)    [expr {double($end)/double($rate)}]
+  set v(t1,start)  0.0
+  set v(nLabels)   $i
+  set v(map)       $map
+  set v(header)    $header
+  set v(headerFmt) ISIS
+}
+
+proc transcription_format_isis::save {w pane} {
+  upvar ::wsurf::trans::${pane}::var v
+
+  if {[catch {open $v(fileName) w} out]} {
+    return $out
+  } else {
+    set rate [[$w cget -sound] cget -rate]
+    if {[info command encoding] != ""} {
+      fconfigure $out -encoding $v(encoding)
+    }
+    fconfigure $out -translation {auto lf}
+    if {[string compare $v(format) $v(headerFmt)] == 0
+    && $v(header) != ""} {
+      puts $out [join $v(header) \n]
+      regexp -- {\s*FE:\s*(\d*)\s*} $v(header) all frate
+      if { $frate != "" } { set rate $frate }
+    } else {
+      set name [file tail [file rootname $v(fileName)]]
+      puts $out "PTS:LABEL"
+      puts $out "FE: $rate"
+    }
+    for {set i 0} {$i < $v(nLabels)} {incr i} {
+      set ind [lindex $v(map) $i]
+      set end [expr {round($v(t1,$ind,end)*double($rate))}]
+      set label $v(t1,$ind,label)
+      if {[info exists v(t1,$ind,rest)] && $v(t1,$ind,rest) != "" } {
+        set rest " $v(t1,$ind,rest)"
+      } else {
+        set rest ""
+      }
+      puts $out [format "%d $label$rest" $end]
+    }
+    close $out
+  }
+  set v(headerFmt) ISIS
+
+  $w messageProc \
+      "Wrote $v(fileName) in $v(headerFmt) format"
+  return
+}
+
+proc transcription_format_isis::test {w pane rows} {
+ if {[string equal "PTS:LABEL" [lindex $rows 0]]} {
+  return ISIS
+ }
+}

@@ -1,0 +1,282 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+
+# -----------------------------------------------------------------------------
+wsurf::RegisterPlugin timeaxis \
+  -description          "This plug-in is used to create time axis panes." \
+  -addmenuentriesproc   timeaxis::addMenuEntries \
+  -panecreatedproc      timeaxis::paneCreated \
+  -panedeletedproc      timeaxis::paneDeleted \
+  -redrawproc           timeaxis::redraw \
+  -getboundsproc        timeaxis::getBounds \
+  -scrollproc           timeaxis::scroll \
+  -cursormovedproc      timeaxis::cursorMoved \
+  -printproc            timeaxis::print \
+  -propertiespageproc   timeaxis::propertyPane \
+  -applypropertiesproc  timeaxis::applyProperties \
+  -getconfigurationproc timeaxis::getConfiguration \
+  -soundchangedproc     timeaxis::soundChanged 
+
+# -----------------------------------------------------------------------------
+
+namespace eval timeaxis {
+ variable Info
+ 
+ set Info(OptionTable) [list \
+			    -color      color      black \
+			    -timeformat timeFormat time \
+			    -starttime  startTime  0.0 \
+			   ]
+ if {[string match unix $::tcl_platform(platform)] } {
+  lappend Info(OptionTable) -font font {Courier 10}
+ } else {
+  lappend Info(OptionTable) -font font {Courier 8}  
+ }
+}
+
+# -----------------------------------------------------------------------------
+
+proc timeaxis::addMenuEntries {w pane m hook x y} {
+ if {[string match create $hook]} {
+  $m.$hook add command -label "Time Axis" \
+    -command [namespace code [list createTimeAxis $w $pane]]
+ }
+}
+
+proc timeaxis::paneCreated {w pane} {
+ namespace eval [namespace current]::${pane} {
+  variable var
+ }
+ upvar [namespace current]::${pane}::var v
+
+ set v(drawTimeAxis) 0
+}
+
+proc timeaxis::paneDeleted {w pane} {
+  namespace delete [namespace current]::${pane}
+}
+
+proc timeaxis::createTimeAxis {w {pane ""}} {
+ set pane [$w addPane -before $pane -height 20 -minheight 20 -maxheight 20]
+ addTimeAxis $w $pane
+}
+
+proc timeaxis::addTimeAxis {w pane args} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach {option key default} $Info(OptionTable) {
+  set a($option) $default
+ }
+ array set a $args
+ 
+ foreach {option key default} $Info(OptionTable) {
+  set v($key) $a($option)
+ }
+ set v(soundLength)  0.0
+ set v(drawTimeAxis) 1
+}
+
+proc timeaxis::redraw {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ set c [$pane canvas]
+ $c delete axis
+
+ if {$v(drawTimeAxis)} {
+  redrawTimeAxis $w $pane
+ }
+}
+
+proc timeaxis::redrawTimeAxis {w pane} {
+ upvar [namespace current]::${pane}::var v
+ 
+ set s [$w cget -sound]
+ set c [$pane canvas]
+ set h [$pane cget -height]
+ set width [expr {[$pane cget -maxtime]*[$pane cget -pixelspersecond]}]
+ snack::timeAxis $c 0 0 $width $h [$w cget -pixelspersecond] \
+	 -tags {timeAxis axis} -fill $v(color) -starttime $v(startTime) \
+	 -font $v(font) -drawvisible 1 -format $v(timeFormat)
+ set unit $v(timeFormat)
+ set vc [$pane yaxis]
+ set yw [winfo width $vc]
+ [$pane yaxis] delete axis
+ [$pane yaxis] create text 0 [expr {$h/2}] -text $unit \
+	 -font $v(font) -tags axis \
+	 -fill $v(color) -anchor w
+ set v(soundLength) [$s length -unit sec]
+}
+
+proc timeaxis::scroll {w pane frac1 frac2} {
+ upvar [namespace current]::${pane}::var v
+
+ if {$v(drawTimeAxis)} {
+  set c [$pane canvas]
+  $c delete axis
+  set h [$pane cget -height]
+  set width [expr {[$pane cget -maxtime]*[$pane cget -pixelspersecond]}]
+  snack::timeAxis $c 0 0 $width $h [$w cget -pixelspersecond] \
+	 -tags {timeAxis axis} -fill $v(color) -starttime $v(startTime) \
+	 -font $v(font) -drawvisible 1 -format $v(timeFormat)
+ }
+}
+
+proc timeaxis::print {w pane c x y} {
+ upvar [namespace current]::${pane}::var v
+
+ set s [$w cget -sound]
+ set h [$pane cget -height]
+ set vc [$pane yaxis]
+ set yw [winfo width $vc]
+
+ if {$v(drawTimeAxis)} {
+  set width [expr {[$pane cget -maxtime] * [$pane cget -pixelspersecond]}]
+  $c create rectangle $x $y [expr {$x+$width+$yw}] [expr {$y+$h}] \
+	  -fill white -tags print -outline black
+  snack::timeAxis $c $yw $y $width $h \
+	  [$w cget -pixelspersecond] -tags print -starttime $v(startTime) \
+	  -fill $v(color) -font $v(font) -format $v(timeFormat)
+  $c create rectangle [expr {$x+1}] [expr {$y+1}] [expr {$x+$yw-1}] \
+	  [expr {$y+$h-1}] -fill white -tags print -outline $v(color)
+#	  [expr {$x+[font measure $v(font) $unit]-2}]
+#	  [expr {$y+4+[font metrics $v(font) -linespace]}]
+  set unit $v(timeFormat)
+  set vc [$pane yaxis]
+  set yw [winfo width $vc]
+  $c create text [expr {2+$x}] [expr {$y+5}] -text $unit \
+	  -fill $v(color) -anchor w\
+	  -font $v(font) -tags print
+ }
+}
+
+proc timeaxis::getBounds {w pane} {
+ list
+}
+
+proc timeaxis::propertyPane {w pane} {
+ if {$pane==""} return
+ upvar [namespace current]::${pane}::var v
+ if {$v(drawTimeAxis)} {
+  list TimeAxis [namespace code drawPage]
+ }
+}
+
+proc timeaxis::applyProperties {w pane} {
+ if {[string match *wavebar $pane]} return
+ upvar [namespace current]::${pane}::var v
+
+ if {[info exists v(drawTimeAxis)]} {
+  if {$v(drawTimeAxis)} {
+   foreach var {color font timeFormat startTime} {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set doRedraw 1
+    }
+   }
+   if {[info exists doRedraw]} {
+    $w _redrawPane $pane
+   }
+  }
+ }
+}
+
+proc timeaxis::drawPage {w pane p} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach f [winfo children $p] {
+  destroy $f	
+ }
+
+ foreach {option key default} $Info(OptionTable) {
+  set v(t,$key) $v($key)
+ }
+
+ colorPropItem $p.f1 "Color:" 20 \
+     [namespace current]::${pane}::var(t,color)
+
+ stringPropItem $p.f2 "Font:" 20 16 \
+     "" [namespace current]::${pane}::var(t,font)
+
+ pack [frame $p.f3] -anchor w
+ label $p.f3.l -text [::util::mc "Time display format:"] -width 20 \
+     -anchor w
+ tk_optionMenu $p.f3.om [namespace current]::${pane}::var(t,timeFormat) \
+     time seconds "10ms frames" "PAL frames" "NTSC frames"
+ pack $p.f3.l $p.f3.om -side left -padx 3
+
+ stringPropItem $p.f4 "Start time offset:" 20 10 \
+     "" [namespace current]::${pane}::var(t,startTime)
+
+}
+
+proc timeaxis::cursorMoved {w pane time value} {
+ upvar [namespace current]::${pane}::var v
+ 
+ if {$v(drawTimeAxis)} {
+  switch -- $v(timeFormat) {
+   "samples" {
+    set s [$w cget -sound]
+    set paneTime [expr {int($time*[$s cget -rate])}]
+   }
+   "seconds" {
+    set paneTime [format "%.3f" $time]s
+   }
+   "10ms frames" {
+    set s [$w cget -sound]
+    set paneTime [expr {int($time*100)}]
+   }
+   "PAL frames" {
+    set s [$w cget -sound]
+    set paneTime [expr {int($time*25)}]
+   }
+   "NTSC frames" {
+    set s [$w cget -sound]
+    set paneTime [expr {int($time*30)}]
+   }
+   default {set widgetTime [$w formatTime $time]
+    set paneTime [$w formatTime $time]
+   }
+  }
+  set widgetTime [$w formatTime $time]
+  $w messageProc [format "Time axis - %s (%s)" $paneTime $widgetTime] timeaxis
+ }
+}
+
+proc timeaxis::soundChanged {w flag} {
+ set s [$w cget -sound]
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  if {$v(drawTimeAxis)} {
+   if {$v(soundLength) < [$s length -unit sec]} {
+    $w _redrawPane $pane
+   }
+  }
+ }
+}
+
+proc timeaxis::getConfiguration {w pane} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ set result {}
+ if {$pane==""} {return {}}
+ if {$v(drawTimeAxis)} {
+  append result "\$widget timeaxis::addTimeAxis \$pane"
+
+ foreach {option key default} $Info(OptionTable) {
+   if {$v($key) != $default} {
+    append result " $option \"$v($key)\""
+   }
+  }
+ }
+ append result "\n"
+
+ return $result
+}

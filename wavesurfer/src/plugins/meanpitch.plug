@@ -1,0 +1,108 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2003 Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin meanpitch \
+    -description "Example plug-in that calculates the average fundamental frequency for the current selection and for the whole file" \
+    -soundchangedproc   meanpitch::soundChanged \
+    -widgetcreatedproc  meanpitch::widgetCreated \
+    -addmenuentriesproc meanpitch::addMenuEntries
+
+# -----------------------------------------------------------------------------
+
+namespace eval meanpitch {
+ variable Info
+}
+
+# ----------------------------------------------------------------------------
+
+proc meanpitch::soundChanged {w flag} {
+ variable Info
+
+ if {[info exists Info($w,pitchList)]} {
+  unset Info($w,pitchList)
+ }
+}
+
+proc meanpitch::ComputeF0 {w} {
+ variable Info
+
+ # Use pitch values from a pitch pane if one exists, otherwise
+ # compute them from scratch and remember for future reference
+
+ foreach otherpane [$w _getPanes] {
+  upvar wsurf::analysis::${otherpane}::var ov
+  if {$ov(drawPitch)} {
+   set Info($w,pitchList)     $ov(pitchList)
+   set Info($w,frameInterval) $ov(frameInterval)
+   return
+  }
+ }
+ set s [$w cget -sound]
+ set Info($w,pitchList) [$s pitch -method esps]
+ set Info($w,frameInterval) 0.01
+}
+
+proc meanpitch::widgetCreated {w} {
+ # Bind key F7 to the procedure ::meanpitch::ShowF0
+ bind [winfo parent $w] <F7> [namespace code [list ShowF0 $w]]
+}
+
+proc meanpitch::addMenuEntries {w pane m hook x y} {
+ if {[string match query $hook]} {
+  return 0
+ }
+ if {[string length $hook] == 0} {
+  $m add command -label "Calculate Mean F0" \
+      -command [namespace code [list ShowF0 $w]]
+ }
+}
+
+proc meanpitch::ListAverage {list start end} {
+ set sum 0.0
+ set num 0
+ for {set i $start} {$i <= $end} {incr i} {
+  set v [lindex [lindex $list $i] 0]
+  if {$v > 0} {
+   set sum [expr $sum + $v]
+   incr num
+  }
+ }
+ if {$num == 0} {
+  return 0.0
+ } else {
+  return [expr $sum/$num]
+ }
+}
+
+proc meanpitch::ShowF0 {w} {
+ variable Info
+
+ if {[info exists Info($w,pitchList)] == 0} {
+  ComputeF0 $w
+ }
+
+ foreach {left right} [$w cget -selection] break
+ set start [expr {int($left  / $Info($w,frameInterval) + 0.5)}]
+ set end   [expr {int($right / $Info($w,frameInterval) + 0.5)}]
+
+ # Calculate the mean of the voiced frames in the selection (for which
+ # the pitch > 0)
+ 
+ set meanF0_sel [format "%.1fHz" [ListAverage $Info($w,pitchList) $start $end]]
+ 
+ # Calculate the mean of the voiced frames for the whole file
+ # (for which the pitch > 0)
+ 
+ set meanF0_tot [format "%.1fHz" [ListAverage $Info($w,pitchList) 0 \
+				      [expr [llength $Info($w,pitchList)] -1]]]
+ 
+ # Show the information in the message bar
+
+ ::setMsg "Selection average: $meanF0_sel, file average: $meanF0_tot"
+}

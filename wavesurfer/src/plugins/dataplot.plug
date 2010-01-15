@@ -1,0 +1,1436 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2006 Jonas Beskow and Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin dataplot \
+  -description "This plug-in is used to plot tabulated numerical ASCII data.\
+  The data values contained in a file are supposed to be formated in rows\
+  with one or more\
+  columns to be plotted. One row for each point in time, starting with the\
+  first row at 0.0 seconds and equally spaced according to the frame interval\
+  option.\
+  It is usually practical to create a special configuration for a certain\
+  combination of sound and data files, specifying file properties such as\
+  filename extension, file header size, file path, and column delimiter.\
+  Optionally a spectrogram or a waveform can be drawn as a backdrop." \
+  -addmenuentriesproc   dataplot::addMenuEntries \
+  -panecreatedproc      dataplot::paneCreated \
+  -panedeletedproc      dataplot::paneDeleted \
+  -redrawproc           dataplot::redraw \
+  -getboundsproc        dataplot::getBounds \
+  -cursormovedproc      dataplot::cursorMoved \
+  -printproc            dataplot::print \
+  -propertiespageproc   dataplot::propertyPane \
+  -applypropertiesproc  dataplot::applyProperties \
+  -getconfigurationproc dataplot::getConfiguration \
+  -openfileproc         dataplot::openFile \
+  -savefileproc         dataplot::saveFile \
+  -needsaveproc         dataplot::needSave \
+  -cutproc              dataplot::cut \
+  -copyproc             dataplot::copy \
+  -pasteproc            dataplot::paste \
+  -before               analysis
+
+namespace eval dataplot {
+ variable Info
+
+ set Info(OptionTable) [list \
+			    -backdrop backdrop None \
+			    -datadirectory dataDir "" \
+			    -delimiter delimiter " " \
+			    -stylelist styleList {0 black Line 1 red Line \
+						      2 blue Line 3 green Line \
+						      4 yellow Line 5 magenta Line} \
+			    -fileextension fileExt ".txt" \
+			    -frameinterval frameInterval 0.01 \
+			    -invocation invocation direct \
+			    -locked locked 0 \
+			    -saveselection saveSelection 0 \
+			    -skiplines skipLines 0 \
+			    -unit unit "" \
+			    -maxvalue maxVal "" \
+			    -minvalue minVal "" \
+			    -offset offset 0.0 \
+			    -dataspacingmode dataSpacingMode fixedtime \
+			    -framerate frameRate 100 \
+			    -timecolumn timeColumn 0 \
+			    -onlywarnmanualmods onlyWarnManualMods 1 \
+			   ]
+ 
+ set Info(script) [info script]
+ set Info(path) ""
+}
+
+proc dataplot::addMenuEntries {w pane m hook x y} {
+ if {[string match create $hook]} {
+  $m.$hook add command -label "Data Plot" \
+    -command [namespace code [list createDataPlot $w $pane]]
+ } elseif {[string length $hook] == 0}  {
+  if {$pane==""} return
+  upvar [namespace current]::${pane}::var v
+  if {[info exists v(drawDataPlot)]} {
+   if {$v(drawDataPlot)} {
+    $m add command -label "Statistics..." \
+      -command [namespace code [list statWin $w $pane]]
+    $m add command -label "Open Data File..." \
+     -command [namespace code [list getOpenDataFile $w $pane]]
+    $m add command -label "Save Data File..." \
+     -command [namespace code [list getSaveDataFile $w $pane]]
+   }
+  }
+ }
+}
+
+proc dataplot::paneCreated {w pane} {
+ namespace eval [namespace current]::${pane} {
+  variable var
+ }
+ upvar [namespace current]::${pane}::var v
+ set v(plotlist) ""
+ set v(maxtime) 0
+ set v(drawDataPlot) 0
+ set v(changed) 0
+}
+
+proc dataplot::paneDeleted {w pane} {
+ namespace delete [namespace current]::${pane}
+}
+
+
+
+proc dataplot::minmax {points} {
+ foreach {x y} $points {
+  util::setmin min $y
+  util::setmax max $y
+ }
+ if {![info exists min]} {
+  set min 0.0
+  set max 0.0
+ }
+ list $min $max
+}
+
+proc dataplot::getBounds {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ if {$v(drawDataPlot) == 0} return
+ 
+ foreach g $v(plotlist) {
+  #<< "column $g, min:$v($g,min), max:$v($g,max)"
+  #<<         "minmax:[minmax $v($g,points)]"
+  util::setmin ymin $v($g,min)
+  util::setmax ymax $v($g,max)
+ }
+
+ if {$v(maxVal) != ""} {
+  set ymax $v(maxVal)
+ }
+ if {$v(minVal) != ""} {
+  set ymin $v(minVal)
+ }
+ 
+ if {$v(maxVal) == ""} {
+  set eps 1e-12
+  if {![info exists ymin]} {set ymin 0}
+  if {![info exists ymax]} {set ymax 0}
+  if {$ymax-$ymin<$eps} {
+   set ymax [expr {$ymin+$eps}]
+  }
+  set scale [expr {pow(10,floor(log10($ymax-$ymin)))}]
+  set ymax2 [expr {$scale*(ceil($ymax/$scale)+1)}]
+  #<< "ymin = $ymin, ymax = $ymax, scale = $scale"
+ } else {
+  set ymax2 $ymax
+ }
+ if {$v(minVal) == ""} {
+  set eps 1e-12
+  if {![info exists ymin]} {set ymin 0}
+  if {![info exists ymax]} {set ymax 0}
+  if {$ymax-$ymin<$eps} {
+   set ymax [expr {$ymin+$eps}]
+  }
+  set scale [expr {pow(10,floor(log10($ymax-$ymin)))}]
+  set ymin2 [expr {$scale*(floor($ymin/$scale)-1)}]
+  #<< "ymin = $ymin, ymax = $ymax, scale = $scale"
+  #<< "returning \{0 $ymin2 $v(maxtime) $ymax2\}"
+ } else {
+  set ymin2 $ymin
+ }
+ list 0 $ymin2 $v(maxtime) $ymax2
+}
+
+proc dataplot::cursorMoved {w pane time value} {
+ upvar [namespace current]::${pane}::var v
+
+ if {$v(drawDataPlot)} {
+  set str ""
+
+  if {[string equal $v(dataSpacingMode) "variable"] == 0} {
+   set i [expr {1+2*int(($time - $v(offset))/$v(frameInterval) + .5)}]
+  }
+  foreach g $v(plotlist) {
+   if {[string equal $v(dataSpacingMode) "variable"]} {
+    set i 0
+    while {[lindex $v($g,points) $i] != "" && $time > [lindex $v($g,points) $i]} {
+     incr i 2
+    }
+    incr i
+   }
+   if {$i > 0 && $i < [llength $v($g,points)]} {
+    set elem [lindex $v($g,points) $i]
+    append str [format "%.2f " $elem]
+   }
+  }
+  set filename [file tail $v(fileName)]
+  $w messageProc \
+	  [format "%s: %s, %s" $filename [$w formatTime $time] $str] \
+	  dataplot
+ }
+}
+
+proc dataplot::importWizard w {
+ variable wiz
+ set z .dataPlotWizard
+ toplevel $z
+ wm title $z "Data Plot Import Wizard"
+
+ if {[info exists wiz]} {unset wiz}
+ array set wiz {
+  timedata implicit
+  timestep 1/100
+  timecolumn 0
+ }
+
+ radiobutton $z.r0 -text "Constant time step" -value implicit \
+   -variable [namespace current]::wiz(timedata) -anchor w
+ entry $z.e0 -textvariable [namespace current]::wiz(timestep)
+ radiobutton $z.r1 -text "Time data in column" -value column \
+   -variable [namespace current]::wiz(timedata) -anchor w
+ entry $z.e1 -textvariable [namespace current]::wiz(timecolumn)
+ 
+ button $z.ok -text OK -command [list destroy $z]
+ grid $z.r0 $z.e0 -sticky news
+ grid $z.r1 $z.e1 -sticky news
+ grid $z.ok -columnspan 2 -padx 20
+ grab $z
+ tkwait window $z
+ list timestep [expr {1.0*$wiz(timestep)}] timedata $wiz(timedata) timecolumn $wiz(timecolumn)
+}
+
+proc dataplot::getOpenDataFile {w pane} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ if {$v(changed)} {
+  if {[string match no [tk_messageBox -message "You have unsaved changes.\nDo you really want to continue?" -type yesno -icon question]]} {
+   return
+  }
+ }
+ set file [file tail $v(fileName)]
+ if {$Info(path) != ""} {
+  set path $Info(path)
+ } else {
+  if {$v(dataDir) == ""} {
+   set path [file dirname $v(fileName)]
+  } else {
+   set path $v(dataDir)
+  }
+ }
+ if {[string match Darwin $::tcl_platform(os)]} {
+  if {[file exists $file] == 0} { set file "." }
+ }
+ set fileName [tk_getOpenFile -title "Load Data" -initialfile $file \
+   -initialdir $path -defaultextension $v(fileExt)]
+ if {$fileName == ""} return
+ 
+ if {[string compare $path [file dirname $fileName]] != 0} {
+  set Info(path) [file dirname $fileName]
+ }
+ 
+ openDataFile $w $pane $fileName datafile
+ # $w _redrawPane $pane
+}
+
+proc dataplot::openFile {w soundFileName} {
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  if {$v(drawDataPlot)} {
+   openDataFile $w $pane $soundFileName soundfile
+  }
+ }
+ return 0
+}
+
+proc dataplot::saveFile {w soundFileName} {
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  if {$v(drawDataPlot) && $v(changed)} {
+   saveDataFile $w $pane
+  }
+ }
+ return 0
+}
+
+proc dataplot::openDataFile {w pane fn type} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ set fileName ""
+ if {[string match soundfile $type]} {
+  set path [file dirname $fn]
+  set pathlist [file split $path]
+  set rootname [file tail [file rootname $fn]]
+  set name $rootname.[string trim $v(fileExt) .]
+
+  # Try to locate the corresponding label file
+  
+  if {$v(dataDir) != ""} {
+   # Try the following directories in order
+   # 1. try to locate file in specified label file directory 
+   # 2. try 'sound file path'/../'specified dir'
+   # 3. look in current directory
+   # 4. look in same directory as sound file
+   
+   if {[file readable [file join $v(dataDir) $name]]} {
+    set fileName [file join $v(dataDir) $name]
+   } elseif {[llength $pathlist] > 1 && \
+     [file readable [eval file join [lreplace $pathlist \
+     end end $v(dataDir)] $name]]} {
+    set fileName [eval file join [lreplace $pathlist \
+      end end $v(dataDir)] $name]
+   }
+  }
+  if {$fileName == ""} {
+   if {[file readable $name]} {
+    set fileName $name
+   } elseif {[file readable [file join $path $name]]} {
+    set fileName [file join $path $name]
+   } else {
+    set fileName $name
+   }
+  }
+ } else {
+  set fileName $fn
+ }
+ 
+ # This filename should be correct, remember it
+ set v(fileName) $fileName
+ 
+ # array set conf [importWizard $w]
+ 
+# set v(minVal) ""
+# set v(maxVal) ""
+ foreach key [array names v col#*,*] {
+  unset v($key)
+ }
+ set v(plotlist) ""
+
+ set v(linesRead) 0
+ 
+ if {[catch {open $fileName} in]} {
+  $w messageProc $in dataplot
+  return
+ }
+
+ $w messageProc "Reading data..." dataplot
+
+ fconfigure $in -translation binary -encoding binary
+ set data [read $in]
+ close $in
+
+ # try different format handlers
+ if {[format::dat-bin::read $w $pane $data]} {
+  #<< "chosen format handler: dat-bin"
+ } else {
+  format::generic-ascii::read $w $pane $data
+  #<< "chosen format handler: generic-ascii"
+ }
+ $w messageProc "" dataplot
+ set v(changed) 0
+}
+
+proc dataplot::processData {w pane data frameInterval header tag} {
+ upvar [namespace current]::${pane}::var v
+
+ set v(frameInterval) $frameInterval
+ set v(header) $header
+ set v(maxtime) 0
+ set row 0
+ set nrows [llength $data]
+ foreach key [lsort [array names v *,points]] {
+  set v($key) {}
+ }
+ set progressproc [$w cget -progressproc]
+ if {$progressproc != ""} {
+  $progressproc "Processing data..." 0.0
+ }
+ set lineno 0
+ if {[llength $data] == 1} {
+  lappend data [lindex $data 0]
+ }
+ foreach line $data {
+  #<< "processing line $row"
+  if {$progressproc != "" && $row % 20 == 19} {
+   if [catch {$progressproc "Processing data..." [expr {1.0*$row/$nrows}]}] {
+    return
+   }
+  }
+
+  set elements [split [string trim $line] "\t ,"]
+  set col 0
+  switch $v(dataSpacingMode) {
+   fixedtime {
+    set t [expr {$row*$v(frameInterval)}]
+   } 
+   fixedrate {
+    set t [expr {1.0*$row/$v(frameRate)}]
+   }
+   variable {
+    set t [lindex $elements $v(timeColumn)]
+   }
+  }
+  
+  foreach elem $elements {
+   if {$elem != ""} {
+    #<< "processing element $elem"
+    if {[string is double $elem] == 0} {
+     tk_messageBox -message "Non-numerical entry encountered on line: $v(linesRead)!"
+     if {$progressproc != ""} {
+      $progressproc "Processing data..." 1.0
+     }
+     return
+    }
+    util::setmin v(col#$col,min) $elem
+    util::setmax v(col#$col,max) $elem
+    lappend v(col#$col,points) $t $elem
+    incr col
+   }
+  }
+  
+  #<< "maxtime $v(maxtime)"
+  set v(maxtime) [util::max $t $v(maxtime)]
+  incr row
+  incr v(linesRead)
+ }
+ draw $w $pane $tag
+ if {$progressproc != ""} {
+  $progressproc "Processing data..." 1.0
+ }
+ if {$v(onlyWarnManualMods) == 0} {
+  set v(changed) 1
+ }
+}
+
+proc dataplot::draw {w pane tag} {
+ upvar [namespace current]::${pane}::var v
+ 
+ set c [$pane canvas]
+ 
+ $c delete dataplot
+ set v(plotlist) ""
+ foreach {column color style} $v(styleList) {
+  #<< "column=$column, color=$color, style=$style"
+  if {$column == -1} continue
+  set plot col#$column
+  if {[info exists v($plot,points)] == 0} continue
+  lappend v(plotlist) $plot
+  $c create line 0 0 0 0 -fill $color \
+    -tags [list $plot dataplot top $tag ${plot}_$pane]
+  util::canvasbind $c $plot <Leave> [namespace code [list event $w $pane $plot leave]]
+  util::canvasbind $c $plot <ButtonPress-1> [namespace code [list event $w $pane $plot press]]
+  util::canvasbind $c $plot <ButtonRelease-1> [namespace code [list event $w $pane $plot release]]
+  util::canvasbind $c $plot <B1-Motion> [namespace code [list doodle $w $pane %x %y]]
+
+#  bind $c <B1-Motion> [namespace code [list doodle $w $pane %x %y]]
+ }
+ #<< "plotlist=$v(plotlist)"
+ set oldMaxTime [$pane cget -maxtime]
+ $w updateBounds noraise
+ # If the data file is longer than any current displayed pane, update them all
+ if {$oldMaxTime < [$pane cget -maxtime]} {
+  $w _redraw
+ } else {
+  _redraw $w $pane $c 0 0
+ }
+}
+
+proc dataplot::getSaveDataFile {w pane} {
+ upvar [namespace current]::${pane}::var v
+ 
+ set file [file root [file tail $v(fileName)]]$v(fileExt)
+ if {$v(dataDir) == ""} {
+  set path [file dirname $v(fileName)]
+ } else {
+  set path $v(dataDir)
+ }
+ 
+ set fileName [tk_getSaveFile -title "Save Data File" -initialfile $file \
+   -initialdir $path -defaultextension $v(fileExt)]
+ if {$fileName == ""} return
+
+ set v(fileName) $fileName
+ set v(fileExt) [file extension $fileName]
+
+ if {$v(fileExt)==".dat"} {
+  set f [open $v(fileName) w]
+  fconfigure $f -translation binary
+  puts -nonewline $f [format::dat-bin::write $w $pane]
+  close $f
+ } else {
+  saveDataFile $w $pane
+ }
+}
+
+proc dataplot::saveDataFile {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ set s [$w cget -sound]
+ if {$v(saveSelection)} {
+  foreach {left right} [$w cget -selection] break
+  if {$left == $right} {
+   $w configure -selection [list 0.0 [$s length -unit seconds]]
+   foreach {left right} [$w cget -selection] break
+  }
+ } else {
+  set left 0.0
+  set right [$s length -unit seconds]
+ }
+ set start [util::max 1 \
+   [expr {1+2*int(($left - $v(offset))/$v(frameInterval) + .5)}]]
+ set end   [util::min \
+   [expr {3+2*int(($right - $v(offset))/$v(frameInterval) + .5)}] \
+   [llength $v([lindex $v(plotlist) 0],points)]]
+ if {$v(fileName) == $v(fileExt)} {
+  set v(fileName) [file tail [file rootname [$w getInfo fileName]]]$v(fileExt)
+ }
+ 
+ set f [open $v(fileName) w]
+
+ upvar ::wsurf::analysis::${pane}::var av
+ if {[info exists av(exportHeader)] && $av(exportHeader)} {
+  puts $f $v(header)
+  puts $f "Range: [util::formatTime $left $left %.3f]-[util::formatTime $right $right %.3f] hms.d"
+  puts $f "--- End of header ---"
+ }
+ for {set i $start} {$i < $end} {incr i 2} {
+  set values {}
+  foreach key [lsort [array names v *,points]] {
+   set col [lindex [split $key ,] 0]
+   lappend values [lindex $v($col,points) $i]
+  }
+  puts $f [join $values $v(delimiter)]
+ }
+ close $f
+ set v(changed) 0
+}
+
+proc dataplot::doodle {w pane x y} {
+ upvar [namespace current]::${pane}::var v
+
+ set c [$pane canvas]
+ set x [$c canvasx $x]
+ set y [$c canvasy $y]
+ set plot $v(doodlePlot)
+ if {$plot == ""} return
+ set n [lindex [split $plot #] 1]
+ set style [lindex $v(styleList) [expr {3*$n+2}]]
+ set time [expr {[$pane getTime $x] - $v(offset)}]
+ set index [expr {int([llength $v($plot,points)] * $time / $v(maxtime) / 2.0)}]
+ set index [util::max [expr {$index*2+1}] 1]
+ if {$index >= [llength $v($plot,points)]} {
+  set index [expr {[llength $v($plot,points)]-1}]
+ }
+ 
+ set currentValue [$pane getValue $y]
+ if {$v(lastIndex) == -1} {
+  set start $index
+  set v(lastIndex) $index
+  set v(lastValue) $currentValue
+ } else {
+  set start $v(lastIndex)
+  incr start 2
+ }
+ set tmp ""
+ if {$start > $index} {
+  set tmp $start
+  set start $index
+  set index [util::max [expr {$tmp - 1}] 1]
+  foreach {v(lastValue) currentValue} [list $currentValue $v(lastValue)] break
+ }
+
+ if {$v(maxVal) != ""} {
+  set maxValue $v(maxVal)
+ } else {
+  set maxValue [$pane getValue 0]
+ }
+ if {$v(minVal) != ""} {
+  set minValue $v(minVal)
+ } else {
+  set minValue [$pane getValue [$pane cget -scrollheight]]
+ }
+ for {set i $start} {$i <= $index} {incr i 2} {
+  if {$index == $start} {
+   set value $currentValue
+  } else {
+   set value [expr {$v(lastValue)+($currentValue-$v(lastValue))*\
+     ($i-$start)/($index-$start)}]
+  }
+  if {$value > $maxValue} { set value $maxValue }
+  if {$value < $minValue} { set value $minValue }
+  set v($plot,points) [lreplace $v($plot,points) $i $i $value]
+  if {[string match Line $style] == 0} {
+   set x [$pane getCanvasX [lindex $v($plot,points) [expr {$i-1}]]]
+   set y [$pane getCanvasY $value]
+   $c coords o$i [expr {$x-1}] [expr {$y-1}] [expr {$x+1}] [expr {$y+1}]
+  }
+  # util::setmin v($plot,min) $value
+  # util::setmax v($plot,max) $value
+ }
+ if {$tmp == ""} {
+  set v(lastIndex) [expr {$index-2}]
+  set v(lastValue) $currentValue
+ } else {
+  set v(lastIndex) $start
+ }
+ if {[string match Line $style]} {
+  _redraw $w $pane $c 0 0
+ }
+ set v(changed) 1
+ cursorMoved $w $pane [$pane getTime $x] $currentValue
+}
+
+proc dataplot::event {w pane plot event} {
+ upvar [namespace current]::${pane}::var v
+ switch $event {
+  enter {
+   if [info exists v($plot,name)] {
+    set nn $v($plot,name)
+   } else {
+    set nn $plot
+   }
+   [$pane canvas] itemconfigure $plot -width 2
+   $w messageProc "$nn" [namespace current]
+  }
+  leave {
+   [$pane canvas] itemconfigure $plot -width 1
+   $w messageProc "" [namespace current]
+  }
+  press {
+   set v(doodlePlot) $plot
+   set v(lastIndex) -1
+  }
+  release {
+   set v(doodlePlot) ""
+   set v(lastIndex) -1
+  }
+ }
+}
+
+proc dataplot::createDataPlot {w pane} {
+ set pane [$w addPane -before $pane -height 150 -closeenough 3 -showyaxis true]
+
+ addDataPlot $w $pane
+}
+
+proc dataplot::addDataPlot {w pane args} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ foreach {option key default} $Info(OptionTable) {
+  set a($option) $default
+ }
+ array set a $args
+ 
+ foreach {option key default} $Info(OptionTable) {
+  set v($key) $a($option)
+ }
+ set v(fileExt)       .[string trim $v(fileExt) .]
+ set v(fileName)      ""
+ set v(linesRead)     0
+ set v(doodlePlot)    ""
+ set v(drawDataPlot)  1
+ 
+ $pane configure -unit $v(unit)
+ switch $v(backdrop) {
+  None {
+  }
+  Spectrogram {
+   wsurf::analysis::addSpectrogram $w $pane
+  }
+  Waveform {
+   wsurf::analysis::addWaveform $w $pane
+  }
+ }
+ if {[string match direct $v(invocation)] && [$w getInfo fileName] != ""} {
+  openDataFile $w $pane [$w getInfo fileName] soundfile
+ } else {
+  set v(fileName) [file tail [file rootname [$w getInfo fileName]]]$v(fileExt)
+ }
+
+ if {$::tcl_version > 8.2 && $v(locked)} {
+  set c [$pane canvas]
+  if $v(locked) {
+   $c configure -state disabled
+  } else {
+   $c configure -state normal
+  }
+ }
+} 
+
+proc dataplot::redraw {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ if {$v(drawDataPlot) == 0} return
+ set c [$pane canvas]
+ foreach g $v(plotlist) {
+  set n [lindex [split $g #] 1]
+  foreach {col color style} $v(styleList) {if {$col==$n} {break}}
+  if {$col!=$n} continue
+  #<< "$g: n=$n,style=$style"
+  if {[string match Line $style] == 0} {
+   #<< "deleting $g from plot"
+   $c delete $g
+  }
+ }
+ _redraw $w $pane $c 0 0
+}
+
+proc dataplot::print {w pane c x y} {
+ upvar [namespace current]::${pane}::var v
+
+ if {$v(drawDataPlot) == 0} return
+
+ set vc [$pane yaxis]
+ set yw [winfo width $vc]
+ set height [$pane cget -scrollheight]
+ set width [$pane getCanvasX [$pane cget -maxtime]]
+ $c create rectangle [expr {$yw+$x}] $y [expr {$x + $yw + $width}] \
+   [expr {$y+$height}] -tags print
+
+ foreach {column color style} $v(styleList) {
+  if {$column == -1} continue
+  set plot col#$column
+  if {[info exists v($plot,points)] == 0} continue
+  if {[string match Line $style]} {
+   $c create line 0 0 0 0 -fill $color \
+     -tags [list $plot dataplot top print ${plot}_$pane]
+  }
+ }
+ set yaxisWidth [winfo width [$pane yaxis]]
+ _redraw $w $pane $c $yaxisWidth $y
+}
+
+proc dataplot::_redraw {w pane c xo yo} {
+ upvar [namespace current]::${pane}::var v
+
+ set needscaling 0
+ #<< "plotlist =$v(plotlist)"
+ #<< "stylelist=$v(styleList)"
+
+ foreach g $v(plotlist) {
+  set n [lindex [split $g #] 1]
+  foreach {col color style} $v(styleList) {if {$col==$n} {break}}
+  if {$col!=$n} continue
+  if {[string match Line $style]} {
+   #<< "g=$g, #coords = [llength $v($g,points)]"
+   #<< "points = [lrange $v($g,points) 0 19]..."
+   if {$::tcl_version > 8.2 && [llength $v($g,points)] > 0} {
+    $c coords ${g}_$pane $v($g,points)
+   } else {
+    eval $c coords ${g}_$pane $v($g,points)
+   }
+   set needscaling 1
+  } else {
+   set i 1
+   foreach {t val} $v($g,points) {
+    set x [expr {$xo + [$pane getCanvasX $t] + [$pane getCanvasX $v(offset)]}]
+    set y [expr {$yo + [$pane getCanvasY $val]}]
+    $c create oval [expr {$x-1}] [expr {$y-1}] [expr {$x+1}] [expr {$y+1}]\
+       -outline $color -tags [list $g dataplot top o$i]
+    incr i 2
+   }
+  }
+ }
+ if $needscaling {
+  set x0 [$pane getCanvasX 0]
+  set y0 [$pane getCanvasY 0]
+  set x1 [$pane getCanvasX 1]
+  set y1 [$pane getCanvasY 1]
+  set xs [expr {$x1-$x0}]
+  if {$xs==0.0} {set xs 1.0}
+  set ys [expr {$y1-$y0}]
+  if {$ys==0.0} {set ys 1.0}
+  #<< "x0=$x0, x1=$x1, y0=$y0, y1=$y1"
+  #<< "$c scale dataplot 0 0 $xs $ys"
+  #<< "$c move dataplot $x0 $y0"
+  foreach g $v(plotlist) {
+   $c scale ${g}_$pane 0 0 $xs $ys
+   $c move ${g}_$pane [expr {$xo + $x0 + [$pane getCanvasX $v(offset)]}] \
+     [expr {$yo + $y0}]
+  }
+ }
+
+ $c raise dataplot
+}
+
+proc dataplot::cut {w start end} {
+ edit $w cut $start $end
+}
+
+proc dataplot::copy {w start end} {
+ edit $w copy $start $end
+}
+
+proc dataplot::paste {w start end} {
+ return [edit $w paste $start $end]
+}
+
+proc dataplot::edit {w op start end} {
+ variable clipboard
+ set done 0
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  if {[info exists v(drawDataPlot)]} {
+   if {$v(drawDataPlot)} {
+    switch $op {
+     paste {
+      if {![info exists clipboard]} {return 0}
+      foreach plot $clipboard(plotlist) {
+       set i 0
+       foreach {x y} $v($plot,points) {
+	if {$x>=$start} {break}
+	incr i
+       }
+       set p1 [lrange $v($plot,points) 0 [expr {$i-1}]]
+       set p2 $clipboard($plot,points)
+       set p3 [lrange $v($plot,points) $i end]
+       set $v($plot,points) $p1
+       foreach {x y} $p2 {
+	lappend d($plot,points) [expr {$x+$start}] $y
+       }
+       foreach {x y} $p3 {
+	lappend d($plot,points) [expr {$x+$clipboard($plot,length)}] $y
+       }
+      set done 0
+      }
+     }
+     cut -
+     copy {
+      if [info exists clipboard] {unset clipboard}
+      foreach plot $v(plotlist) {
+       set p1 ""
+       set p2 ""
+       set p3 ""
+       foreach {x y} $v($plot,points) {
+	if {$x<$start-$v(offset)} {
+	 lappend p1 $x $y
+	} elseif {$x>=$start-$v(offset) && $x<$end-$v(offset)} {
+	 lappend p2 [expr {$x-$start}] $y
+	 lappend xy($x) $y
+	} else {
+	 lappend p3 [expr {$x-$end+$start}] $y
+	}
+       }
+       if {$op=="cut"} {
+	set d($plot,points) [concat $p1 $p3]
+       }
+       set clipboard($plot,points) $p2
+       set clipboard($plot,length) [expr {$end-$start}]
+      }
+      set xyStr ""
+      foreach t [lsort -real [array names xy]] {
+       append xyStr "[expr $t+$v(offset)]\t[join $xy($t) \t]\n"
+      }
+      unset -nocomplain xy
+      clipboard append $xyStr
+
+      set clipboard(plotlist) ""
+      foreach key [array names clipboard *,points] {
+       set plot [lindex [split $key ,] 0] 
+       lappend clipboard(plotlist) $plot
+      }
+     }
+    }
+   }
+   catch {
+    parray clipborad
+   }
+  }
+ }
+ return $done
+}
+
+proc dataplot::propertyPane {w pane} {
+ upvar [namespace current]::${pane}::var v
+ 
+ if {$pane==""} return
+ if {$v(drawDataPlot)} {
+  return [list "Data Plot" [namespace code drawDataplotPage]]
+ }
+}
+
+proc dataplot::applyProperties {w pane} {
+ if {[string match *wavebar $pane]} return
+ upvar [namespace current]::${pane}::var v
+
+ if {[info exists v(drawDataPlot)]} {
+  if {$v(drawDataPlot)} {
+   foreach var [list backdrop] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set changeBackdrop 1
+    }
+   }
+   foreach var [list unit] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     $pane configure -unit $v(t,$var)
+    }
+   }
+   if {[info exists changeBackdrop]} {
+    set wsurf::analysis::${pane}::var(drawWaveform) 0
+    set wsurf::analysis::${pane}::var(drawSpectrogram) 0
+    set c [$pane canvas]
+    $c delete analysis
+    [$pane yaxis] delete all
+    switch $v(backdrop) {
+     None {
+      $pane configure -unit "" -stipple "" -layer bottom -showyaxis true
+     }
+     Spectrogram {
+      $pane configure -unit "" -stipple gray12 -layer top -showyaxis true
+      wsurf::analysis::addSpectrogram $w $pane
+     }
+     Waveform {
+      $pane configure -unit "" -stipple "" -layer bottom -showyaxis true
+      wsurf::analysis::addWaveform $w $pane
+     }
+    }
+    $w _redrawPane $pane
+    wsurf::_remeberPropertyPage $w $pane
+    wsurf::_drawPropertyPages $w $pane
+   }
+   foreach var [list fileExt dataDir skipLines frameInterval dataSpacingMode frameRate timeColumn] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     if {$v(changed)} {
+      if {[string match no [tk_messageBox -message "This operation will cause the data file to be re-read from disk and you have unsaved changes.\nDo you want to continue?" -type yesno -icon question]]} {
+       return
+      }
+     }
+     if {[string match direct $v(invocation)] && [$w getInfo fileName] != ""} {
+      openDataFile $w $pane [$w getInfo fileName] soundfile
+     }
+    }
+   }
+   foreach var [list locked] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+    }
+    if {$::tcl_version > 8.2 && [string match locked $var] == 1} {
+     set c [$pane canvas]
+     if $v(t,$var) {
+      $c configure -state disabled
+     } else {
+      $c configure -state normal
+     }
+    }
+   }
+   set tmp {}
+   for {set i 0} {$i < [llength $v(styleList)]/3} {incr i} {
+    lappend tmp $v(t,column$i) $v(t,color$i) $v(t,style$i)
+   }
+   if {[string compare $tmp $v(styleList)] != 0} {
+    set v(styleList) $tmp
+    if {$v(plotlist) != ""} {
+     set doRedraw 1
+    }
+   }
+   foreach var [list saveSelection delimiter onlyWarnManualMods] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+    }
+   }
+   foreach var [list maxVal minVal offset] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set doRedraw 1
+    }
+   }
+   if {[info exists doRedraw]} {
+    draw $w $pane dataplot
+   }
+  }
+ }
+}
+
+proc dataplot::drawDataplotPage {w pane p} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ foreach f [winfo children $p] {
+  destroy $f
+ }
+
+ foreach {option key default} $Info(OptionTable) {
+  set v(t,$key) $v($key)
+ }
+ 
+ stringPropItem $p.f1 "Data filename extension:" 26 10 "" \
+   [namespace current]::${pane}::var(t,fileExt)
+ 
+ pack [frame $p.f2] -anchor w -ipady 2
+ label $p.f2.l -text "Data file path:" -width 26 -anchor w
+ entry $p.f2.e -textvar [namespace current]::${pane}::var(t,dataDir) -wi 16
+ pack $p.f2.l $p.f2.e -side left -padx 3
+ if {[info command tk_chooseDirectory] != ""} {
+  button $p.f2.b -text Choose... \
+    -command [namespace code [list chooseDirectory $w $pane]]
+  pack $p.f2.b -side left -padx 3
+ }
+ 
+ stringPropItem $p.f3 "Number of header lines to skip:" 26 10 "" \
+   [namespace current]::${pane}::var(t,skipLines)
+ 
+ pack [frame $p.f4] -anchor w -ipady 2
+ label $p.f4.l -text "Column delimiter:" -width 26 -anchor w
+ radiobutton $p.f4.b1 -text space \
+   -variable [namespace current]::${pane}::var(t,delimiter) -value " "
+ radiobutton $p.f4.b2 -text tab \
+   -variable [namespace current]::${pane}::var(t,delimiter) -value "\t"
+ radiobutton $p.f4.b3 -text Comma \
+   -variable [namespace current]::${pane}::var(t,delimiter) -value ","
+ pack $p.f4.l $p.f4.b1 $p.f4.b2  $p.f4.b3 -side left -padx 3
+ 
+ if {[string match direct $v(invocation)]} {
+  pack [frame $p.f5] -anchor w -ipady 2
+  label $p.f5.l -text "Data spacing:" -anchor w
+  radiobutton $p.f5.b1 -text fixed(s) \
+      -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "fixedtime"
+  entry $p.f5.e1 -textvariable [namespace current]::${pane}::var(t,frameInterval) -width 4
+
+  radiobutton $p.f5.b2 -text fixed(Hz) \
+      -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "fixedrate"
+  entry $p.f5.e2 -textvariable [namespace current]::${pane}::var(t,frameRate) -width 3
+  radiobutton $p.f5.b3 -text "from col" \
+      -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "variable"
+  entry $p.f5.e3 -textvariable [namespace current]::${pane}::var(t,timeColumn) -width 2
+  
+  pack $p.f5.l $p.f5.b1 $p.f5.e1 $p.f5.b2 $p.f5.e2 $p.f5.b3 $p.f5.e3 -side left
+ 
+  # stringPropItem $p.f5 "Frame interval:" 26 10 s \
+      \#   [namespace current]::${pane}::var(t,frameInterval)
+  
+  stringPropItem $p.f6 "Y-axis unit:" 26 10 "" \
+      [namespace current]::${pane}::var(t,unit)
+ }
+ 
+ pack [frame $p.f7] -anchor w -ipady 2
+ label $p.f7.l -text "Backdrop type:" -width 26 -anchor w
+ tk_optionMenu $p.f7.cm [namespace current]::${pane}::var(t,backdrop) \
+   None Spectrogram Waveform
+ pack $p.f7.l $p.f7.cm -side left
+ 
+ set i 0
+ set f 0
+ foreach {column color style} $v(styleList) {
+  set v(t,column$i) $column
+  set v(t,color$i) $color
+  set v(t,style$i) $style
+  pack [frame $p.e$f] -anchor w
+  label $p.e$f.l1 -text "Plot column:" -width 12 -anchor w
+  entry $p.e$f.e -textvar [namespace current]::${pane}::var(t,column$i) -wi 3
+  label $p.e$f.l2 -text "using" -anchor w
+  entry $p.e$f.e2 -textvar [namespace current]::${pane}::var(t,color$i) -wi 10
+  if {$::useTile} {
+   tk_label $p.e$f.l3 -text "    " -bg $v(t,color$i)
+  } else {
+   label $p.e$f.l3 -text "    " -bg $v(t,color$i)
+  }
+  button $p.e$f.b -text [::util::mc Choose...] \
+    -command [list util::chooseColor [namespace current]::${pane}::var(t,color$i) $p.e$f.l3]
+  tk_optionMenu $p.e$f.cm [namespace current]::${pane}::var(t,style$i) \
+    Line Dots
+  pack $p.e$f.l1 $p.e$f.e $p.e$f.l2 $p.e$f.e2 $p.e$f.l3 $p.e$f.b $p.e$f.cm -side left
+  incr i
+  incr f
+ }
+ 
+ if {$::tcl_version > 8.2} {
+  booleanPropItem $p.f8 "Lock data plot" "" \
+    [namespace current]::${pane}::var(t,locked)
+ }
+ booleanPropItem $p.f9 "Save only data values for current selection" "" \
+   [namespace current]::${pane}::var(t,saveSelection)
+
+ pack [frame $p.f10] -anchor w -ipady 2
+ label $p.f10.l -text "Plot value bounds:" -width 26 -anchor w
+ label $p.f10.l2 -text "min" -anchor w
+ entry $p.f10.e1 -textvar [namespace current]::${pane}::var(t,minVal) -wi 8
+ label $p.f10.l3 -text "max" -anchor w
+ entry $p.f10.e2 -textvar [namespace current]::${pane}::var(t,maxVal) -wi 8
+ pack $p.f10.l $p.f10.l2 $p.f10.e1 $p.f10.l3 $p.f10.e2 -side left
+
+ stringPropItem $p.f11 "Start time offset:" 26 10 "" \
+   [namespace current]::${pane}::var(t,offset)
+
+ booleanPropItem $p.f12 "Only warn for unsaved manual data modifications" "" \
+   [namespace current]::${pane}::var(t,onlyWarnManualMods)
+}
+
+
+# This procedure returns the code needed to re-create this pane.
+
+proc dataplot::getConfiguration {w pane} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ set result {}
+ if {$pane != "" && $v(drawDataPlot)} {
+  append result "\$widget dataplot::addDataPlot \$pane"
+
+  foreach {option key default} $Info(OptionTable) {
+   if {$v($key) != $default} {
+    append result " $option \"$v($key)\""
+   }
+  }
+  append result "\n"
+ }
+ return $result
+}
+
+proc dataplot::needSave {w pane} {
+ upvar [namespace current]::${pane}::var v
+ 
+ if {[info exists v(drawDataPlot)]} {
+  if {$v(drawDataPlot)} {
+   if {$v(changed)} {
+    return 1
+   }
+  }
+ }
+ return 0
+}
+
+
+proc dataplot::chooseDirectory {w pane} {
+ upvar [namespace current]::${pane}::var v
+ set dir $v(t,dataDir)
+ if {$dir == ""} {
+  set dir .
+ }
+ set res [tk_chooseDirectory -initialdir $dir -mustexist 1]
+ if {$res != ""} {
+  set v(t,dataDir) $res
+ }
+}
+
+proc dataplot::statWin {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ regsub -all {\.} $pane _ tmp
+ set paneNo [expr [lsearch [$w _getPanes] $pane] + 1]
+ set v(statWinTL) .statwin$tmp
+ catch {destroy .statwin$tmp}
+ set p [toplevel .statwin$tmp]
+ wm title $p "Statistics for data in pane $paneNo"
+
+ if {[info exists v(ignoreZero)] == 0} {
+  set v(ignoreZero) 1
+ }
+
+ pack [ frame $p.f2] -fill both -expand true
+ pack [ scrollbar $p.f2.scroll -command "$p.f2.list yview"] -side right \
+   -fill y
+ text $p.f2.text -yscroll "$p.f2.scroll set" -height 7 -width 65
+ pack $p.f2.text -side left -expand true -fill both
+
+ if {$::useTile} {
+  pack [tk_checkbutton $p.cb \
+    -text "Ignore data points with value 0.0 when computing statistics" -anchor w \
+    -variable [namespace current]::${pane}::var(ignoreZero)] -fill x -expand true
+ } else {
+  pack [checkbutton $p.cb \
+    -text "Ignore data points with value 0.0 when computing statistics" -anchor w \
+    -variable [namespace current]::${pane}::var(ignoreZero)] -fill x -expand true
+ }
+  
+ pack [ frame $p.f3] -ipady 10 -fill x
+ pack [ button $p.f3.b1 -text Compute -command [namespace code [list compute $w $pane $p]]] -side left -padx 20
+ pack [ button $p.f3.b2 -text Copy -command [namespace code [list statCopy $w $pane $p]]] -side left -padx 20
+ pack [ button $p.f3.b3 -text Close -command "destroy $p"] -side right -padx 20
+
+ # Compute statistics
+
+ set s [$w cget -sound]
+ foreach {left right} [$w cget -selection] break
+ if {$left == $right} {
+  $w configure -selection [list 0.0 [$s length -unit seconds]]
+ }
+
+ compute $w $pane $p
+}
+
+proc dataplot::compute {w pane p} {
+ upvar [namespace current]::${pane}::var v
+
+ $p.f2.text delete 0.0 end
+
+ foreach {left right} [$w cget -selection] break
+ if {[string equal $v(dataSpacingMode) "variable"] == 0} {
+  set start [expr {3+2*int(($left - $v(offset))/$v(frameInterval))}]
+  set end [expr {3+2*int(($right - $v(offset))/$v(frameInterval))}]
+ }
+
+ foreach g $v(plotlist) {
+  set n 0
+  if {[string equal $v(dataSpacingMode) "variable"]} {
+   set start 0
+   while {[lindex $v($g,points) $start] != "" && $left>[lindex $v($g,points) $start]} {
+    incr start 2
+   }
+   incr start
+  }
+
+  set i $start
+  set tot 0.0
+  while {$i > 0 && $i < $end && $i < [llength $v($g,points)]} {
+   set value [lindex $v($g,points) $i]
+   if {$value != 0.0 || $v(ignoreZero) == 0} {
+    set tot [expr $tot + $value]
+    incr n
+   }
+   incr i 2
+  }
+  if {$n > 0} {
+   set m [expr double($tot)/$n]
+  } else {
+   set m 0
+  }
+
+  set i $start
+  set tot 0.0
+  while {$i > 0 && $i < $end && $i < [llength $v($g,points)]} {
+   set value [lindex $v($g,points) $i]
+   if {$value != 0.0 || $v(ignoreZero) == 0} {
+    set tot [expr {$tot + ($value-$m) * ($value-$m)}]
+   }
+   incr i 2
+  }
+  if {$n > 0} {
+   set sd [expr sqrt($tot / $n)]
+  } else {
+   set sd 0
+  }
+
+  set str [format "Column [lindex [split $g \#] end] mean: %f sd: %f\n" $m $sd]
+  $p.f2.text insert end $str
+
+ }
+ $p.f2.text insert end "----\n"
+ $p.f2.text insert end "Statistics computed between $left and $right\n"
+ $p.f2.text insert end "(n=$n)"
+
+}
+
+proc dataplot::statCopy {w pane p} {
+ upvar [namespace current]::${pane}::var v
+ clipboard clear
+ clipboard append [$p.f2.text get 0.0 end]
+}
+
+#------------------------------------------------------------------------------
+# Data format handlers
+#------------------------------------------------------------------------------
+#
+# each format handler should define theese procedures:
+#
+# dataplot::format::$formatName::read w pane data
+#
+#         input: data string
+#         result: true if successful, false if failed
+#         side effects: the following fields of the panes var-array are filled:
+#           v(header)
+#           v(col#..,min)
+#           v(col#..,max)
+#           v(col#..,points)
+#           v(maxtime)
+#
+# dataplot::format::$formatName::write w pane
+#
+#         input: none
+#         output: formatted data, converted from the internal representation
+#         side effects: none
+#
+#
+#
+# fileds to be added?:
+#  v(col#..,plotflag)
+#  v(col#..,label)
+#  v(col#..,color)
+#  v(col#..,style)
+#  v(col#..,editable)
+
+namespace eval dataplot::format {}
+
+
+
+namespace eval dataplot::format::generic-ascii {}
+
+proc dataplot::format::generic-ascii::read {w pane data} {
+ set ns [namespace parent [namespace parent]]
+ upvar ${ns}::${pane}::var v
+
+ set lines [split [string trim $data] \n]
+
+ ${ns}::processData $w $pane [lrange $lines $v(skipLines) end] $v(frameInterval) "" dataplot
+}
+
+# ----------------
+# dat-ascii format
+# ----------------
+namespace eval dataplot::format::dat-ascii {}
+
+proc dataplot::format::dat-ascii::read {w pane data} {
+ set ns [namespace parent [namespace parent]]
+ upvar ${ns}::${pane}::var v
+ set h [lindex $data 0]
+ set v(frameStep) .01
+ set v(header) $h
+
+ if {[lindex $h 0] > 0} {
+  # not a proper dat-file
+  return 0
+ }
+
+ foreach key [lsort [array names v *,points]] {
+  set v($key) {}
+ }
+ set col 0
+ foreach elem [lrange $h 2 end] {
+  set v(col#$col,name) $elem
+  incr col
+ }
+ set row 0
+ foreach line [lrange $data 1 end] {
+  #<< "processing line $row"
+  set elements [lrange $line 2 end]
+  set col 0
+  set t [expr {$row*$v(frameStep)}]
+  foreach elem $elements {
+   if {$elem != ""} {
+    util::setmin v(col#$col,min) $elem
+    util::setmax v(col#$col,max) $elem
+    #<< "processing line $elem"
+    lappend v(col#$col,points) $t $elem
+    incr col
+   }
+  }
+  #<< "maxtime $v(maxtime)"
+  set v(maxtime) [util::max $t $v(maxtime)]
+  incr row
+ }
+ ${ns}::draw $w $pane dataplot
+ # $progressproc "" 1.0
+ return 1
+}
+
+proc dataplot::format::dat-ascii::write {w pane} {
+ set ns [namespace parent [namespace parent]]
+ upvar ${ns}::${pane}::var v
+ set data [list]
+ set header [list "" ""]
+ foreach key [lsort [array names v *,points]] {
+  set col [lindex [split $key ,#] 1]
+  if [info exists v(col#$col,name)] {
+   lappend header [string range $v(col#$col,name) 0 1]
+  } else {
+   lappend header [string range $col 0 1]
+  }
+ }
+ lappend data $header
+ set llen [llength $v(col#0,points)]
+ set fnr 0
+ for {set i 1} {$i < $llen} {incr i 2} {
+  set frame [list $fnr "  "]
+  foreach key [lsort [array names v *,points]] {
+   lappend frame [expr {int([lindex $v($key) $i])}]
+  }
+  lappend data $frame
+  incr fnr
+ }
+ return $data
+}
+
+
+# ----------------
+# dat-bin format
+# ----------------
+namespace eval dataplot::format::dat-bin {}
+
+proc dataplot::format::dat-bin::read {w pane data} {
+ upvar [namespace parent [namespace parent]]::${pane}::var v
+ if {[catch {dat2list $data} out]} {
+  return 0
+ } else {
+  return [[namespace parent]::dat-ascii::read $w $pane $out]
+ }
+}
+
+proc dataplot::format::dat-bin::write {w pane} {
+ upvar [namespace parent [namespace parent]]::${pane}::var v
+ list2dat [[namespace parent]::dat-ascii::write $w $pane]
+}
+
+proc dataplot::format::dat-bin::dat2list {data} {
+ set negn 1
+ binary scan $data S negn
+ if {$negn>0} {
+  error "Bad input. Not a dat-file?"
+ }
+ set frmsz [expr {-2*$negn}]
+ lappend head $negn ""
+ binary scan $data a4a[expr {$frmsz-4}]S* junk hh shorts
+ foreach {c1 c2} [split $hh ""] {lappend head ${c1}${c2}}
+ lappend out $head
+ for {set pos 0} {$pos<[llength $shorts]} {incr pos [expr -$negn]} {
+  set fnr [lindex $shorts $pos]
+  set labnum [lindex $shorts [expr $pos+1]]
+  set lab [format %c%c [expr $labnum/256] [expr $labnum%256]]
+  set val [lrange $shorts [expr $pos+2] [expr $pos-$negn-1]]
+  lappend out [concat $fnr [list $lab] $val]
+ }
+ return $out
+}
+
+proc dataplot::format::dat-bin::list2dat {l} { 
+ set frmsz [llength [lindex $l 0]]
+ set data [binary format S [expr -$frmsz]]
+ append data [binary format c2 {0 0}]
+ foreach var [lrange [lindex $l 0] 2 end] {
+  if {[string length $var] > 2} {
+   error "bad header: variable names can only be 2 characters: \"$var\" (line 1)"
+  }
+  append data [binary format a2 $var]
+ }
+ set fnr 1
+ foreach frame [lrange $l 1 end] {
+  if {[llength $frame]!=$frmsz} {
+   error "bad frame: line has not the same length as header (line [expr $fnr+1])"
+  }
+  set values {}
+  foreach val [lrange $frame 2 end] {lappend values [expr {round($val)}]}
+  set lab [lindex $frame 1]
+  if {[string length $lab] > 2} {
+   error "bad frame: labels can only be 2 characters: \"$lab\" (line [expr $fnr+1])"
+  }
+  append data [binary format Sa2S[expr $frmsz-2] $fnr $lab $values]
+  incr fnr
+ }
+ return $data
+}
