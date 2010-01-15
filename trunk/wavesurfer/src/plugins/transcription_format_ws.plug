@@ -1,0 +1,268 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2002-2005 Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin transcription_format_ws \
+    -description "Format handler for the native WaveSurfer transcription format. This is used by the transcription plug-in to import and export transcription files in this format. The WaveSurfer format consists of the fields \'start_time end_time label\', where the time boundaries are in seconds (decimal) and label is the rest of the line." \
+    -getoptproc  transcription_format_ws::getopt \
+    -before      transcription
+
+# -----------------------------------------------------------------------------
+
+namespace eval trans {
+ lappend Info(formats) WaveSurfer \
+     transcription_format_ws::load \
+     transcription_format_ws::save \
+     transcription_format_ws::test
+} 
+
+# -----------------------------------------------------------------------------
+
+namespace eval transcription_format_ws {
+ variable Info
+ 
+ set Info(tfas) {}
+}
+
+proc transcription_format_ws::load {w pane} {
+ variable Info
+ upvar ::wsurf::trans::${pane}::var v
+ 
+ set map {}
+ set i 0
+ set header ""
+ set end 0
+ set tfa ""
+ set labelfile ""
+ set v(source) ""
+ 
+ if {$Info(tfas) != ""} {
+  set paneNo -1
+  foreach pane2 [$w _getPanes] {
+   upvar ::wsurf::trans::${pane2}::var u
+   if {$u(drawTranscription)} {
+    if {$u(format) == "WaveSurfer"} {
+     incr paneNo
+    }
+    if {$pane == $pane2} break
+   }
+  }
+  if {[llength $Info(tfas)] > 1} {
+   if {[lindex $Info(tfas) $paneNo] != ""} {
+    set tfa [lindex $Info(tfas) $paneNo]
+   }
+  } else {
+    set tfa [lindex $Info(tfas) 0]
+  }
+ }
+ 
+ # First try reading label file if it exists
+ 
+ if {[file readable $v(fileName)] && \
+	 [file isfile $v(fileName)]} {
+  if {[catch {open $v(fileName)} in]} {
+   return $in
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $in -encoding $v(encoding)
+   }
+   if {[catch {set labelfile [read $in]}]} { return 0 }
+   close $in
+  }
+  set v(source) labelfile
+ } elseif {$tfa != ""} {
+
+  # Otherwise, if a TFA has been specified, search it
+  # If it seems to be a pipe proceed to open it, otherwise make sure it
+  # is a readable file
+  if {[string match {|*} $tfa] == 0} {
+   if {!([file readable $tfa] && \
+	     [file isfile $tfa])} {
+    return
+   }
+  }
+
+  if {[catch {open $tfa} in]} {
+   return $in
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $in -encoding $v(encoding)
+   }
+
+   gets $in row
+
+   set nComponents [expr [regexp -all {/} $row] - 1]
+   set v(nComponents) $nComponents   
+   if {[regexp -all {/} $v(fileName)] == 0 && $nComponents > 0 && \
+	   $v(fullName) != ""} {
+    set name [eval file join [lrange [file split $v(fullName)] \
+				  end-$nComponents end-1]]
+    append name "/$v(fileName)"
+    set exp *$name?
+   } else {
+    set exp *$v(fileName)?
+   }
+   
+   while {[string match $exp $row] == 0 && \
+	      [eof $in] == 0} {
+    gets $in row
+   }
+   gets $in row
+   while {[string match {"*"} $row] == 0 && [eof $in] == 0} {
+    append labelfile $row
+    append labelfile \n
+    gets $in row
+   }
+   if {[string match {|*} $tfa] == 1} {
+    while {[eof $in] == 0} {
+     gets $in row
+    }   
+   }
+   close $in
+   set v(source) tfafile
+   set v(tfa) $tfa
+  }
+ }
+
+ # Format decoding loop
+ set lastend -1 
+ foreach row [split $labelfile \n] {
+  if {[scan $row {%f %f %[^\]} start end label] >= 3} {
+
+   # Next label not contiguous with last one, insert empty label
+   if {$lastend != $start && $lastend != -1} {
+    set v(t1,$i,end)   $start
+    set v(t1,$i,label) ""
+    set v(t1,$i,rest)  ""
+    lappend map $i
+    incr i
+   }
+   set v(t1,$i,end)   $end
+   set v(t1,$i,label) $label
+   set v(t1,$i,rest)  ""
+   lappend map $i
+   if {$i == 0} {
+    set v(t1,start) $start
+   }
+   set lastend $end
+   incr i
+   if {$start > $end} {
+    puts "Error in label file, line $i: $row"
+#    return "Error in label file, line $i: $row"
+   }
+  }
+ }
+ if {$end > 7200} { set end 7200 }
+ set v(t1,end)  $end
+ set v(nLabels) $i
+ set v(map)     $map
+ set v(header)  $header
+ set v(headerFmt) WaveSurfer
+}
+
+proc transcription_format_ws::save {w pane} {
+ upvar ::wsurf::trans::${pane}::var v
+
+
+ set outlines {}
+ set start 0.0000000
+ for {set i 0} {$i < $v(nLabels)} {incr i} {
+  set ind   [lindex $v(map) $i]
+  set end   [format "%.7f" $v(t1,$ind,end)]
+  set label $v(t1,$ind,label)
+
+  # Empty labels are removed, will generate "holes" in the transcription file
+  if {$label != ""} {
+   lappend outlines "$start $end $label"
+  }
+  set start $end
+ }
+
+ # Save label file
+
+ if {[info exists v(source)] && [string match tfafile $v(source)]} {
+  if {[catch {open $v(tfa)} in]} {
+   return $in
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $in -encoding $v(encoding)
+   }
+   set lines [split [read -nonewline $in] \n]
+   close $in
+
+   if {[catch {open $v(tfa) w} out]} {
+    return $out
+   } else {
+    if {[info command encoding] != ""} {
+     fconfigure $out -encoding $v(encoding)
+    }  
+    fconfigure $out -translation {auto lf}
+    set copyLine 1
+    foreach line $lines {
+     set name [eval  file join [lrange [file split $v(fullName)] \
+				   end-$v(nComponents) end-1]]
+     append name "/[lindex [file split $v(fileName)] end]"
+     set exp *$name?
+     if {[string match $exp $line] == 1} {
+      set copyLine 0
+      puts $out $line
+      puts $out [join $outlines \n]
+      set line junk
+     }
+     if {$copyLine == 0 && [string match \"* $line]} {
+      set copyLine 1
+     }
+     if {$copyLine} {
+      puts $out $line
+     }
+    }
+    close $out
+   }
+  }
+ } else {
+  if {[catch {open $v(fileName) w} out]} {
+   return $out
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $out -encoding $v(encoding)
+   }  
+   fconfigure $out -translation {auto lf}
+   puts $out [join $outlines \n]
+   close $out
+  }
+ }
+ 
+ set v(headerFmt) WaveSurfer
+ 
+ $w messageProc \
+     "Wrote $v(fileName) in $v(headerFmt) format"
+ return
+}
+
+proc transcription_format_ws::test {w pane rows} {
+ set lastrow [lindex $rows end]
+ if {[regexp {(\d+\.\d+)\s+(\d+\.\d+)\s+\S+} $lastrow a b c] == 1} {
+  if {[info exists c]} {
+   return WaveSurfer
+  }
+ }
+}
+
+proc transcription_format_ws::getopt {arglistVar} {
+  variable Info
+  upvar 1 $arglistVar argv
+  
+  while {1} {
+    if {[cmdline::getopt argv {tfa.arg} opt arg] == 1} {
+      lappend Info(tfas) $arg
+      continue
+    }
+    break
+  }
+}

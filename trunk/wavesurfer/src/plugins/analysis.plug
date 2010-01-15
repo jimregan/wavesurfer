@@ -1,0 +1,2298 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2006 Jonas Beskow and Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin analysis \
+  -description "This plug-in provides the basic sound analysis and\
+  visualization capabilities in WaveSurfer. The plug-in adds the pane\
+  types waveform,\
+  spectrogram, pitch contour and power plot. The first three support\
+  real-time preview during recording. There are numerous options to\
+  configure appearance/analysis parameters in the properties-dialog. \
+  The dataplot plug-in is used for plotting the actual pitch and power\
+  values." \
+  -url "http://www.speech.kth.se/wavesurfer/" \
+  -addmenuentriesproc   analysis::addMenuEntries \
+  -panecreatedproc      analysis::paneCreated \
+  -panedeletedproc      analysis::paneDeleted \
+  -redrawproc           analysis::redraw \
+  -getboundsproc        analysis::getBounds \
+  -scrollproc           analysis::scroll \
+  -setselectionproc     analysis::setSelection \
+  -cursormovedproc      analysis::cursorMoved \
+  -printproc            analysis::print \
+  -propertiespageproc   analysis::propertyPane \
+  -applypropertiesproc  analysis::applyProperties \
+  -getconfigurationproc analysis::getConfiguration \
+  -soundchangedproc     analysis::soundChanged \
+  -playproc             analysis::play \
+  -recordproc           analysis::record
+
+# -----------------------------------------------------------------------------
+
+namespace eval analysis {
+ variable Info
+ 
+ set Info(WaveformOptionTable) [list \
+			    -channel          channel   all \
+			    -fill             wavecolor black \
+			    -limit            limit     -1 \
+			    -predraw          preDraw   0 \
+			    -sectfftlength    sfftlen   512 \
+			    -sectwintype      swintype  Hamming \
+			    -sectanalysistype satype    FFT \
+			    -sectlpcorder     slpcorder 20 \
+			    -sectpreemphasis  spreemph  0.0 \
+			    -sectreference    sref      -110.0 \
+			    -sectrange        srange    110.0 \
+			    -sectdoall        sall      0 \
+			    -sectexportheader sexphead  0 \
+			    -subsample        subsample 1 \
+			    -trimstart        trimstart 1 \
+			    -scrollspeed      rtpps     250 \
+			   ]
+ 
+ set Info(SpectrogramOptionTable) [list \
+			    -channel          channel      all \
+			    -colormap         cmap         grey \
+			    -gridtspacing     gridtspacing 0 \
+			    -gridfspacing     gridfspacing 0 \
+			    -gridcolor        gridColor    red \
+			    -brightness       brightness   0.0 \
+			    -contrast         contrast     0.0 \
+			    -fftlength        fftlen       512 \
+			    -winlength        winlen       64 \
+			    -wintype          wintype      Hamming \
+			    -preemphasis      preemph      0.97 \
+			    -sectfftlength    sfftlen      512 \
+			    -sectwintype      swintype     Hamming \
+			    -sectanalysistype satype       FFT \
+			    -sectlpcorder     slpcorder    20 \
+			    -sectpreemphasis  spreemph     0.0 \
+			    -sectreference    sref         -110.0 \
+			    -sectrange        srange       110.0 \
+			    -sectdoall        sall         0 \
+			    -sectexportheader sexphead     0 \
+			    -topfrequency     topfr        -1 \
+			    -predraw          preDraw      0 \
+			    -layer            layer        top \
+			    -scrollspeed      rtpps        250 \
+			   ]
+
+ set Info(PitchOptionTable) [list \
+			    -method        method        ESPS \
+			    -maxpitch      maxPitch      400 \
+		   	    -minpitch      minPitch      60 \
+			    -shownotescale showScale     0 \
+			    -scalebase     scaleBase     65.4064 \
+			    -scalefill     scaleColor    grey \
+			    -pitchpreview  pitchPreview  1 \
+			    -exportheader  exportHeader  0 \
+			    -scrollspeed   rtpps         250 \
+			    -frameinterval frameInterval 0.01 \
+			    -winlength     pwinlen       0.0075 \
+			   ]
+
+ set Info(PowerOptionTable) [list \
+				 -channel       channel       all \
+				 -winlength     ewinlen       200 \
+				 -frameinterval frameInterval 0.01 \
+				 -wintype       ewintype      Hamming \
+				 -preemphasis   epreemph      0.97 \
+				 -maxpower      maxPower      80 \
+				 -minpower      minPower      0 \
+				 -exportheader  exportHeader  0 \
+				]
+ 
+ set Info(FormantsOptionTable) [list \
+				 -winlength     fwinlen       0.049 \
+				 -frameinterval frameInterval 0.01 \
+				 -wintype       fwintype      "cos^4" \
+				 -preemphasis   fpreemph      0.7 \
+				 -exportheader  exportHeader  0 \
+				 -numformants   numformants   4 \
+				 -lpcorder      lpcorder      12  \
+				 -lpctype       lpctype       0 \
+				 -dsfreq        dsfreq        10000.0 \
+				 -nomf1freq     nomf1freq     -10.0 \
+				]
+} 
+
+# ----------------------------------------------------------------------------
+
+proc analysis::addMenuEntries {w pane m hook x y} {
+ if {[string match query $hook]} {
+  return 1
+ }
+ if {[string match create $hook]} {
+  $m.$hook add command -label "Waveform" \
+      -command [namespace code [list createWaveform $w $pane]]
+  $m.$hook add command -label "Spectrogram" \
+      -command [namespace code [list createSpectrogram $w $pane]]
+  $m.$hook add command -label "Pitch Contour" \
+      -command [namespace code [list createPitch $w $pane]]
+  $m.$hook add command -label "Power Plot" \
+      -command [namespace code [list createPower $w $pane]]
+  $m.$hook add command -label "Formant Plot" \
+      -command [namespace code [list createFormants $w $pane]]
+ } elseif {[string match main $hook]} {
+  upvar [namespace current]::${pane}::var v
+  if {[info exists v(drawSpectrogram)]} {
+   if {$v(drawSpectrogram) || $v(drawWaveform)} {
+    $m add command -label "Spectrum Section..." \
+	-command [namespace code [list openSectWindow $w $pane]]
+    $m add command -label "LTAS..." \
+	-command [namespace code [list openSectWindowLTAS $w $pane]]
+    if {$v(drawSpectrogram)} {
+     $m add command -label "Spectrogram Controls..." \
+	 -command [namespace code [list bcControls $w $pane]]
+    }
+    if {$v(drawWaveform)} {
+     $m add command -label "Waveform Blow-up..." \
+	 -command [namespace code [list openBlowUpWindow $w $pane]]
+     $m add command -label "Waveform Controls..." \
+	 -command [namespace code [list waControls $w $pane]]
+    }
+   }
+  }
+ }
+}
+
+proc analysis::paneCreated {w pane} {
+ variable Info
+ namespace eval [namespace current]::${pane} {
+  variable var
+ }
+ upvar [namespace current]::${pane}::var v
+
+ set v(drawWaveform) 0
+ set v(drawSpectrogram) 0
+ set v(drawPitch) 0
+ set v(drawPower) 0
+ set v(drawSection) 0
+ set v(drawFormants) 0
+
+ set v(channel) all
+
+ set v(sectwinw) 420
+ set v(sectwinh) 400
+ set v(sectwinx) 200
+ set v(sectwiny) 200
+ set v(rx) -1
+
+ set v(blowupwinw) 300
+ set v(blowupwinh) 200
+ set v(blowupwinx) 200
+ set v(blowupwiny) 200
+ set v(blowuptimewin) 0.01
+
+ set Info(debug) $::wsurf::Info(debug)
+}
+
+proc analysis::paneDeleted {w pane} {
+ regsub -all {\.} $pane _ widgetPath
+ catch {destroy .sect$widgetPath}
+ catch {destroy .blowup}
+ catch {destroy .cbctrl$widgetPath}
+ catch {destroy .wactrl$widgetPath}
+ namespace delete [namespace current]::${pane}
+}
+
+# -----------------------------------------------------------------------------
+
+proc analysis::createWaveform {w pane} {
+ set pane [$w addPane -before $pane -height 200 -scrollheight 200 \
+	 -unit ""]
+ addWaveform $w $pane
+}
+
+proc analysis::createSpectrogram {w pane} {
+ set pane [$w addPane -before $pane -height 200 -scrolled 0 -scrollheight 200 \
+	 -unit Hz -stipple gray12 -layer top -showyaxis true]
+ addSpectrogram $w $pane
+}
+
+proc analysis::createPitch {w pane} {
+ set pane [$w addPane -before $pane -height 100 -scrollheight 100 -unit Hz \
+	 -showyaxis true]
+ addPitch $w $pane
+}
+
+proc analysis::createPower {w pane} {
+ set pane [$w addPane -before $pane -height 100 -scrollheight 100 -unit dB \
+	 -showyaxis true]
+ addPower $w $pane
+}
+
+proc analysis::createFormants {w pane} {
+ set pane [$w addPane -before $pane -height 200 -scrollheight 200 -unit Hz \
+	 -showyaxis true]
+ addFormants $w $pane
+}
+
+proc analysis::addWaveform {w pane args} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach {option key default} $Info(WaveformOptionTable) {
+  set a($option) $default
+ }
+ array set a $args
+
+ foreach {option key default} $Info(WaveformOptionTable) {
+  set v($key) $a($option)
+ }
+ set c [$pane canvas]
+ set s [$w cget -sound]
+
+ if {[string match {[0-9]} $a(-channel)] && \
+	 $a(-channel) >= [$s cget -channels]} {
+  set chan all
+ } else {
+  set chan $a(-channel)
+ }
+ set v(topfr)  [expr {0.5*[$s cget -rate]}]
+ set v(topfr2) [expr {0.5*[$s cget -rate]}]
+
+ if {[$w getInfo isLinked2File]} {
+  set fileName [$w getInfo fileName]
+  $c create waveform 0 0 -anchor w -sound $s -channel $chan \
+    -tags [list analysis waveform] -fill $a(-fill) -end 0 \
+    -limit $v(limit) -trimstart $v(trimstart) \
+    -shapefile [$w _shapeFilename $fileName] \
+    -debug $Info(debug)
+ } else {
+  $c create waveform 0 0 -anchor w -sound $s -channel $chan \
+    -tags [list analysis waveform] -trimstart $v(trimstart) \
+    -fill $a(-fill) -end 0 -limit $v(limit) \
+    -debug $Info(debug)
+ }
+
+ if {[$s cget -channels] > 1} {
+  set v(max) [$s max -channel $v(channel)]
+  set v(min) [$s min -channel $v(channel)]
+ } else {
+  set v(max) [$s max]
+  set v(min) [$s min]
+ }
+
+ set v(sound) $s
+ set v(drawWaveform) 1
+}
+
+proc analysis::addSpectrogram {w pane args} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ foreach {option key default} $Info(SpectrogramOptionTable) {
+  set a($option) $default
+ }
+ array set a $args
+ 
+ foreach {option key default} $Info(SpectrogramOptionTable) {
+  set v($key) $a($option)
+ }
+ 
+ set s [$w cget -sound]
+ 
+ set v(grey) " "
+ set v(color) {#000 #001 #002 #003 #004 #005 #006 #007 #008 #009 #00A #00B \
+#00C #00D #00E #00F #01F #02F #03F #04F #05F #06F #07F #08F #09F #0AF \
+#0BF #0CF #0DF #0EF #0FF #0FE #0FD #0FC #0FB #0FA #0F9 #0F8 #0F7 #0F6 #0F5 \
+#0F4 #0F3 #0F2 #0F1 #0F0 #1F0 #2F0 #3F0 #4F0 #5F0 #6F0 #7F0 #8F0 #9F0 #AF0 \
+#BF0 #CF0 #DF0 #EF0 #FF0 #FE0 #FD0 #FC0 #FB0 #FA0 #F90 #F80 #F70 #F60 #F50 \
+#F40 #F30 #F20 #F10 #F00}
+
+ set v(color2) {#21004b008282 #0000afafafaf #0000a9a9afaf #0000a3a3afaf #00009d9dafaf #00009797afaf #00009191afaf #00008b8bafaf #00008585afaf #00007979afaf #00007373afaf #00006d6dafaf #00006767afaf #00006161afaf #00005b5bafaf #00005555afaf #00004f4fafaf #00004343afaf #00003d3dafaf #00003737afaf #00003131afaf #00002b2bafaf #00002525afaf #00001f1fafaf #000000008080 #040400007c7c #060600007a7a #080800007878 #0a0a00007676 #0c0c00007474 #0e0e00007272 #101000007070 #121200006e6e #161600006a6a #181800006868 #1a1a00006666 #1c1c00006464 #1e1e00006262 #202000006060 #222200005e5e #242400005c5c #282800005858 #2a2a00005656 #2c2c00005454 #2e2e00005252 #303000005050 #404000004e4e #464600004c4c #4c4c00004a4a #585800004646 #5e5e00004444 #646400004242 #6a6a00004040 #707000003e3e #767600003c3c #7c7c00003a3a #828200003838 #8e8e00003434 #949400003232 #9a9a00003030 #a0a000002e2e #a6a600002c2c #acac00002a2a #b2b200002828 #b8b800002626 #c4c400002222 #caca00002020 #d0d000001e1e #ffff00000000 #ffff0a0a0000 #ffff14140000 #ffff1e1e0000 #ffff28280000 #ffff3c3c0000 #ffff46460000 #ffff50500000 #ffff5a5a0000 #ffff64640000 #ffff6e6e0000 #ffff78780000 #ffff82820000 #ffff96960000 #ffffa0a00000 #ffffaaaa0000 #ffffb4b40000 #ffffbebe0000 #ffffc8c80000 #ffffd2d20000 #ffffdcdc0000 #fffff0f00000 #ffffffff0000 #ffffffff0808 #ffffffff1010 #ffffffff1818 #ffffffff2020 #ffffffff2828 #ffffffff3030 #ffffffff4040 #ffffffff4848 #ffffffff5050 #ffffffff5858 #ffffffff6060 #ffffffff6868 #ffffffff7070 #ffffffff7878 #ffffffff8888 #ffffffff9090 #ffffffff9898 #ffffffffa0a0 #ffffffffa8a8 #ffffffffb0b0 #ffffffffb8b8 #ffffffffc0c0 #ffffffffd0d0 #ffffffffd8d8 #ffffffffffff}
+
+ set c [$pane canvas]
+
+ if {[string match {[0-9]} $a(-channel)] && $a(-channel) >= [$s cget -channels]} {
+  set chan all
+ } else {
+  set chan $a(-channel)
+ }
+ 
+ if {0.5*[$s cget -rate] < $v(topfr) || $v(topfr) == -1} {
+  set v(topfr2) [expr {0.5*[$s cget -rate]}]
+ } else {
+  set v(topfr2) $v(topfr) 
+ }
+
+ set v(anabw) [expr {int(double([$s cget -rate]) / \
+     $v(winlen))}]
+ set winlen $v(winlen)
+ if {$winlen < 1} { set winlen 1 }
+ $c create spectrogram 0 0 -sound $s -channel $chan -anchor sw \
+	 -tags [list analysis spectrogram] -end 0 \
+	 -fftlen $v(fftlen) -winlen $winlen \
+	 -windowtype $v(wintype) \
+	 -colormap $v($v(cmap)) \
+	 -gridtspacing $v(gridtspacing) \
+	 -gridfspacing $v(gridfspacing) \
+	 -gridcol $v(gridColor) \
+	 -preemph $v(preemph) -debug $Info(debug)
+
+ set v(sound) $s
+ set v(drawSpectrogram) 1
+}
+
+proc analysis::addPitch {w pane args} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach {option key default} $Info(PitchOptionTable) {
+  set a($option) $default
+ }
+ array set a $args
+
+ foreach {option key default} $Info(PitchOptionTable) {
+  set v($key) $a($option)
+ }
+
+ set v(drawPitch)    1
+ set v(computePitch) 0
+ set v(pitchList)    {}
+
+ _computePitch $w $pane
+ upvar wsurf::dataplot::${pane}::var t
+ if {$t(drawDataPlot) == 0} {
+  wsurf::dataplot::addDataPlot $w $pane -unit Hz -invocation indirect \
+    -fileextension f0 -stylelist {0 black Dots} -maxvalue $v(maxPitch) \
+    -frameinterval $v(frameInterval) -minvalue 0.0 -offset [expr {$v(pwinlen)/2}]
+ }
+ set head    "File: [$w getInfo fileName]\n"
+ append head "Pitch method: $v(method)\n"
+ append head "Max pitch limit: $v(maxPitch) Hz\n"
+ append head "Min pitch limit: $v(minPitch) Hz\n"
+ append head "Window length: $v(pwinlen) s\n"
+ append head "Frame interval: $v(frameInterval) s"
+
+ wsurf::dataplot::processData $w $pane $v(pitchList) $v(frameInterval) $head pitch
+
+ _drawPitch $w $pane
+}
+
+proc analysis::_computePitch {w pane} {
+ upvar [namespace current]::${pane}::var v
+ set s [$w cget -sound]
+ $w messageProc "Calculating pitch..."
+ if {[catch {set v(pitchList) [$s pitch \
+	 -method $v(method) \
+	 -maxpitch $v(maxPitch) \
+	 -minpitch $v(minPitch) \
+	 -framelength $v(frameInterval) \
+	 -windowlength $v(pwinlen) \
+	 -progress [$w cget -progressproc]]} ret]} {
+  if {$ret != ""} {
+   $w messageProc "$ret"
+   error "$ret"
+  }
+  set v(pitchList) {}
+ } else {
+  $w messageProc "Pitch calculation finished"
+ }
+ set v(computePitch) 0
+}
+
+proc analysis::_drawPitch {w pane} {
+ upvar [namespace current]::${pane}::var v
+ $w messageProc "Drawing pitch plot..."
+ update idletasks
+ set c [$pane canvas]
+ set height [$pane cget -scrollheight]
+ set width [$pane getCanvasX [$pane cget -maxtime]]
+ $c delete scale
+ set maxv [$pane cget -maxvalue]
+ set minv [$pane cget -minvalue]
+ if {$maxv == $minv} return
+ if {$v(showScale)} {
+  set v(scale) {}
+  foreach i {0 2 4 5 7 9 11 12 14 16 17 19 21 23 24 26 28 29 31 33 35 36 38 40 41 43 45 47 48 50 52 53 55 57 59 60} {
+   set f [expr {$v(scaleBase) * pow(pow(2,1.0/12),$i)}]
+   lappend v(scale) $f
+   set yc [expr {$height-double($height)/($maxv-$minv)*($f-$minv)}]
+    if {$yc < 0} break
+    $c create line 0 $yc $width $yc \
+	-fill $v(scaleColor) -tags [list analysis scale]
+  }
+ }
+ 
+ $w messageProc ""
+}
+
+
+proc analysis::addPower {w pane args} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ foreach {option key default} $Info(PowerOptionTable) {
+  set a($option) $default
+ }
+ array set a $args
+
+ foreach {option key default} $Info(PowerOptionTable) {
+  set v($key) $a($option)
+ }
+
+ set v(drawPower)     1
+ set v(computePower)  0
+ set v(powerList)     {}
+
+ _computePower $w $pane
+ wsurf::dataplot::addDataPlot $w $pane -unit dB -invocation indirect \
+     -fileextension pwr -frameinterval $v(frameInterval) \
+     -maxvalue $v(maxPower) -minvalue $v(minPower)
+
+ set head "File: [$w getInfo fileName]\n"
+ append head "Window type: $v(ewintype)\n"
+ append head "Window length: $v(ewinlen) points\n"
+ append head "Frame interval: $v(frameInterval) s\n"
+ append head "Pre-emphasis: $v(epreemph)\n"
+ append head "Channel: $v(channel)"
+
+ wsurf::dataplot::processData $w $pane $v(powerList) \
+   $v(frameInterval) $head power
+}
+
+proc analysis::_computePower {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ set s [$w cget -sound]
+ $w messageProc "Calculating power..."
+ if {[catch {set v(powerList) [$s power \
+     -windowlength $v(ewinlen) \
+     -windowtype $v(ewintype) \
+     -framelength $v(frameInterval) \
+     -preemphasis $v(epreemph) \
+     -channel $v(channel) \
+     -progress [$w cget -progressproc]]} ret]} {
+  if {$ret != ""} {
+   $w messageProc "$ret"
+   error "$ret"
+  }
+  set v(powerList) {}
+ } else {
+  $w messageProc "Power calculation finished"
+ }
+ set v(computePower) 0
+}
+
+proc analysis::addFormants {w pane args} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ foreach {option key default} $Info(FormantsOptionTable) {
+  set a($option) $default
+ }
+ array set a $args
+
+ foreach {option key default} $Info(FormantsOptionTable) {
+  set v($key) $a($option)
+ }
+
+ set s [$w cget -sound]
+
+ set v(formantList)   {}
+ set v(drawFormants)  1
+ set v(computeFormants) 0
+
+ set invokedFromMenu 0
+ if {[info exists v(drawSpectrogram)]} {
+  if {$v(drawSpectrogram) == 0} {
+   set invokedFromMenu 1
+  }
+ } else {
+  set invokedFromMenu 1
+ }
+ if {$invokedFromMenu} { addSpectrogram $w $pane }
+ _computeFormants $w $pane
+ if {$invokedFromMenu} { 
+  wsurf::dataplot::addDataPlot $w $pane -unit Hz \
+      -invocation indirect -offset [expr {$v(fwinlen)/2}] \
+      -fileextension frm -minvalue 0.0 \
+      -stylelist [lrange [list 0 red Line 1 green Line 2 blue Line 3 yellow Line 4 black Line 5 magenta Line 6 cyan Line] 0 [expr 3*($v(numformants))-1]]
+ }
+ set head    "File: [$w getInfo fileName]\n"
+ append head "Window type: $v(wintype)\n"
+ append head "Window length: $v(fwinlen) s\n"
+ append head "Frame interval: $v(frameInterval) s\n"
+ append head "Pre-emphasis: $v(fpreemph)\n"
+ append head "Number of formants: $v(numformants)\n"
+ append head "LPC order: $v(lpcorder)\n"
+ append head "LPC type: $v(lpctype)\n"
+ append head "Down-sampling frequency: $v(dsfreq) Hz\n"
+ append head "Nominal F1 frequency: $v(nomf1freq) Hz"
+
+ wsurf::dataplot::processData $w $pane $v(formantList) \
+   $v(frameInterval) $head formants
+# $w _redrawPane $pane
+}
+
+proc analysis::_computeFormants {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ set s [$w cget -sound]
+ $w messageProc "Calculating formants..."
+
+ if {[catch {set v(formantList) [$s formant \
+	 -framelength $v(frameInterval) \
+	 -preemphasis $v(fpreemph) \
+	 -numformants $v(numformants) \
+	 -lpcorder $v(lpcorder) \
+	 -windowlength $v(fwinlen) \
+	 -windowtype $v(fwintype) \
+	 -lpctype $v(lpctype) \
+	 -ds_freq $v(dsfreq) \
+	 -nom_f1_freq $v(nomf1freq) \
+	 -progress [$w cget -progressproc]]} ret]} {
+  if {$ret != ""} {
+   $w messageProc "$ret"
+   error "$ret"
+  }
+  set v(formantList) {}
+ } else {
+  $w messageProc "Formants calculation finished"
+ }
+}
+
+proc analysis::redraw {w pane} {
+  upvar [namespace current]::${pane}::var v
+  
+  if {[$w getInfo isRecording]} return
+  
+  set c [$pane canvas]
+  set s [$w cget -sound]
+  if {[string match {[0-9]} $v(channel)] && \
+      $v(channel) >= [$s cget -channels]} {
+    set chan all
+  } else {
+    set chan $v(channel)
+  }
+  if {$v(drawWaveform)} {
+    set wh [$pane cget -scrollheight]
+    set mid [expr {$wh/2}]
+    if {$v(preDraw) == 0} {
+      foreach {fracLeft fracRight} [[$pane canvas] xview] break
+#      set start [expr {int($fracLeft*[$s length])}]
+#      set end   [expr {int($fracRight*[$s length])}]
+      set start [expr {int($fracLeft*[$pane cget -maxtime]*[$s cget -rate]+1.0)}]
+      set end   [expr {int($fracRight*[$pane cget -maxtime]*[$s cget -rate]+1.0)}]
+      set len [expr {$end-$start}]
+      if {$v(subsample) && $len > 10000000} {
+	set sub 30
+      } elseif {$v(subsample) && $len > 1000000} {
+	set sub 10
+      } else {
+	set sub 1
+      }
+      set fi [expr {[$c canvasx 0.0] / [$pane cget -pixelspersecond] * \
+	[$s cget -rate]}]
+      set corr [expr {($fi-int($fi))*[$pane cget -pixelspersecond] / \
+	[$s cget -rate]}]
+      set xpos [expr {[$c canvasx 0] - $corr}]
+      $c coords waveform $xpos $mid
+      $c itemconfig waveform -fill $v(wavecolor) -channel $chan \
+	  -height $wh -pixelspersecond [$w cget -pixelspersecond] \
+	  -limit $v(limit) -trimstart $v(trimstart) \
+	  -subsample $sub -start $start -end $end
+    } else {
+      $c coords waveform 0 $mid
+      $c itemconfig waveform -fill $v(wavecolor) -channel $chan \
+	  -height $wh -pixelspersecond [$w cget -pixelspersecond] \
+	  -limit $v(limit) -start 0 -end -1
+    }
+    set yc [$pane yaxis]
+    $yc delete axis
+    $yc create text 0 0 -text $v(max) \
+	-font [$pane cget -yaxisfont] -anchor nw -tags [list axis max] \
+	-fill [$pane cget -yaxiscolor]
+    set yh [$pane cget -scrollheight]
+    $yc create text 0 [$pane cget -height] -text $v(min) \
+	-font [$pane cget -yaxisfont] -anchor sw -tags [list axis min] \
+	-fill [$pane cget -yaxiscolor]
+  }
+  if {$v(drawSpectrogram)} {
+    set sh [expr {int([$pane getCanvasY 0]-[$pane getCanvasY $v(topfr2)])}]
+    
+    if {$v(preDraw) == 0} {
+      foreach {fracLeft fracRight} [[$pane canvas] xview] break
+#      set start [expr {int($fracLeft*[$s length])}]
+#      set end   [expr {int($fracRight*[$s length])}]
+      set start [expr {int($fracLeft*[$pane cget -maxtime]*[$s cget -rate])}]
+      set end   [expr {int($fracRight*[$pane cget -maxtime]*[$s cget -rate])}]
+      $c coords spectrogram [$c canvasx 0] [$pane getCanvasY 0]
+      $c itemconfigure spectrogram -start $start -end $end -channel $chan \
+	  -height $sh -pixelspersecond [$w cget -pixelspersecond] \
+	  -winlen $v(winlen) \
+	  -fftlen $v(fftlen) -topfr $v(topfr2) \
+	  -windowtype $v(wintype) \
+	  -colormap $v($v(cmap)) \
+	  -preemph $v(preemph) \
+	  -brightness $v(brightness) \
+	  -contrast $v(contrast) \
+	  -gridtspacing $v(gridtspacing) \
+	  -gridfspacing $v(gridfspacing) \
+	  -gridcolor $v(gridColor)
+    } else {
+      $c coords spectrogram 0 [$pane getCanvasY 0]
+      $c itemconfigure spectrogram -start 0 -end -1 -channel $chan \
+	  -height $sh -pixelspersecond [$w cget -pixelspersecond] \
+	  -winlen $v(winlen) \
+	  -fftlen $v(fftlen) -topfr $v(topfr2) \
+	  -windowtype $v(wintype) \
+	  -colormap $v($v(cmap)) \
+	  -preemph $v(preemph) \
+	  -brightness $v(brightness) \
+	  -contrast $v(contrast) \
+	  -gridtspacing $v(gridtspacing) \
+	  -gridfspacing $v(gridfspacing) \
+	  -gridcolor $v(gridColor)
+      if {[$c itemcget spectrogram -width] == 32767} {
+	tk_messageBox -icon warning -type ok -message "The spectrogram was cut\
+	    after 32767 pixels. Please turn off pre-drawing to view all of it."
+      }
+    }
+  }
+  if {$v(drawPitch)} {
+    if {$v(computePitch)} {
+      _computePitch $w $pane
+      wsurf::dataplot::processData $w $pane $v(pitchList) $v(frameInterval)  "" pitch
+    }
+    _drawPitch $w $pane
+  }
+  if {$v(drawPower)} {
+    if {$v(computePower)} {
+      _computePower $w $pane
+      wsurf::dataplot::processData $w $pane $v(powerList) \
+	$v(frameInterval) "" power
+    }
+  }
+  if {$v(drawFormants)} {
+    if {$v(computeFormants)} {
+      _computeFormants $w $pane 
+      wsurf::dataplot::processData $w $pane $v(formantList) \
+	$v(frameInterval) "" formants
+    }
+  }
+  if {$v(drawSection)} {
+    drawSect $w $pane
+  }
+}
+
+proc analysis::getBounds {w pane} {
+ upvar [namespace current]::${pane}::var v
+ set s [$w cget -sound]
+ if {$v(drawSpectrogram)} {
+  list 0 0 [$s length -unit seconds] $v(topfr2)
+ } elseif {$v(drawWaveform)} {
+  set max [util::max [lindex [$s max] 0] [expr {-[lindex [$s min] 0]}]]
+  set min [util::min [lindex [$s min] 0] [expr {-[lindex [$s max] 0]}]]
+  list 0 $min [$s length -unit seconds] $max
+#  list 0 [lindex [$s min] 0] [$s length -unit seconds] [lindex [$s max] 0]
+ } else {
+  list
+ }
+}
+
+proc analysis::scroll {w pane frac1 frac2} {
+ upvar [namespace current]::${pane}::var v
+
+ if {$v(drawWaveform) || $v(drawSpectrogram)} {
+  if {$v(preDraw) == 0} {
+   set s [$w cget -sound]
+   set start [expr {int($frac1*[$pane cget -maxtime]*[$s cget -rate]+1.0)}]
+   set end   [expr {int($frac2*[$pane cget -maxtime]*[$s cget -rate]+1.0)}]
+   set len [expr {$end-$start}]
+   set c [$pane canvas]
+   if {$v(drawWaveform)} {
+    set fi [expr [$c canvasx 0.0] / [$pane cget -pixelspersecond] * \
+      [$s cget -rate]]
+    set corr [expr ($fi-int($fi))*[$pane cget -pixelspersecond] / \
+      [$s cget -rate]]
+    set xpos [expr {[$c canvasx 0] - $corr}]
+    set ymid [expr {[$pane cget -scrollheight]/2}]
+    $c coords waveform $xpos $ymid
+    if {$v(subsample) && $len > 10000000} {
+     set sub 30
+    } elseif {$v(subsample) && $len > 1000000} {
+     set sub 10
+    } else {
+     set sub 1
+    }
+    $c itemconfigure waveform -start $start -end $end -subsample $sub
+   }
+   if {$v(drawSpectrogram)} {
+    $c coords spectrogram [$c canvasx 0] [$pane getCanvasY 0]
+    $c itemconfigure spectrogram -start $start -end $end
+   }
+  }
+ }
+}
+
+proc analysis::setSelection {w pane left right} {
+ drawSect $w $pane
+}
+
+proc analysis::cursorMoved {w pane time value} {
+ upvar [namespace current]::${pane}::var v
+
+ if {[$w getInfo isPlaying]} return
+
+ set s [$w cget -sound]
+ if {[string match {[0-9]} $v(channel)] && \
+	 $v(channel) >= [$s cget -channels]} {
+  set v(channel) all
+ }
+ foreach {left right} [$w cget -selection] break
+ if {$left == $right} {
+   set timestr [$w formatTime $time]
+ } else {
+   set timestr \
+     "from [$w formatTime $left] to [$w formatTime $right] length [$w formatTime [expr {$right-$left}]], [$w formatTime $time]"
+ }
+ 
+ if {$v(drawWaveform)} {
+  set start [expr {int($time*[$s cget -rate])}]
+  set end [expr {$start+int([$s cget -rate]/[$w cget -pixelspersecond])}]
+  if {$start >= [$s length]} return
+  if {$end >= [$s length]} return
+  set maxamp [$s max -start $start -end $end -channel $v(channel)]
+  set minamp [$s min -start $start -end $end -channel $v(channel)]
+  $w messageProc [format "Waveform - %s \[%s %s\]" $timestr $maxamp $minamp] \
+    analysis
+ }
+ if {$v(drawSpectrogram)} {
+  set start [expr {int($time * [$s cget -rate] - $v(fftlen)/2)}]
+  if {$start < 0} return
+  if {$start > [expr {[$s length] - $v(fftlen)}]} return
+  set fft [$s dBPowerSpectrum -windowlength $v(winlen) \
+	  -fftlen $v(fftlen) \
+	  -windowtype $v(wintype) \
+	  -preemph $v(preemph) -start $start \
+	  -channel $v(channel)]
+  set index [expr {int(0.5+$v(fftlen)*0.5*($value-1)/$v(topfr2))}]
+  set db [lindex $fft $index]
+  if {$db != ""} {
+   $w messageProc \
+     [format "Spectrogram - %s %.0fHz %.2fdB" $timestr $value $db] analysis
+  }
+  regsub -all {\.} $pane _ widgetPath
+  if {[winfo exists .sect$widgetPath]} [list drawSectMarks $w $pane f $value in]
+ }
+ if {$v(drawPitch)} {
+  set i [expr {int($time*100 + .5)}]
+  set pitch [lindex [lindex $v(pitchList) $i] 0]
+  if {$pitch == ""} return
+  if {$pitch < $v(scaleBase) || $v(showScale) == 0} {
+   set note ""
+  } else {
+   for {set i 0} {$i < [llength $v(scale)]} {incr i} {
+     if {$pitch < [lindex $v(scale) $i]} {
+       break
+     }
+   }
+   incr i -1
+   set notelist [list C1 D1 E1 F1 G1 A2 B2 C2 D2 E2 F2 G2 A3 B3 C3 D3 E3 F3 G3 A4 B4 C4]
+   set note [lindex $notelist $i]
+  }
+  if {$left == $right} {
+     $w messageProc \
+       [format "Pitch contour - %s %.0fHz %s" $timestr $pitch $note] analysis
+  } else {
+    set tmp [expr {1.0/($right-$left)}]
+    $w messageProc \
+  [format "Pitch contour - %s %.0fHz %s (%.1f)" $timestr $pitch $note $tmp] \
+  analysis
+  }
+ }
+ if {$v(drawPower)} {
+  set i [expr {int($time*100 + .5)}]
+  set power [lindex $v(powerList) $i]
+  if {$power == ""} return
+  $w messageProc [format "Power plot - %s %.2fdB" $timestr $power] analysis
+ }
+
+ foreach {left right} [$w cget -selection] {}
+ if {$time == $right} {
+   set v(boundary) right
+ } else {
+   set v(boundary) left
+ }
+ if {[winfo exists .blowup]} {
+  set start [expr {int([$s cget -rate]*($time-$v(blowuptimewin)))}]
+  set end   [expr {int([$s cget -rate]*($time+$v(blowuptimewin)))}]
+  if {$start < 0} { set start 0 }
+  if {$end > [$s lastIndex]} { set end [$s lastIndex] }
+  set maxamp [$s max -start $start -end $end -channel $v(channel)]
+  set minamp [$s min -start $start -end $end -channel $v(channel)]
+  set extreme [util::max $maxamp [expr -$minamp]]
+  set limit [expr {int($extreme)}]
+  .blowup.c itemconfigure waveform -start $start -end $end -limit $limit
+ }
+}
+
+proc analysis::print {w pane c x y} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ set vc [$pane yaxis]
+ set yw [winfo width $vc]
+ set height [$pane cget -scrollheight]
+ set width [$pane getCanvasX [$pane cget -maxtime]]
+ set s [$w cget -sound]
+ if {[string match {[0-9]} $v(channel)] && \
+	 $v(channel) >= [$s cget -channels]} {
+  set chan all
+ } else {
+  set chan $v(channel)
+ }
+
+ if {$v(drawWaveform)} {
+  $c create rectangle [expr {$yw+$x}] $y [expr {$x + $yw + $width}] \
+	  [expr {$y+$height}] -tags [list print tmpPrint]
+  $c create rectangle $x $y [expr {$x + $yw + $width}] \
+	  [expr {$y+$height}] -tags [list print tmpPrint]
+  set start [expr {int($x/[$w cget -pixelspersecond]*[$s cget -rate])}]
+  set end   [expr {int(($x+1000)/[$w cget -pixelspersecond]*[$s cget -rate])}]
+  $c create waveform [expr {$yw+$x}] $y -sound $s -fill $v(wavecolor) \
+   -channel $chan -tags [list print tmpPrint] \
+   -start $start -end $end \
+   -height $height -pixelspersecond [$w cget -pixelspersecond]
+
+  $c create text $x $y -text $v(max) \
+    -font [$pane cget -yaxisfont] -anchor nw -tags [list axis max] \
+    -fill [$pane cget -yaxiscolor]
+  set yh [$pane cget -scrollheight]
+  $c create text $x [expr {$y+$height}] -text $v(min) \
+    -font [$pane cget -yaxisfont] -anchor sw -tags [list axis min] \
+    -fill [$pane cget -yaxiscolor]
+ }
+
+ if {$v(drawSpectrogram)} {
+  set brightness [[$pane canvas] itemcget spectrogram -brightness]
+  set contrast [[$pane canvas] itemcget spectrogram -contrast]
+  set start [expr {int($x/[$w cget -pixelspersecond]*[$s cget -rate])}]
+  set end   [expr {int(($x+1000)/[$w cget -pixelspersecond]*[$s cget -rate])}]
+  $c create spectrogram [expr {$yw+$x}] $y -sound $s -channel $chan \
+    -start $start -end $end \
+    -tags [list print tmpPrint speg] -height $height\
+    -fftlen $v(fftlen) -winlen $v(winlen)\
+    -windowtype $v(wintype) \
+    -colormap $v($v(cmap)) \
+    -gridtspacing $v(gridtspacing) \
+    -gridfspacing $v(gridfspacing) \
+    -gridcolor $v(gridColor) \
+    -preemph $v(preemph) \
+    -brightness $brightness \
+    -contrast $contrast \
+    -pixelspersecond [$w cget -pixelspersecond] \
+    -topfr $v(topfr2) -debug $Info(debug)
+  $c create line [expr {$yw+$x}] $y \
+	  [expr {$x + $yw + $width}] $y \
+          [expr {$x + $yw + $width}] [expr {$y+$height}] \
+	  [expr {$yw+$x}] [expr {$y+$height}] \
+	  [expr {$yw+$x}] $y -tags [list print tmpPrint]
+  $c lower speg
+ }
+}
+
+# -----------------------------------------------------------------------------
+
+proc analysis::propertyPane {w pane} {
+ if {$pane==""} return
+ upvar [namespace current]::${pane}::var v
+
+ set ret {}
+ if {$v(drawWaveform)} {
+  lappend ret [::util::mc "Waveform"] [namespace code drawWaveformPage]
+ }
+ if {$v(drawSpectrogram)} {
+  lappend ret [::util::mc "Spectrogram"] [namespace code drawSpectrogramPage]
+ }
+ if {$v(drawPitch)} {
+  lappend ret [::util::mc "Pitch contour"] [namespace code drawPitchPage]
+ }
+ if {$v(drawPower)} {
+  lappend ret [::util::mc "Power plot"] [namespace code drawPowerPage]
+ }
+ if {$v(drawFormants)} {
+  lappend ret [::util::mc "Formants"] [namespace code drawFormantsPage]
+ }
+ return $ret
+}
+
+proc analysis::applyProperties {w pane} {
+ if {[string match *wavebar $pane]} return
+ upvar [namespace current]::${pane}::var v
+
+ if {[info exists v(drawSpectrogram)]} {
+  if {$v(drawSpectrogram)} {
+   bw2pts $w $pane
+   bw2ptsLeave $w $pane
+   foreach var [list fftlen anabw winlen wintype preemph topfr \
+       brightness contrast \
+       gridfspacing gridtspacing gridColor cmap channel preDraw] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set doRedraw 1
+    }
+   }
+   foreach var [list rtpps] {
+    set v($var) $v(t,$var)
+   }
+   foreach var [list topfr] {
+
+    if {0.5*[[$w cget -sound] cget -rate] < $v(topfr) || $v(topfr) == -1} {
+     set v(t,$var) [expr {0.5*[[$w cget -sound] cget -rate]}]
+    }
+    set v(topfr2) $v(t,$var)
+   }
+   if {[info exists doRedraw]} {
+    $w _redrawPane $pane
+   }
+   if {[string compare $v(t,layer) $v(layer)] != 0} {
+    set v(layer) $v(t,layer)
+    $pane configure -layer $v(t,layer)
+   }
+  }
+ }
+
+ if {[info exists v(drawWaveform)]} {
+  if {$v(drawWaveform)} {
+   foreach var [list wavecolor channel limit subsample trimstart preDraw] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set doRedraw 1
+    }
+   }
+   foreach var [list rtpps] {
+    set v($var) $v(t,$var)
+   }
+   if {[info exists doRedraw]} {
+    $w _redrawPane $pane
+   }
+  }
+ }
+ 
+ if {[info exists v(drawPitch)]} {
+  if {$v(drawPitch)} {
+   foreach var [list maxPitch minPitch method frameInterval pwinlen] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set v(computePitch) 1
+     set doRedraw 1
+    }
+   }
+   foreach var [list showScale scaleBase scaleColor] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set doRedraw 1
+    }
+   }
+   foreach var [list pitchPreview rtpps exportHeader] {
+    set v($var) $v(t,$var)
+   }
+   if {[info exists doRedraw]} {
+    $w _redrawPane $pane
+   }
+  }
+ }
+
+ if {[info exists v(drawPower)]} {
+  if {$v(drawPower)} {
+   foreach var [list ewinlen ewintype epreemph frameInterval channel] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set v(computePower) 1
+     set doRedraw 1
+    }
+   }
+   foreach var [list maxPower minPower] {
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set doRedraw 1
+    }
+   }
+   foreach var [list exportHeader] {
+    set v($var) $v(t,$var)
+   }
+   if {[info exists doRedraw]} {
+    $w _redrawPane $pane
+   }
+  }
+ }
+ if {[info exists v(drawFormants)]} {
+  if {$v(drawFormants)} {
+   foreach var [list fwinlen fwintype fpreemph numformants \
+     frameInterval lpcorder lpctype dsfreq nomf1freq] {
+    if {[string match fwinlen $var]} {
+     upvar wsurf::dataplot::${pane}::var t
+     set t(offset) [expr {$v(t,fwinlen)/2}]
+    }
+    if {[string match numformants $var] && \
+      [string compare $v(t,$var) $v($var)] != 0} {
+     upvar wsurf::dataplot::${pane}::var t
+     set t(styleList) [lrange [list 0 red Line 1 green Line 2 blue Line 3 yellow Line 4 black Line 5 magenta Line 6 cyan Line] 0 [expr 3*($v(t,numformants))-1]]
+    }
+    if {[string compare $v(t,$var) $v($var)] != 0} {
+     set v($var) $v(t,$var)
+     set v(computeFormants) 1
+     set doRedraw 1
+    }
+   }
+   foreach var [list exportHeader] {
+    set v($var) $v(t,$var)
+   }
+   if {[info exists doRedraw]} {
+    $w _redrawPane $pane
+   }
+  }
+ }
+}
+
+proc analysis::drawWaveformPage {w pane p} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach f [winfo children $p] {
+  destroy $f
+ }
+
+ foreach {option key default} $Info(WaveformOptionTable) {
+  set v(t,$key) $v($key)
+ }
+
+ colorPropItem $p.f1 "Waveform color:" 18 \
+     [namespace current]::${pane}::var(t,wavecolor)
+
+ stringPropItem $p.f2 "Show channel:" 18 6 \
+     "(0,1,2,...,left,right,all)" [namespace current]::${pane}::var(t,channel)
+
+ if {[string match Lin24* [[$w cget -sound] cget -encoding]]} {
+  set max 8388608
+ } else {
+  set max 32768
+ }
+ pack [frame $p.f3] -anchor w -ipady 2
+ if {$::useTile} {
+  tk_checkbutton $p.f3.r -text "Auto-scale waveform" -onvalue -1 \
+      -offvalue $max \
+      -anchor w -variable [namespace current]::${pane}::var(t,limit)
+  tk_label $p.f3.l -text "Value at top:" -anchor w
+ } else {
+  checkbutton $p.f3.r -text "Auto-scale waveform" -onvalue -1 \
+      -offvalue $max \
+      -anchor w -variable [namespace current]::${pane}::var(t,limit)
+  label $p.f3.l -text "Value at top:" -anchor w
+ }
+ entry $p.f3.e -textvar [namespace current]::${pane}::var(t,limit) \
+   -width 8
+ button $p.f3.b -text Control... \
+	 -command [namespace code [list waControls $w $pane]]
+ pack $p.f3.r $p.f3.l $p.f3.e $p.f3.b -side left -padx 3
+
+ booleanPropItem $p.f4 "Sub-sample waveform at low resolution" "" \
+     [namespace current]::${pane}::var(t,subsample)
+
+ booleanPropItem $p.f5 "Trim waveform endpoints to integer pixels" "" \
+     [namespace current]::${pane}::var(t,trimstart)
+
+ stringPropItem $p.f6 "Record scroll speed:" 18 6 \
+     "pixels/second" [namespace current]::${pane}::var(t,rtpps)
+
+ booleanPropItem $p.f7 "Pre-draw graphics" "" \
+     [namespace current]::${pane}::var(t,preDraw)
+}
+
+proc analysis::drawSpectrogramPage {w pane p} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach f [winfo children $p] {
+  destroy $f	
+ }
+
+ foreach {option key default} $Info(SpectrogramOptionTable) {
+  set v(t,$key) $v($key)
+ }
+ foreach var [list anabw] {
+  set v(t,$var) $v($var)
+ }
+
+ stringPropItem $p.f1 "FFT window length:" 21 6 \
+     "points" [namespace current]::${pane}::var(t,fftlen)
+
+ pack [frame $p.f2] -anchor w -ipady 2
+ label $p.f2.l -text "Analysis window type:" -width 21 -anchor w
+ tk_optionMenu $p.f2.cm [namespace current]::${pane}::var(t,wintype) \
+	 Hamming Hanning Bartlett Blackman Rectangle
+ pack $p.f2.l $p.f2.cm -side left -padx 3
+
+ pack [frame $p.f3] -anchor w -ipady 2
+ label $p.f3.l -text "Analysis bandwidth:" -width 21 -anchor w
+ entry $p.f3.e -textvar [namespace current]::${pane}::var(t,anabw) -wi 6
+ label $p.f3.l2 -text "Hz" -anchor w
+ label $p.f3.l3 -text " Window:" -anchor w
+ entry $p.f3.e2 -textvar [namespace current]::${pane}::var(t,winlen) -wi 6
+ label $p.f3.l4 -text "points" -anchor w
+ pack $p.f3.l $p.f3.e $p.f3.l2 $p.f3.l3 $p.f3.e2 $p.f3.l4 -side left -padx 3
+ bind $p.f3.e  <Any-KeyRelease> [namespace code [list bw2pts $w $pane]]
+ bind $p.f3.e2 <Any-KeyRelease> [namespace code [list pts2bw $w $pane]]
+ bind $p.f3.e  <FocusOut> [namespace code [list bw2ptsLeave $w $pane]]
+ bind $p.f3.e2 <FocusOut> [namespace code [list pts2bwLeave $w $pane]]
+
+ stringPropItem $p.f4 "Pre-emphasis factor:" 21 6 \
+     "" [namespace current]::${pane}::var(t,preemph)
+
+ stringPropItem $p.f5 "Cut spectrogram at:" 21 6 \
+     "Hz" [namespace current]::${pane}::var(t,topfr)
+
+ pack [frame $p.f6] -anchor w -ipady 2
+ pack [label $p.f6.l -text "Brightness:" -width 21 -anchor w] -sid left -padx 3
+ pack [entry $p.f6.e -textvar [namespace current]::${pane}::var(t,brightness)\
+	 -wi 6] -side left -padx 3
+ pack [scale $p.f6.s \
+	 -variable [namespace current]::${pane}::var(t,brightness) \
+	 -orient horiz -from -100 -to 100] -side left
+ if {$::useTile} {
+  $p.f6.s set $v(t,brightness)
+ }
+
+ pack [button $p.f6.b -text Controls... \
+	 -command [namespace code [list bcControls $w $pane]]] -side left
+
+ pack [frame $p.f7] -anchor w -ipady 2
+ pack [label $p.f7.l -text "Contrast:" -width 21 -anchor w] -side left -padx 3
+ pack [entry $p.f7.e -textvar [namespace current]::${pane}::var(t,contrast) \
+	 -wi 6] -side left -padx 3
+ pack [scale $p.f7.s -variable [namespace current]::${pane}::var(t,contrast) \
+	    -orient horiz -from -100 -to 100]
+ if {$::useTile} {
+  $p.f7.s set $v(t,contrast)
+ }
+
+ stringPropItem $p.f8 "Grid frequency spacing:" 21 6 \
+     "Hz" [namespace current]::${pane}::var(t,gridfspacing)
+
+ stringPropItem $p.f9 "Grid time spacing:" 21 6 \
+     "s" [namespace current]::${pane}::var(t,gridtspacing)
+
+ colorPropItem $p.f10 "Grid color:" 21 \
+     [namespace current]::${pane}::var(t,gridColor)
+
+ pack [frame $p.f11] -anchor w -ipady 2
+ label $p.f11.l -text "Spectrogram color:" -width 21 -anchor w
+ tk_optionMenu $p.f11.cm [namespace current]::${pane}::var(t,cmap) grey color color2
+ pack $p.f11.l $p.f11.cm -side left -padx 3
+
+ stringPropItem $p.f12 "Record scroll speed:" 21 6 \
+     "pixels/second" [namespace current]::${pane}::var(t,rtpps)
+
+ stringPropItem $p.f13 "Show channel:" 21 6 \
+     "(0,1,2,...,left,right,all)" [namespace current]::${pane}::var(t,channel)
+
+ pack [frame $p.f14] -anchor w -ipady 2
+ checkbutton $p.f14.r -text "Draw stippled selection" -onvalue top \
+     -offvalue bottom -variable [namespace current]::${pane}::var(t,layer)
+ pack $p.f14.r -side left -padx 3
+
+ booleanPropItem $p.f15 "Pre-draw graphics" "" \
+     [namespace current]::${pane}::var(t,preDraw)
+}
+
+proc analysis::drawPitchPage {w pane p} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach f [winfo children $p] {
+  destroy $f
+ }
+
+ foreach {option key default} $Info(PitchOptionTable) {
+  set v(t,$key) $v($key)
+ }
+
+ pack [frame $p.f1] -anchor w -ipady 2
+ if {$::useTile} {
+  tk_label $p.f1.l -text "Pitch method:" -width 21 -anchor w
+ } else {
+  label $p.f1.l -text "Pitch method:" -width 21 -anchor w
+ }
+ tk_optionMenu $p.f1.cm [namespace current]::${pane}::var(t,method) ESPS AMDF
+ pack $p.f1.l $p.f1.cm -side left -padx 3
+
+ stringPropItem $p.f2 "Max pitch value:" 23 6 \
+     "Hz" [namespace current]::${pane}::var(t,maxPitch)
+
+ stringPropItem $p.f3 "Min pitch value:" 23 6 \
+     "Hz" [namespace current]::${pane}::var(t,minPitch)
+
+ stringPropItem $p.f31 "Analysis window length:" 23 6 \
+     "s" [namespace current]::${pane}::var(t,pwinlen)
+
+ stringPropItem $p.f32 "Frame interval:" 23 6 \
+     "s" [namespace current]::${pane}::var(t,frameInterval)
+
+ pack [frame $p.f4] -anchor w -ipady 2
+
+ if {$::useTile} {
+  tk_checkbutton $p.f4.r -text "Show background note scale" \
+      -anchor w -variable [namespace current]::${pane}::var(t,showScale)
+ } else {
+  checkbutton $p.f4.r -text "Show background note scale" \
+      -anchor w -variable [namespace current]::${pane}::var(t,showScale)
+ }
+ label $p.f4.l -text "Tuning (C1):" -anchor w
+ entry $p.f4.e -textvar [namespace current]::${pane}::var(t,scaleBase) -wi 7
+ label $p.f4.l2 -text "Hz" -anchor w
+ pack $p.f4.r $p.f4.l $p.f4.e $p.f4.l2 -side left -padx 3
+
+ colorPropItem $p.f5 "Scale color:" 21 \
+     [namespace current]::${pane}::var(t,scaleColor)
+
+ booleanPropItem $p.f6 "Pitch preview during record" "" \
+     [namespace current]::${pane}::var(t,pitchPreview)
+
+ stringPropItem $p.f7 "Record scroll speed:" 23 6 \
+     "pixels/second" [namespace current]::${pane}::var(t,rtpps)
+
+ booleanPropItem $p.f8 "Add header in export file" "" \
+     [namespace current]::${pane}::var(t,exportHeader)
+}
+
+proc analysis::drawPowerPage {w pane p} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach f [winfo children $p] {
+  destroy $f
+ }
+
+ foreach {option key default} $Info(PowerOptionTable) {
+  set v(t,$key) $v($key)
+ }
+
+ stringPropItem $p.f3 "Analysis window length:" 23 6 \
+     "points" [namespace current]::${pane}::var(t,ewinlen)
+
+ pack [frame $p.f4] -anchor w -ipady 2
+ label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
+ tk_optionMenu $p.f4.cm [namespace current]::${pane}::var(t,ewintype) \
+	 Hamming Hanning Bartlett Blackman Rectangle
+ pack $p.f4.l $p.f4.cm -side left -padx 3
+
+ stringPropItem $p.f5 "Pre-emphasis factor:" 23 6 \
+     "" [namespace current]::${pane}::var(t,epreemph)
+
+ stringPropItem $p.f6 "Frame interval:" 23 6 \
+     "s" [namespace current]::${pane}::var(t,frameInterval)
+
+ stringPropItem $p.f7 "Show channel:" 23 6 \
+     "(0,1,2,...,left,right,all)" [namespace current]::${pane}::var(t,channel)
+
+ stringPropItem $p.f8 "Max power value:" 23 6 \
+     "dB" [namespace current]::${pane}::var(t,maxPower)
+
+ stringPropItem $p.f9 "Min power value:" 23 6 \
+     "dB" [namespace current]::${pane}::var(t,minPower)
+
+ booleanPropItem $p.f10 "Add header in export file" "" \
+     [namespace current]::${pane}::var(t,exportHeader)
+}
+
+proc analysis::drawFormantsPage {w pane p} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+
+ foreach f [winfo children $p] {
+  destroy $f
+ }
+ 
+ foreach {option key default} $Info(FormantsOptionTable) {
+  set v(t,$key) $v($key)
+ }
+ 
+ stringPropItem $p.f1 "Number of formants:" 23 6 \
+     "" [namespace current]::${pane}::var(t,numformants)
+
+ stringPropItem $p.f3 "Analysis window length:" 23 6 \
+     "s" [namespace current]::${pane}::var(t,fwinlen)
+ 
+ pack [frame $p.f4] -anchor w -ipady 2
+ label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
+ tk_optionMenu $p.f4.cm [namespace current]::${pane}::var(t,fwintype) \
+	 Rectangular Hamming Cos^4 Hanning
+ pack $p.f4.l $p.f4.cm -side left -padx 3
+
+ stringPropItem $p.f5 "Pre-emphasis factor:" 23 6 \
+     "" [namespace current]::${pane}::var(t,fpreemph)
+
+ stringPropItem $p.f6 "Frame interval:" 23 6 \
+     "s" [namespace current]::${pane}::var(t,frameInterval)
+
+ stringPropItem $p.f7 "LPC order:" 23 6 \
+     "" [namespace current]::${pane}::var(t,lpcorder)
+
+ stringPropItem $p.f8 "LPC type:" 23 6 \
+     "" [namespace current]::${pane}::var(t,lpctype)
+
+ stringPropItem $p.f9 "Down-sampling frequency:" 23 6 \
+     "Hz" [namespace current]::${pane}::var(t,dsfreq)
+
+ stringPropItem $p.f11 "Nominal F1 frequency:" 23 6 \
+     "Hz" [namespace current]::${pane}::var(t,nomf1freq)
+
+ booleanPropItem $p.f10 "Add header in export file" "" \
+     [namespace current]::${pane}::var(t,exportHeader)
+}
+
+proc analysis::getConfiguration {w pane} {
+ variable Info
+ if {$pane==""} { return {} }
+ upvar [namespace current]::${pane}::var v
+ 
+ set result {}
+ if {$v(drawWaveform)} {
+  append result "\$widget analysis::addWaveform \$pane"
+
+  foreach {option key default} $Info(WaveformOptionTable) {
+   if {$v($key) != $default} {
+    append result " $option \"$v($key)\""
+   }
+  }
+  append result "\n"
+ }
+ if {$v(drawSpectrogram)} {
+  append result "\$widget analysis::addSpectrogram \$pane"
+
+  foreach {option key default} $Info(SpectrogramOptionTable) {
+   if {$v($key) != $default} {
+    append result " $option \"$v($key)\""
+   }
+  }
+  append result "\n"
+ }
+ if {$v(drawPitch)} {
+  append result "\$widget analysis::addPitch \$pane"
+
+  foreach {option key default} $Info(PitchOptionTable) {
+   if {$v($key) != $default} {
+    append result " $option \"$v($key)\""
+   }
+  }
+  append result "\n"
+ }
+ if {$v(drawPower)} {
+  append result "\$widget analysis::addPower \$pane"
+
+  foreach {option key default} $Info(PowerOptionTable) {
+   if {$v($key) != $default} {
+    append result " $option \"$v($key)\""
+   }
+  }
+  append result "\n"
+ }
+ if {$v(drawFormants)} {
+  append result "\$widget analysis::addFormants \$pane"
+
+  foreach {option key default} $Info(FormantsOptionTable) {
+   if {$v($key) != $default} {
+    append result " $option \"$v($key)\""
+   }
+  }
+  append result "\n"
+ }
+ if {$v(drawSection)} {
+  set var [namespace current]::\${pane}::var
+  append result "set ${var}(sectwinw) $v(sectwinw)" "\n"
+  append result "set ${var}(sectwinh) $v(sectwinh)" "\n"
+  append result "set ${var}(sectwinx) $v(sectwinx)" "\n"
+  append result "set ${var}(sectwiny) $v(sectwiny)" "\n"
+  append result "\$widget analysis::openSectWindow \$pane" "\n"
+ }
+ if {[winfo exists .blowup]} {
+   set var [namespace current]::\${pane}::var
+   append result "set ${var}(blowupwinw) $v(blowupwinw)" "\n"
+   append result "set ${var}(blowupwinh) $v(blowupwinh)" "\n"
+   append result "set ${var}(blowupwinx) $v(blowupwinx)" "\n"
+   append result "set ${var}(blowupwiny) $v(blowupwiny)" "\n"
+   append result "set ${var}(blowuptimewin) $v(blowuptimewin)" "\n"
+   append result "\$widget analysis::openBlowUpWindow \$pane" "\n"
+ }
+ regsub -all {\.} $pane _ widgetPath
+ if {[winfo exists .cbctrl$widgetPath]} {
+  append result "analysis::bcControls \$widget \$pane" "\n"
+ }
+ return $result
+}
+
+proc analysis::soundChanged {w flag} {
+
+ set s [$w cget -sound]
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  if {$v(drawWaveform) || $v(drawSpectrogram)} {
+    if {[$s cget -channels] > 1} {
+      set v(max) [$s max -channel $v(channel)]
+      set v(min) [$s min -channel $v(channel)]
+    } else {
+      set v(max) [$s max]
+      set v(min) [$s min]
+    }
+    if {0.5*[$s cget -rate] < $v(topfr) || $v(topfr) == -1} {
+      set v(topfr2) [expr {0.5*[$s cget -rate]}]
+    } else {
+     set v(topfr2) $v(topfr)
+    }
+    # if the sound object has changed due to a $w configure -sound
+    if {$v(sound) != $s} {
+      set c [$pane canvas]
+      $c itemconfigure waveform    -sound $s
+      $c itemconfigure spectrogram -sound $s
+    }
+    $w _redrawPane $pane
+  }
+  if {$v(drawPitch)} {
+   after cancel [namespace code [list _updateRecord $w]]
+   update
+   _computePitch $w $pane
+   wsurf::dataplot::processData $w $pane $v(pitchList) $v(frameInterval) "" pitch
+   _drawPitch $w $pane
+  }
+  if {$v(drawPower)} {
+   update
+   _computePower $w $pane
+   wsurf::dataplot::processData $w $pane $v(powerList) \
+     $v(frameInterval) "" power
+  }
+  if {$v(drawFormants)} {
+   update
+   _computeFormants $w $pane
+   wsurf::dataplot::processData $w $pane $v(formantList) \
+     $v(frameInterval) "" formants
+  }
+ }
+}
+
+# -----------------------------------------------------------------------------
+
+proc analysis::play {w} {
+ after 200 [namespace code [list _updatePlay $w]]
+}
+
+proc analysis::_updatePlay {w} {
+ if {[winfo exists $w] == 0} return
+ set s [$w cget -sound]
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  if {$v(drawSection)} {
+    drawSect $w $pane
+  }
+ }
+ if {[$w getInfo isPlaying]} {
+  after 50 [namespace code [list _updatePlay $w]]
+ }
+}
+
+proc analysis::record {w} {
+ $w xscroll moveto 0.0
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  set c [$pane canvas]
+  if {[info exists v(drawWaveform)]} {
+   if {$v(drawWaveform)} {
+    $c itemconfigure waveform -width [winfo width $c] \
+       -pixelspersecond $v(rtpps) -end -1
+   }
+  }
+  if {[info exists v(drawSpectrogram)]} {
+   if {$v(drawSpectrogram)} {
+    $c itemconfigure spectrogram -width [winfo width $c] \
+      -pixelspersecond $v(rtpps) -end -1
+   }
+   $c delete dataplot
+  }
+  if {$v(drawPitch) && $v(pitchPreview)} {
+   set v(samplePos) 0
+   set v(ox)  0
+   set v(oy)  0
+   $c delete dataplot
+   set s [$w cget -sound]
+   sound _pitchTmp -rate [$s cget -rate]
+  }
+ }
+ $w configure -selection [list 0 0]
+ after 200 [namespace code [list _updateRecord $w]]
+}
+
+proc analysis::_updateRecord {w} {
+ if {[winfo exists $w] == 0} return
+ set s [$w cget -sound]
+ $w messageProc "Recorded: [format "%.1f" [$s length -unit seconds]]s" analysis
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  if {$v(drawWaveform)} {
+   if {[$w getInfo isLinked2File]} {
+    set v(max) [$s max]
+    set v(min) [$s min]
+   } else {
+    set v(max) [$s max -channel $v(channel)]
+    set v(min) [$s min -channel $v(channel)]
+   }
+   set yc [$pane yaxis]
+   $yc itemconfigure max -text $v(max)
+   $yc itemconfigure min -text $v(min)
+  }
+  if {$v(drawPitch) && $v(pitchPreview)} {
+    set length [$s length]
+    set c [$pane canvas]
+    set chunkSize [expr {int(400 + 2.5 * [$s cget -rate] / $v(minPitch))}]
+    while {$v(samplePos) < $length - $chunkSize} {
+      _pitchTmp copy $s -start $v(samplePos) \
+	  -end [expr {$v(samplePos) + $chunkSize - 1}]
+      set pitch [lindex [_pitchTmp pitch -minpitch $v(minPitch) \
+	-maxpitch $v(maxPitch)] 2]
+     if {$pitch == ""} { set pitch 0.0 }
+      $c move pitch [expr -0.01 * $v(rtpps)] 0
+      set x [expr {$v(ox) + 0.01 * $v(rtpps)}]
+      set x [winfo width $c]
+      set y [expr {[winfo height $c]*(($v(maxPitch)-$pitch)/$v(maxPitch))}]
+      if {$v(oy) == 0} { set v(oy) $y }
+      if {$pitch > 0.0 && abs($v(oy)-$y) < 10} {
+	$c create oval [expr {$x-1}] [expr {$y-1}] \
+	    [expr {$x+1}] [expr {$y+1}] -tags [list analysis pitch dataplot] \
+	    -outline black
+      }
+      incr v(samplePos) 160
+      set v(ox) $x
+      set v(oy) $y
+    }
+  }
+ }
+# set progressproc [$w cget -progressproc]
+# if {$progressproc != ""} {
+#  $progressproc "Play" 0.9
+# }
+ update idletasks
+ if {[$w getInfo isRecording]} {
+  after 50 [namespace code [list _updateRecord $w]]
+ }
+}
+
+# -----------------------------------------------------------------------------
+# Plug-in internal stuff
+
+proc analysis::bcControls {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ if $v(preDraw) {
+  tk_messageBox -message "This function is not available in pre-draw mode."
+ }
+
+ regsub -all {\.} $pane _ widgetPath
+ catch {destroy .cbctrl$widgetPath}
+ set p [toplevel .cbctrl$widgetPath]
+ wm title $p "Image Controls"
+
+ set c [$pane canvas]
+
+ pack [frame $p.f] -fill both -expand true
+ pack [label $p.f.lc -text Contrast] -side left
+ pack [canvas $p.f.c -width 100 -height 100 -bd 1 -relief raised]
+ pack [label $p.f.lb -text Brightness]
+ if {[info exists v(t,brightness)] == 0} {
+  set v(t,brightness) $v(brightness)
+ }
+ if {[info exists v(t,contrast)] == 0} {
+  set v(t,contrast) $v(contrast)
+ }
+ if {[info exists v(t,fftlen)] == 0} {
+  set v(t,fftlen) $v(fftlen)
+ }
+ if {[info exists v(t,winlen)] == 0} {
+  set v(t,winlen) $v(winlen)
+ }
+ set x [expr 0.5 * (100.0 + $v(t,brightness))]
+ set y [expr -0.5 * ($v(t,contrast) - 100.0)]
+ $p.f.c create rectangle [expr $x-3.0] [expr $y-3.0] \
+	 [expr $x+3.0] [expr $y+3.0] -fill black
+ bind $p.f.c <1> [namespace code [list initDrag $w $pane $p.f.c %x %y]]
+ bind $p.f.c <B1-Motion> [namespace code [list Drag $w $pane $p.f.c %x %y]]
+
+ pack [label $p.f.l -text "Analysis window length:"] -expand true -fill x
+ pack [scale $p.f.s -orient horiz \
+	   -variable [namespace current]::${pane}::var(t,winlen) \
+	   -from 32 -to $v(t,fftlen) \
+	   -command [namespace code [list setAnaWinLen $pane $c]]] -expand true -fill x
+ if {$::useTile} {
+  $p.f.s set $v(t,winlen)
+ }
+
+}
+proc analysis::setAnaWinLen {pane c args} {
+ upvar [namespace current]::${pane}::var v
+
+ set v(t,winlen) [expr int($args)]
+ $c itemconfigure spectrogram -winlength [expr int($args)]
+}
+
+proc analysis::waControls {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ regsub -all {\.} $pane _ widgetPath
+ catch {destroy .wactrl$widgetPath}
+ set p [toplevel .wactrl$widgetPath]
+ wm title $p "Waveform Amplitude Zoom"
+ if {[string match Lin24* [[$w cget -sound] cget -encoding]]} {
+  set max 8388608
+ } else {
+  set max 32768
+ }
+ if {[info exists v(t,limit)] == 0} {
+  set v(t,limit) $v(limit)
+ }
+ if {$v(t,limit) == -1} {
+   set v(t,limit) $max
+ }
+
+ pack [scale $p.s -variable [namespace current]::${pane}::var(t,limit) \
+     -from 1 -to $max -length 150 -orient horizontal \
+     -command [namespace code [list waZoom $w $pane]]] -expand 1 -fill x
+ if {$::useTile} {
+  $p.s set $v(t,limit)
+ }
+
+ focus $p.s
+ pack [entry $p.e -textvariable [namespace current]::${pane}::var(t,limit) \
+     -width 8]
+ bind $p.e <Any-Key> [namespace code [list waZoom $w $pane]]
+}
+
+proc analysis::waZoom {w pane args} {
+ upvar [namespace current]::${pane}::var v
+
+ set c [$pane canvas]
+ set $v(t,limit) [expr int($v(t,limit))]
+ $c itemconfigure waveform -limit $v(t,limit)
+ if {[winfo exists .blowup]} {
+   .blowup.c itemconfigure waveform -limit $v(t,limit)
+ }
+}
+
+proc analysis::bw2pts {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ set s [$w cget -sound]
+ set rate [$s cget -rate]
+ catch {
+  set v(t,winlen) [expr {int($rate / $v(t,anabw))}]
+ }
+ if {$v(t,winlen) < 1} {
+  set v(t,winlen) 1
+ }
+ if {$v(t,winlen) > $v(t,fftlen)} {
+  set v(t,winlen) $v(t,fftlen)
+ }
+}
+
+proc analysis::bw2ptsLeave {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ set s [$w cget -sound]
+ set rate [$s cget -rate]
+ set v(t,anabw) [expr {double($rate) / $v(t,winlen)}]
+}
+
+proc analysis::pts2bw {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ set s [$w cget -sound]
+ set rate [$s cget -rate]
+ catch {
+  set v(t,anabw) [expr {double($rate) / $v(t,winlen)}]
+ }
+}
+
+proc analysis::pts2bwLeave {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ set s [$w cget -sound]
+ set rate [$s cget -rate]
+ if {$v(t,winlen) < 1} {
+  set v(t,winlen) 1
+ }
+ if {$v(t,winlen) > $v(t,fftlen)} {
+  set v(t,winlen) $v(t,fftlen)
+ }
+ catch {
+  set v(t,anabw) [expr {double($rate) /$v(t,winlen)}]
+ }
+}
+
+proc analysis::initDrag {w pane cc x y} {
+ upvar [namespace current]::${pane}::var v
+
+ set v(ox) [$cc canvasx $x]
+ set v(oy) [$cc canvasy $y]
+}
+
+proc analysis::Drag {w pane cc x y} {
+ upvar [namespace current]::${pane}::var v
+
+ set c [$pane canvas]
+ set x [$cc canvasx $x]
+ set y [$cc canvasy $y]
+ if {$x < 0}   { set x 0}
+ if {$y < 0}   { set y 0}
+ if {$x > 100} { set x 100}
+ if {$y > 100} { set y 100}
+
+ $cc move current [expr $x - $v(ox)] [expr $y - $v(oy)]
+ set v(ox) $x
+ set v(oy) $y
+
+ set v(t,brightness) [expr 2*$x-100.0]
+ set v(t,contrast) [expr 100.0-2*$y]
+
+ $c itemconfigure spectrogram \
+	 -brightness $v(t,brightness) \
+	 -contrast $v(t,contrast)
+}
+
+proc analysis::openSectWindowLTAS {w pane} {
+ SelectAll
+ openSectWindow $w $pane
+}
+
+proc analysis::openSectWindow {w pane} {
+ upvar [namespace current]::${pane}::var v
+ set s [$w cget -sound]
+
+ regsub -all {\.} $pane _ widgetPath
+
+ catch {destroy .sect$widgetPath}
+ set e [toplevel .sect$widgetPath -width $v(sectwinw) \
+	 -height $v(sectwinh)]
+ wm geometry .sect$widgetPath +$v(sectwinx)+$v(sectwiny)
+ wm title $e "Spectrum Section Plot: [file tail [$w getInfo fileName]]"
+ if {$::tcl_platform(platform) == "windows"} {
+  wm attributes $e -topmost 1
+ }
+ pack propagate $e 0
+ set v(sectTopLevel) $e
+ set v(drawSection) 1
+
+ foreach {left right} [$w cget -selection] break
+ if {$left == $right} { set v(sall) 0 } else { set v(sall) 1 }
+
+ pack [frame $e.f] -side bottom -fill x
+ if {$::useTile} {
+  tk_label $e.f.lab -width 1 -relief sunken -bd 1 -anchor w
+ } else {
+  label $e.f.lab -width 1 -relief sunken -bd 1 -anchor w
+ }
+ pack $e.f.lab -side left -expand yes -fill x
+# pack [button $e.f.exitB -text Close -command [list destroy $e]] -side left
+
+ pack [frame $e.f1] -fill x
+
+ label $e.f1.l1 -text "Analysis:"
+ tk_optionMenu $e.f1.m1 [namespace current]::${pane}::var(satype) FFT LPC
+ for {set n 0} {$n < 2} {incr n} {
+   $e.f1.m1.menu entryconfigure $n \
+       -command [namespace code [list drawSect $w $pane]]
+ }
+
+ label $e.f1.l2 -text "Order:"
+ entry $e.f1.e -width 3 \
+     -textvariable [namespace current]::${pane}::var(slpcorder)
+ if {$::useTile} {
+  set v(slpcorder2) $v(slpcorder)
+  tk_scale $e.f1.s -variable [namespace current]::${pane}::var(slpcorder2) \
+      -from 1 -to 40 -orient horiz -length 80 -show no \
+      -command [namespace code [list setVar $w $pane slpcorder slpcorder2]]
+  $e.f1.s set $v(slpcorder)
+ } else {
+  scale $e.f1.s -variable [namespace current]::${pane}::var(slpcorder) \
+      -from 1 -to 40 -orient horiz -length 80 -show no
+ }
+ bind $e.f1.s <Button1-Motion> [namespace code [list drawSect $w $pane]]
+ pack $e.f1.l1 $e.f1.m1 -side left
+ if {$::useTile} { pack [separator $e.f1.s1 -orient vertical] -side left -fill y -padx 10}
+ pack $e.f1.l2 $e.f1.e $e.f1.s -side left
+
+ pack [frame $e.f2] -anchor w -fill x
+
+ label $e.f2.l1 -text "Window:"
+ tk_optionMenu $e.f2.m1 [namespace current]::${pane}::var(swintype) \
+	 Hamming Hanning Bartlett Blackman Rectangle
+ for {set n 0} {$n < 5} {incr n} {
+   $e.f2.m1.menu entryconfigure $n \
+       -command [namespace code [list drawSect $w $pane]]
+ }
+
+ label $e.f2.l2 -text "FFT points:" -anchor w
+ tk_optionMenu $e.f2.m2 [namespace current]::${pane}::var(sfftlen) 64 128 256 512 1024 2048 4096 8192 16384 32768 65536
+ for {set n 0} {$n < 11} {incr n} {
+   $e.f2.m2.menu entryconfigure $n \
+       -command [namespace code [list drawSect $w $pane]]
+ }
+
+ pack $e.f2.l1 $e.f2.m1 -side left
+ if {$::useTile} { pack [separator $e.f2.s1 -orient vertical] -side left -fill y -padx 10}
+ pack $e.f2.l2 $e.f2.m2 -side left
+
+ pack [frame $e.f3] -fill x
+ pack [label $e.f3.l1 -text "Reference:" -anchor w] -side left
+ pack [entry $e.f3.e1 -textvar [namespace current]::${pane}::var(sref) \
+	 -wi 6] -side left
+ pack [label $e.f3.u1 -text "dB" -anchor w] -side left
+ if {$::useTile} { pack [separator $e.f3.s1 -orient vertical] -side left -fill y -padx 10}
+ pack [label $e.f3.l2 -text "Range:" -anchor w] -side left
+ pack [entry $e.f3.e2 -textvar [namespace current]::${pane}::var(srange) \
+	 -wi 5] -side left
+ pack [label $e.f3.u2 -text "dBfs" -anchor w] -side left
+ if {$::useTile} { pack [separator $e.f3.s2 -orient vertical] -side left -fill y -padx 10}
+ pack [label $e.f3.l3 -text "Pre-emphasis:" -anchor w] -side left
+ pack [entry $e.f3.e3 -textvar [namespace current]::${pane}::var(spreemph) \
+	 -wi 6] -side left
+ 
+
+ pack [frame $e.f4] -fill x
+ pack [checkbutton $e.f4.cb -text "Average of selection" \
+     -variable [namespace current]::${pane}::var(sall) \
+     -command [namespace code [list drawSect $w $pane]]] -side left
+ # pack [button $e.f4.lockB -text Lock -command [namespace code [list lockSection $w $pane]]] -side left
+
+ if {$::useTile} { pack [separator $e.f4.s1 -orient vertical] -side left -fill y -padx 10}
+ if {$::useTile} { 
+  tk_menubutton $e.f4.mb -text "Snapshot" -menu $e.f4.mb.m -relief raised \
+      -direction above
+ } else {
+  menubutton $e.f4.mb -text "Snapshot" -menu $e.f4.mb.m -relief raised \
+      -direction above
+ }
+ menu $e.f4.mb.m -tearoff 0
+ # label $e.f4.l1 -text "Snapshot:"
+ set titles ""
+ foreach q $::wsurf::Info(widgets) {
+  lappend titles [$q cget -title]
+ }
+ lappend titles Clear
+ # eval tk_optionMenu $e.f4.snap [namespace current]::${pane}::var(snapo) $titles
+ # pack $e.f4.l1 $e.f4.snap -side left
+ for {set n 0} {$n <= [llength $::wsurf::Info(widgets)]} {incr n} {
+  set label [lindex $titles $n]
+  set widget [lindex $::wsurf::Info(widgets) $n]
+  $e.f4.mb.m add command -label $label \
+    -command [namespace code [list lockSection $w $pane $widget]]
+  #   $e.f4.snap.menu entryconfigure $n \
+    #       -command [namespace code [list lockSection $w $pane $widget]]
+ }
+ pack $e.f4.mb -side left
+
+ if {$::useTile} { pack [separator $e.f4.s2 -orient vertical] -side left -fill y -padx 10}
+
+ pack [checkbutton $e.f4.cb2 -text "Add file header" \
+     -variable [namespace current]::${pane}::var(sexphead)] -side left
+ if {$::useTile} { pack [separator $e.f4.s3 -orient vertical] -side left -fill y -padx 10}
+ pack [button $e.f4.exportB -text Export... -command [namespace code [list exportSpectrum $w $pane]]] -side left
+
+ pack [canvas $e.c -closeenough 5 -cursor draft_small -height 20] -fill both \
+	 -before $e.f1 -expand true
+
+ update idletasks
+ drawSect $w $pane
+
+ bind $e <Configure> [namespace code [list drawSect $w $pane]]
+ bind $e <Any-Key>   [namespace code [list drawSect $w $pane]]
+ bind $e.c <ButtonPress-1> [namespace code [list drawSectCursor $w $pane %x %y up]]
+ bind $e.c <ButtonRelease-1> [namespace code [list drawSectCursor $w $pane %x %y down]]
+ bind $e.c <Motion> [namespace code [list drawSectMarks $w $pane %x %y in]]
+ bind $e.c <Leave>  [namespace code [list drawSectMarks $w $pane %x %y out]]
+ bind $e <Destroy> [namespace code [list set v(drawSection) 0]]
+ bind $pane <FocusIn> [namespace code [list raiseWindow $w $pane section]]
+
+ if {[string match macintosh $::tcl_platform(platform)] || \
+	 [string match Darwin $::tcl_platform(os)]} {
+  bind $e.c <Control-ButtonPress-1> \
+      [namespace code [list popupMenu $e %X %Y $w]]
+ } else {
+  bind $e.c <ButtonPress-3> \
+      [namespace code [list popupMenu $e %X %Y $w]]
+ }
+ $e.f.lab config -text "Use popup menu to copy data values"
+}
+
+proc analysis::openBlowUpWindow {w pane} {
+ upvar [namespace current]::${pane}::var v
+ regsub -all {\.} $w _ widgetPath
+ catch {destroy .blowup}
+ set e [toplevel .blowup -width $v(blowupwinw) \
+     -height $v(blowupwinh)]
+ wm geometry .blowup +$v(blowupwinx)+$v(blowupwiny)
+ wm title $e "Waveform Blow-up: [file tail [$w getInfo fileName]]"
+ if {$::tcl_platform(platform) == "windows"} {
+  wm attributes $e -topmost 1
+ }
+ set v(blowUpParent) $w
+ pack [label $e.l -text "Adjust selection with arrow-keys"] \
+     -fill x
+
+ pack [canvas $e.c -height 100] -expand 1 -fill both
+
+ pack [frame $e.f] -anchor w -fill x
+ label $e.f.l -text [::util::mc "Time window:"] -anchor w
+ entry $e.f.e \
+     -textvar [namespace current]::${pane}::var(blowuptimewin) -wi 10
+ label $e.f.l2 -text "s" -anchor w
+ pack $e.f.l $e.f.e $e.f.l2 -side left -fill x -expand true
+ pack propagate $e 0
+ set snd [$w cget -sound]
+ set t [$pane cget -cursorpos]
+ if {$t == ""} { set t 0.0 }
+ $e.c create waveform 0 0 -height 200 -width 300 -sound $snd \
+    -start [expr {int([$snd cget -rate]*($t-$v(blowuptimewin)))}] \
+    -end [expr {int([$snd cget -rate]*($t+$v(blowuptimewin)))}] \
+    -tags waveform -channel $v(channel)
+ $e.c create line 150 0 150 200 -fill [$w cget -cursorcolor] -tags cursor
+ bind .[lindex [split $w .] 1] <Key-Right> [namespace code [list adjustSelection $w $pane 1.0]]
+ bind .[lindex [split $w .] 1] <Key-Left> [namespace code [list adjustSelection $w $pane -1.0]]
+ bind $e.c <Configure> [namespace code [list adjustSelection $w $pane 0.0]]
+ bind $pane <FocusIn> [namespace code [list raiseWindow $w $pane blowup]]
+ set v(boundary) right
+}
+
+proc analysis::adjustSelection {w pane dir} {
+  upvar [namespace current]::${pane}::var v
+  if {[info exists v(blowUpParent)] == 0} return
+  if {[string match $v(blowUpParent) [wsurf::GetCurrent]] == 0} return
+  foreach {left right} [$w cget -selection] {}
+  set s [$w cget -sound]
+  if {$v(boundary) == "right"} {
+    set right [expr {$right+$dir/[$s cget -rate]}]
+    set t $right
+  } else {
+    set left [expr {$left+$dir/[$s cget -rate]}]
+    set t $left
+  }
+  $w configure -selection [list $left $right] 
+  regsub -all {\.} $w _ widgetPath
+
+  if {[winfo exists .blowup]} {
+    set geom [lindex [split [wm geometry .blowup] +] 0]
+    set v(blowupwinw) [lindex [split $geom x] 0]
+    set v(blowupwinh) [lindex [split $geom x] 1]
+    set v(blowupwinx) [lindex [split [wm geometry .blowup] +] 1]
+    set v(blowupwiny) [lindex [split [wm geometry .blowup] +] 2]
+    set width [winfo width .blowup.c]
+    set height [winfo height .blowup.c]
+    .blowup.c itemconfigure waveform \
+      -start [expr {int([$s cget -rate]*($t-$v(blowuptimewin)))}] \
+	-end [expr {int([$s cget -rate]*($t+$v(blowuptimewin)))}] \
+	-width $width \
+	-height [winfo height .blowup.c]
+    .blowup.c coords cursor [expr {$width/2}] 0 [expr {$width/2}] $height
+  }
+}
+
+proc analysis::setVar {w pane v1 v2 args} {
+ upvar [namespace current]::${pane}::var v
+ set v($v1) [expr int($v($v2))]
+}
+
+proc analysis::raiseWindow {w pane window} {
+  upvar [namespace current]::${pane}::var v
+
+  if {[string match "Darwin" $::tcl_platform(os)]} return
+   if {[string compare $window section] == 0} {
+    regsub -all {\.} $pane _ widgetPath
+    if {[winfo exists .sect$widgetPath]} {
+      raise .sect$widgetPath [winfo toplevel $w]
+    }
+  }
+  if {[string compare $window blowup] == 0} {
+    if {[winfo exists .blowup]} {
+      raise .blowup [winfo toplevel $w]
+    }
+  }
+}
+
+proc analysis::lockSection {w pane widget} {
+ upvar [namespace current]::${pane}::var v
+
+ regsub -all {\.} $pane _ widgetPath
+ set e .sect$widgetPath
+
+ set v(snapo) ""
+
+ if {$widget == ""} {
+  $e.c delete sectsnap
+ } else {
+  set snd [$widget cget -sound] 
+  foreach {left right} [$widget cget -selection] break
+  set start [expr {int($left*[$snd cget -rate])}]
+  if {$v(sall) && [string compare FFT $v(satype)] == 0} {
+    set end [expr {int($right*[$snd cget -rate])}]
+    set end [util::min $end [expr {[$snd length]-1}]]
+  } else {
+    set end [expr {int($left*[$snd cget -rate])}]
+  }
+  
+  $e.c create section 25 0 -sound $snd \
+    -height $v(secth)\
+    -width $v(sectw) -maxval [expr 10.0*$v(top)] \
+    -minval [expr 10.0*$v(bot)] \
+    -start $start -end $end \
+    -tags sectsnap \
+    -fftlen $v(sfftlen) \
+    -winlen $v(sfftlen) \
+    -windowtype $v(swintype) \
+    -analysistype $v(satype) \
+    -lpcorder $v(slpcorder) \
+    -channel $v(channel) -fill red \
+    -topfr $v(topfr2) \
+    -preemph $v(spreemph)
+ } 
+}
+
+proc analysis::exportSpectrum {w pane} {
+ upvar [namespace current]::${pane}::var v
+ set snd [$w cget -sound]
+ set ps [$snd dBPowerSpectrum -start $v(start) \
+	 -end $v(end) -fftlen $v(sfftlen) \
+	 -windowlen $v(sfftlen) -channel $v(channel) \
+	 -windowtype $v(swintype) \
+	 -analysistype $v(satype) \
+	 -lpcorder $v(slpcorder) \
+	 -preemph $v(spreemph)]
+
+ set file [tk_getSaveFile -title "Export Spectral Data" -initialfile spectrum.txt]
+ if {$file == ""} return
+ if {[catch {open $file w} out]} {
+  return $out
+ } else {
+  set df [expr {double([$snd cget -rate]) / $v(sfftlen)}]
+  set freq [expr {$df / 2.0}]
+  if {$v(sexphead)} {
+   puts $out "File: [$w getInfo fileName]"
+   puts $out "Analysis type: $v(satype)"
+   if [string match LPC $v(satype)] {
+    puts $out "Analysis order: $v(slpcorder)"
+   }
+   puts $out "Window type: $v(swintype)"
+   puts $out "Window length: $v(sfftlen) points"
+   puts $out "Channel: $v(channel)"
+   puts $out "Pre-emphasis: $v(spreemph)"
+   puts $out "Range: $v(start)-$v(end)"
+   puts $out "--- End of header ---"
+  }
+  foreach e $ps {
+      puts $out [format "%f\t%f" $freq $e]
+      set freq [expr {$freq + $df}]
+  }
+  close $out
+ }
+}
+
+proc analysis::drawSectCursor {w pane x y flag} {
+ upvar [namespace current]::${pane}::var v
+
+ if {[string match up $flag]} {
+  set v(rx) $x
+  set v(ry) $y
+  set c $v(sectTopLevel).c
+  $c coords relmark 0 0 0 0
+  $c coords df -10 -10
+  $c coords db -10 -10
+ } else {
+  set v(rx) -1 
+ }
+}
+
+proc analysis::drawSect {w pane} {
+ upvar [namespace current]::${pane}::var v
+
+ if {$v(drawSection) == 0} return
+
+ set snd [$w cget -sound]
+ set e $v(sectTopLevel)
+
+ if {[winfo exists $e]} {
+  set geom [lindex [split [wm geometry $e] +] 0]
+  set v(sectwinw) [lindex [split $geom x] 0]
+  set v(sectwinh) [lindex [split $geom x] 1]
+  set v(sectwinx) [lindex [split [wm geometry $e] +] 1]
+  set v(sectwiny) [lindex [split [wm geometry $e] +] 2]
+  set v(sectw) [expr {[winfo width $e.c] - 25}]
+  set v(secth) [expr {[winfo height $e.c] - 20}]
+  set v(sectcw) [winfo width $e.c]
+  set v(sectch) [winfo height $e.c]
+
+  if {[$w getInfo isPlaying]} { 
+    set left  [$pane cget -cursorpos]
+    set right [$pane cget -cursorpos]
+  } else {
+    foreach {left right} [$w cget -selection] break
+  }
+  if {$left == ""} return
+  set v(start) [expr {int($left*[$snd cget -rate])}]
+  if {$v(sall) && [string compare FFT $v(satype)] == 0} {
+    set v(end) [expr {int($right*[$snd cget -rate])}]
+    set v(end) [util::min $v(end) \
+	[expr {[$snd length]-1}]]
+  } else {
+    set v(end) [expr {int($left*[$snd cget -rate])}]
+  }
+  $e.c delete sect
+  catch {set v(top) [expr int(($v(sref) + \
+    $v(srange)) / 10.0)]}
+  catch {set v(bot) [expr int($v(sref) / 10.0 )]}
+  if {[string is double $v(spreemph)] == 0 || $v(spreemph) == ""} {
+   set v(spreemph) 0.0
+  }
+  $e.c create section 25 0 -sound $snd -height $v(secth) \
+    -width $v(sectw) -maxval [expr 10.0*$v(top)] \
+    -minval [expr 10.0*$v(bot)] \
+    -start $v(start) -end $v(end) \
+    -tags sect -fftlen $v(sfftlen) \
+    -winlen $v(sfftlen) \
+    -windowtype $v(swintype) \
+    -analysistype $v(satype) \
+    -lpcorder $v(slpcorder) \
+    -channel $v(channel) -frame 1 \
+    -topfr $v(topfr2) \
+    -preemph $v(spreemph)
+  $e.c create text -10 -10 -text df: -font [$pane cget -yaxisfont] \
+     -tags df -fill blue
+  $e.c create text -10 -10 -text "0 db" -font [$pane cget -yaxisfont] \
+    -tags db -fill red
+  set pps [expr {int(double($v(sectw))/($v(topfr2)/1000.0) + .5)}]
+  snack::timeAxis $e.c 25 $v(secth) \
+    $v(sectw) 20 $pps -tags sect \
+    -font [$pane cget -yaxisfont]
+  
+  for {set i $v(top)} {$i > $v(bot)} {incr i -1} {
+   set lab [expr 10 * $i]
+   $e.c create text 0 [expr ($i - $v(top)) * $v(secth)/($v(bot) - $v(top))] \
+     -text $lab  -tags sect -font [$pane cget -yaxisfont] -anchor w
+   
+  }
+  $e.c create text 2 2 -text dB -font [$pane cget -yaxisfont] \
+    -tags sect -anchor nw
+  
+  $e.c create text [expr {$v(sectw)+25}] [expr {$v(secth)+20}] \
+    -text kHz -font [$pane cget -yaxisfont] -tags sect -anchor se
+  
+  regsub -all {\.} $pane _ widgetPath
+  if [winfo exists .sect$widgetPath] {
+   if {$v(satype) != "LPC"} {
+    .sect$widgetPath.f1.e configure -state disabled
+    if {$::useTile == 0} {
+     .sect$widgetPath.f1.s configure -state disabled
+    }
+   } else {
+    .sect$widgetPath.f1.e configure -state normal
+    if {$::useTile == 0} {
+     .sect$widgetPath.f1.s configure -state normal
+    }
+   }
+  }
+ }
+}
+
+proc analysis::drawSectMarks {w pane x y flag} {
+ upvar [namespace current]::${pane}::var v
+
+ set snd [$w cget -sound]
+ set e $v(sectTopLevel)
+
+ if {[string match in $flag]} {
+  if {[$e.c find withtag sm] == ""} {
+   if {$::tcl_platform(platform) == "windows"} {
+    $e.c create line 0 0 0 $v(sectch) -width 1 -tags [list sx sm]
+    $e.c create line 0 0 $v(sectcw) 0 -width 1 -tags [list sy sm]
+    $e.c create line 0 0 0 0 -width 1 -tags [list relmark]
+   } else {
+    $e.c create line 0 0 0 $v(sectch) -width 1 -stipple gray50 -tags [list sx sm]
+    $e.c create line 0 0 $v(sectcw) 0 -width 1 -stipple gray50 -tags [list sy sm]
+    $e.c create line 0 0 0 0 -width 1 -stipple gray50 -tags [list relmark relmarkux] -arrow both
+   }
+  }
+
+  if {$x != "f"} {
+   set xc [$e.c canvasx $x]
+   set yc [$e.c canvasx $y]
+  } else {
+   set xc [expr {25+int($v(sectw) * $y / $v(topfr2))}]
+   set yc [lindex [$e.c coords sy] 1]
+  }
+  set f [expr {int($v(topfr2) * ($xc-25) / $v(sectw))}]
+  if {$f < 0} { set f 0 }
+  if {$v(start) == -1 || [$snd length] == 0 || \
+    $v(start) >= [$snd length] - $v(sfftlen)} return
+  set fft [$snd dBPowerSpectrum -start $v(start) \
+	  -end $v(end) -windowlength $v(sfftlen) \
+	  -fftlen $v(sfftlen) \
+	  -windowtype $v(swintype) \
+	  -analysistype $v(satype) \
+	  -lpcorder $v(slpcorder) \
+	  -preemph $v(spreemph) \
+	  -channel $v(channel)]
+  set index [expr {int($v(sfftlen)*(double($f)/[$snd cget -rate]))}]
+  set db [lindex $fft $index]
+  if {$db == ""} return
+  set dbyc [expr {($db-10.0*$v(top))*$v(secth) \
+      / (10.0 * ($v(bot) - $v(top)))}]
+
+  $e.c coords sx $xc 0 $xc $v(sectch)
+  $e.c coords sy 0 $dbyc $v(sectcw) $dbyc
+
+  set db [format "%.1f" $db]
+
+  if {$v(rx) != -1} {
+   set rx [$e.c canvasx $v(rx)]
+   set ry [$e.c canvasy $v(ry)]
+   $e.c coords relmark $rx $ry $xc $yc
+   $e.c coords df [expr {$rx + ($xc-$rx)/2}] $ry
+   $e.c coords db $rx [expr {$ry + ($yc-$ry)/2}]
+     
+   set df [expr {abs(int($v(topfr2) * ($rx - $xc)/ $v(sectw)))}]
+   $e.c itemconfigure df -text "df: $df" 
+   set ddb [format "%.1f" [expr {-double($v(srange)) \
+	   * ($ry - $yc) / $v(secth)}]]
+   $e.c itemconfigure db -text "db: $ddb" 
+  }
+  $e.f.lab config -text "Frequency: $f Hz, amplitude: $db dB"
+ } else {
+  $e.c coords sx -1 -1 -1 -1
+  $e.c coords sy -1 -1 -1 -1
+ }
+}
+
+proc analysis::popupMenu {e X Y w} {
+ set m $e.popup
+ if {[winfo exists $m]} {destroy $m}
+ menu $m -tearoff 0
+ set text [$e.f.lab cget -text]
+ foreach {left right} [$w cget -selection] break
+ append text ", time: $left s\n"
+ $m add command -label [::util::mc "Append point"] \
+     -command [list clipboard append $text]
+ $m add command -label [::util::mc "Clear points"] \
+     -command [list clipboard clear]
+ 
+ # post the menu
+
+ if {[string match macintosh $::tcl_platform(platform)]} {
+  tk_popup $e.popup $X $Y 0
+ } else {
+  tk_popup $e.popup $X $Y
+ }
+}

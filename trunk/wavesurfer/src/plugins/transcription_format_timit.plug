@@ -1,0 +1,113 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin transcription_format_timit \
+    -description "TIMIT transcription format handler\
+    used by the transcription plug-in."
+
+# -----------------------------------------------------------------------------
+
+namespace eval trans {
+  lappend Info(formats) TIMIT \
+      transcription_format_timit::load \
+      transcription_format_timit::save \
+      transcription_format_timit::test
+} 
+
+# -----------------------------------------------------------------------------
+
+namespace eval transcription_format_timit {
+}
+
+proc transcription_format_timit::load {w pane} {
+  upvar ::wsurf::trans::${pane}::var v
+
+  set map {}
+  set i 0
+  set header ""
+  set rate [[$w cget -sound] cget -rate]
+  set end 0
+
+  if {[catch {open $v(fileName)} in]} {
+    return $in
+  } else {
+    if {[info command encoding] != ""} {
+      fconfigure $in -encoding $v(encoding)
+    }
+    if {[catch {set labelfile [read $in]}]} { return 0 }
+    close $in
+
+    # Format decoding loop
+
+    foreach row [split $labelfile \n] {
+      set rest ""
+      if {[scan $row {%d %d %s %s} start end label rest] >= 3} {
+	set end [expr {$end/double($rate)}]
+	set v(t1,$i,end)   $end
+	set v(t1,$i,label) $label
+	set v(t1,$i,rest)  $rest
+	lappend map $i
+	if {$i == 0} {
+	  set start [expr {$start/double($rate)}]
+	  set v(t1,start) $start
+	}
+	incr i
+      }
+    }
+  }
+  set v(t1,end)  $end
+  set v(nLabels) $i
+  set v(map)     $map
+  set v(header)  $header
+  set v(headerFmt) TIMIT
+}
+
+proc transcription_format_timit::save {w pane} {
+  upvar ::wsurf::trans::${pane}::var v
+
+  set rate [[$w cget -sound] cget -rate]
+
+  if {[catch {open $v(fileName) w} out]} {
+    return $out
+  } else {
+    if {[info command encoding] != ""} {
+      fconfigure $out -encoding $v(encoding)
+    }  
+    fconfigure $out -translation {auto lf}
+    set start [expr {int($v(t1,start)*double($rate)+.5)}]
+    for {set i 0} {$i < $v(nLabels)} {incr i} {
+      set ind [lindex $v(map) $i]
+      set end [expr {int($v(t1,$ind,end)*double($rate)+.5)}]
+      set label $v(t1,$ind,label)
+      set rest  $v(t1,$ind,rest)
+      if {$rest != ""} {
+	puts $out "$start $end $label $rest"
+      } else {
+	puts $out "$start $end $label"
+      }
+      set start $end
+    }
+    close $out
+  }
+  set v(headerFmt) TIMIT
+
+  $w messageProc \
+      "Wrote $v(fileName) in $v(headerFmt) format"
+  return
+}
+
+proc transcription_format_timit::test {w pane rows} {
+ set lastrow [lindex $rows end]
+ if {[regexp {^\s*(\d+)\s+(\d+)\s+\S+} $lastrow a b c] == 1} {
+  if {[info exists c] && $c <= 3500000} {
+   return TIMIT
+  }
+ }
+}

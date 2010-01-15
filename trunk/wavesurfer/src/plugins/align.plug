@@ -1,0 +1,232 @@
+# -*-Mode:Tcl-*-
+
+wsurf::RegisterPlugin align \
+  -description "Plot recognition scores" \
+  -url "http://www.speech.kth.se/wavesurfer" \
+  -addmenuentriesproc   align::addMenuEntries \
+  -propertiespageproc   align::propertyPane \
+  -applypropertiesproc  align::applyProperties \
+  -widgetcreatedproc    align::widgetCreated \
+  -getconfigurationproc align::getConfiguration
+
+# -----------------------------------------------------------------------------
+
+namespace eval align {
+ variable Info
+} 
+
+# ----------------------------------------------------------------------------
+
+
+proc align::align {w pane} {
+ variable Info
+
+ set dir [pwd]
+ if {$::tcl_platform(platform) == "windows"} {
+#  cd C:/
+ } else {
+  cd /afs/md.kth.se/tmh/home/speech/kare/snack/
+ }
+ set fn [$w getInfo fileName]
+ set root [file root $fn]
+
+ if {$::tcl_platform(platform) == "windows"} {
+  file copy align.lab2 align.lab
+  file copy align.ord2 align.ord
+  file copy align.tag2 align.tag
+#  if {[catch {exec wish84 align.tcl -words 1 -phones 1 -coart 1 $fn} res]} {
+#   $w messageProc $res
+#  }
+ } else {
+  if {[catch {exec align.tcl -words 1 -phones 1 -coart 1 $fn} res]} {
+   $w messageProc $res
+  }
+ }
+
+ set pane [lindex [$w _getPanes] end-2]
+ ::wsurf::trans::openTranscriptionFile $w $pane $root.lab labelfile
+ $w _redrawPane $pane
+ set pane [lindex [$w _getPanes] end-1]
+ ::wsurf::trans::openTranscriptionFile $w $pane $root.ord labelfile
+ $w _redrawPane $pane
+ set pane [lindex [$w _getPanes] end]
+ ::wsurf::trans::openTranscriptionFile $w $pane $root.tag labelfile
+ $w _redrawPane $pane
+
+
+ cd $dir
+}
+proc align::doAlign {w} {
+ variable Info
+
+ set dir [pwd]
+ cd /afs/md.kth.se/tmh/home/speech/kare/snack/
+
+ set text [$w.workspace.f.e get]
+ set f [open tmp.txt w]
+ puts $f $text
+ close $f
+
+ set s [$w cget -sound]
+ $s write tmp.wav
+
+ if {[catch {exec align.tcl -words 1 -phones 1 -coart 1 tmp.wav} res]} {
+  $w messageProc $res
+ }
+
+ set pane [lindex [$w _getPanes] end-1]
+ ::wsurf::trans::openTranscriptionFile $w $pane tmp.lab labelfile
+ $w _redrawPane $pane
+ set pane [lindex [$w _getPanes] end]
+ ::wsurf::trans::openTranscriptionFile $w $pane tmp.ord labelfile
+ $w _redrawPane $pane
+
+ file delete tmp.wav tmp.ord tmp.lab
+
+ cd $dir
+}
+
+proc align::widgetCreated {w} {
+ variable Info
+ set Info($w,align) 0
+}
+
+proc align::addMenuEntries {w pane m hook x y} {
+ variable Info
+ if {[string match query $hook]} {
+  return 0
+ }
+ if {[string length $hook] == 0} {
+  $m add command -label "Align" \
+      -command [namespace code [list align $w $pane]]
+ } elseif {[string match create $hook]} {
+#  $m.$hook add command -label "Align" \
+   -command [namespace code [list addAlign $w $pane]]
+#  $m.$hook add command -label "PhoneRec" \
+   -command [namespace code [list createPhoneRec $w $pane]]
+ }
+}
+
+proc align::createPhoneRec {w pane} {
+ set pane [$w addPane -before $pane -height 20 -closeenough 3 \
+	       -minheight 20 -maxheight 20]
+ addPhoneRec $w $pane
+}
+
+proc align::addPhoneRec {w pane} {
+ ::wsurf::trans::addTranscription $w $pane
+
+ set dir [pwd]
+ cd /afs/md.kth.se/tmh/home/speech/kare/snack/
+ set s [$w cget -sound]
+ $s write tmp.wav
+ if {[catch {exec nalign.tcl -phonerec 1 tmp.wav} res]} {
+  $w messageProc $res
+ }
+
+ ::wsurf::trans::openTranscriptionFile $w $pane tmp.lab labelfile
+ $w _redrawPane $pane
+
+ file delete tmp.wav tmp.lab
+
+ cd $dir
+}
+
+proc align::addAlign {w pane} {
+ variable Info
+ set Info($w,align) 1
+ set root [$w getInfo workspace]
+ destroy $root.f
+ pack [frame $root.f] -expand 1 -fill x
+ pack [entry $root.f.e] -expand 1 -fill x -side left
+ $root.f.e insert end "den är naturligtvis tröttande och slitsam och"
+ bind $root.f.e <Key-Return> [namespace code [list doAlign $w]]
+ bind $root.f.e <space> "$w.workspace.f.e insert insert { };break"
+ pack [button $root.f.b -text Align \
+   -command [namespace code [list doAlign $w]]] -side left
+}
+
+proc align::openSeg {w pane} {
+ variable Info
+ set tl .segm
+ if {[winfo exists $tl]} return
+ toplevel $tl
+ pack [frame $tl.bf] -side bottom
+ pack [button $tl.bf.bt -text Tag -command [namespace code [list doTag $w $tl.f.t]]] -side left
+ pack [button $tl.bf.bs -text Save -command [namespace code [list doSave $w $tl.f.t]]] -side left
+
+ pack [frame $tl.f] -expand 1 -fill both
+ pack [scrollbar $tl.f.sb -orient vert \
+	   -command [list $tl.f.t yview]] -side right -fill y
+ pack [text $tl.f.t -height 12 -wrap word \
+	   -yscrollcommand [list $tl.f.sb set]] -side right \
+     -expand true -fill both
+
+ set fn [file root [$w getInfo fileName]]
+ set f [open $fn.txt]
+ set text [read -nonewline $f]
+ close $f
+ $tl.f.t insert 0.0 $text
+}
+
+proc align::doTag {w t} {
+ foreach {left right} [$w cget -selection] break
+ $t insert insert "<fixpoint:[format "%.2f" $left]>"
+}
+
+proc align::doSave {w t} {
+ set fn [file root [$w getInfo fileName]]
+ set f [open $fn.txt w]
+ puts -nonewline $f [$t get 0.0 end]
+ close $f
+}
+
+proc align::propertyPane {w pane} {
+ variable Info
+ if {$pane==""} return
+
+ if {$Info($w,align)} {
+  return [list "Align" [namespace code drawAlignPage]]
+ }
+}
+
+proc align::applyProperties {w pane} {
+ variable Info
+
+ if [info exists Info($w,align)] {
+  if {$Info($w,align)} {
+   foreach var [list] {
+    if {[string compare $Info($w,$pane,t,$var) $Info($w,$pane,$var)] != 0} {
+     set Info($w,$pane,$var) $Info($w,$pane,t,$var)
+     set doRedraw 1
+    }
+   }
+   if [info exists doRedraw] {
+    $w _redrawPane $pane
+   }
+  }
+ }
+}
+
+proc align::drawAlignPage {w pane p} {
+ variable Info
+
+ foreach f [winfo children $p] {
+  destroy $f
+ }
+
+}
+
+proc align::getConfiguration {w pane} {
+ variable Info
+
+ set result {}
+ if {$pane==""} return {}
+ 
+ if {$Info($w,align) && $pane == [lindex [$w _getPanes] 0]} {
+
+  append result "\$widget align::addAlign \$pane \
+	  " "\n"
+ }
+ return $result
+}

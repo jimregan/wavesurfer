@@ -1,0 +1,167 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin transcription_format_waves \
+    -description "ESPS/Waves+ transcription format handler\
+    used by the transcription plug-in."
+
+# -----------------------------------------------------------------------------
+
+namespace eval trans {
+  lappend Info(formats) WAVES \
+      transcription_format_waves::load \
+      transcription_format_waves::save \
+      transcription_format_waves::test
+} 
+
+# -----------------------------------------------------------------------------
+
+namespace eval transcription_format_waves {
+}
+
+proc transcription_format_waves::sortCmd {a b} {
+ expr [string trimleft $a tmpend,] > [string trimleft $b tmpend,]
+}
+
+proc transcription_format_waves::load {w pane} {
+  upvar ::wsurf::trans::${pane}::var v
+
+  set map {}
+  set i 0
+  set header ""
+  set rate [[$w cget -sound] cget -rate]
+  set end 0
+
+  # If the sound file is in ESPS format, subtract start_time from each boundary
+
+  if {[string match SD [[$w cget -sound] cget -fileformat]]} {
+    set offset [[$w cget -sound] config -start_time]
+  } else {
+    set offset 0.0
+  }
+
+  if {[catch {open $v(fileName)} in]} {
+    return $in
+  } else {
+    if {[info command encoding] != ""} {
+      fconfigure $in -encoding $v(encoding)
+    }
+    if {[catch {set labelfile [read $in]}]} { return 0 }
+    close $in
+
+    # Format decoding loop
+
+    set getHead 1
+    foreach row [split $labelfile \n] {
+      if {$getHead == 1} {
+	set header [lappend header $row]
+	if {[string match "#" $row]} { set getHead 0 }
+	continue
+      }
+      set rest ""
+      if {[regexp -nocase -expanded -line -- \
+	       {\s*([\d\.\+\-Ee]*)\s+([-\d]*)\s+([^;]*)(.*)} $row \
+	  all end color label rest]} {
+	set end [expr {$end - $offset}]
+	set v(tmp,$i,end)   $end
+	set v(tmp,$i,label) $label
+	set v(tmp,$i,color) $color
+	set v(tmp,$i,rest)  $rest
+        set v(tmpend,$end)   $i
+	incr i
+      }
+    }
+  }
+ set i 0
+ foreach e [lsort -command [namespace code sortCmd] [array names v tmpend,*]] {
+  set index  $v(tmpend,[lindex [split $e ,] end])
+  set v(t1,$i,end)   $v(tmp,$index,end)
+  set end            $v(tmp,$index,end)
+  set v(t1,$i,label) $v(tmp,$index,label)
+  set v(t1,$i,color) $v(tmp,$index,color)
+  set v(t1,$i,rest)  $v(tmp,$index,rest)
+  lappend map $i
+  incr i
+ }
+ array unset v tmp,*
+ array unset v tmpend,*
+  if {$i == 0} { set header "" }
+  set v(t1,end)    $end
+  set v(t1,start)  0.0
+  set v(nLabels)   $i
+  set v(map)       $map
+  set v(header)    $header
+  set v(headerFmt) WAVES
+}
+
+proc transcription_format_waves::save {w pane} {
+  upvar ::wsurf::trans::${pane}::var v
+
+  # If the sound file is in ESPS format, add start_time to each boundary
+
+  if {[string match SD [[$w cget -sound] cget -fileformat]]} {
+    set offset [[$w cget -sound] config -start_time]
+  } else {
+    set offset 0.0
+  }
+  
+  if {[catch {open $v(fileName) w} out]} {
+    return $out
+  } else {
+    if {[info command encoding] != ""} {
+      fconfigure $out -encoding $v(encoding)
+    }
+    fconfigure $out -translation {auto lf}
+    if {[string compare $v(format) $v(headerFmt)] == 0
+    && $v(header) != ""} {
+      puts $out [join $v(header) \n]
+    } else {
+      set name [file tail [file rootname $v(fileName)]]
+      set date [clock format [clock seconds] -format "%a %b %d %H:%M:%S %Y"]
+      puts $out "signal $name"
+      puts $out "type 0\ncolor 121"
+      puts $out "comment created using WaveSurfer $date"
+      puts $out "font -misc-*-bold-*-*-*-15-*-*-*-*-*-*-*"
+      puts $out "separator ;\nnfields 1\n#"
+    }
+    for {set i 0} {$i < $v(nLabels)} {incr i} {
+      set ind [lindex $v(map) $i]
+      set end [expr {$v(t1,$ind,end) + $offset}]
+      set label $v(t1,$ind,label)
+      if {[info exists v(t1,$ind,color)]} {
+	set color $v(t1,$ind,color)
+      } else {
+	set color 121
+      }
+      if {[info exists v(t1,$ind,rest)] && $v(t1,$ind,rest) != ""} {
+	set rest $v(t1,$ind,rest)
+        set end [format "    %.6f " $end]
+        puts $out "$end $color $label $rest"
+      } else {
+        set end [format "    %.6f " $end]
+        puts $out "$end $color $label"
+      }
+    }
+    close $out
+  }
+  set v(headerFmt) WAVES
+
+  $w messageProc \
+      "Wrote $v(fileName) in $v(headerFmt) format"
+  return
+}
+
+proc transcription_format_waves::test {w pane rows} {
+ for {set i 0} {$i < [llength $rows]} {incr i} {
+  if {[string equal "\#" [lindex $rows $i]]} {
+   return WAVES
+  }
+ }
+}

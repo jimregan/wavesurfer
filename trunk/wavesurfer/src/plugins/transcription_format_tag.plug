@@ -1,0 +1,99 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2002-2003 Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin transcription_format_tag \
+    -description "Format handler for tagged text files."
+
+# -----------------------------------------------------------------------------
+
+namespace eval trans {
+  lappend Info(formats) TaggedText \
+      transcription_format_tag::load \
+      transcription_format_tag::save \
+      transcription_format_tag::test
+} 
+
+# -----------------------------------------------------------------------------
+
+namespace eval transcription_format_tag {
+}
+
+proc transcription_format_tag::load {w pane} {
+ upvar ::wsurf::trans::${pane}::var v
+ 
+ set map {}
+ set i 0
+ set end 0
+ 
+ if {[catch {open $v(fileName)} in]} {
+  return $in
+ } else {
+  if {[info command encoding] != ""} {
+   fconfigure $in -encoding $v(encoding)
+  }
+  if {[catch {set text [read -nonewline $in]}]} { return 0 }
+  close $in
+  
+  # Format decoding loop
+  set textPos 0
+  set lastPos -1
+  set lastEnd 0.0
+  while {1} {
+   regexp -indices -start $textPos {\">}   $text ind1
+   regexp -indices -start $textPos {</time>} $text ind2
+   
+   set chunkStart [expr [lindex $ind1 1] + 1]
+   set chunkEnd   [expr [lindex $ind2 0] - 1]
+
+   regexp -start $textPos {<time begin..([\d.xy]+). end..([\d.xy]+).>} \
+       $text d sta end
+   set textPos [expr [lindex $ind2 1] + 1]
+   if {$lastPos == $textPos} break
+
+   if {$sta == "x.y"} {
+    set sta $lastEnd
+    set end $lastEnd
+   }
+   if {$i > 0 && $lastEnd < $sta} {
+    set v(t1,$i,end)   $sta
+    set v(t1,$i,label) ">void<"
+    set v(t1,$i,rest)  ""
+    lappend map $i
+    incr i
+   }
+   set v(t1,$i,end)   $end
+   set v(t1,$i,label) [string map {\n " "} [string range $text $chunkStart $chunkEnd]]
+   set v(t1,$i,rest)  ""
+   lappend map $i
+   if {$i == 0} {
+    set v(t1,start) $sta
+   }
+   incr i
+   set lastPos $textPos
+   set lastEnd $end
+  }
+  set v(t1,end)  $end
+  set v(nLabels) $i
+  set v(map)     $map
+  set v(header)  ""
+  set v(headerFmt) TaggedText
+ }
+}
+
+proc transcription_format_tag::save {w pane} {
+}
+
+proc transcription_format_tag::test {w pane rows} {
+ for {set i 0} {$i < [llength $rows]} {incr i} {
+  if {[string match "<time begin*" [lindex $rows $i]]} {
+   return TaggedText
+  }
+ }
+}

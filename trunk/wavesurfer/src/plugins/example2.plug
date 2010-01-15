@@ -1,0 +1,314 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#
+# This is a sample plugin showing how to use the WaveSurfer plugin API.
+# It certainly does not claim to compute voiced segments, only to be used
+# as a source code example. Put this file in ~/.wavesurfer/1.8/plugins/
+#
+# -----------------------------------------------------------------------------
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+# -----------------------------------------------------------------------------
+
+# Register plug-in with the callbacks we want to use.
+
+wsurf::RegisterPlugin example2 \
+    -description "Example plug-in no 2, marks voiced speech segments" \
+    -addmenuentriesproc   example2::addMenuEntries \
+    -panecreatedproc      example2::paneCreated \
+    -panedeletedproc      example2::paneDeleted \
+    -redrawproc           example2::redraw \
+    -getboundsproc        example2::getBounds \
+    -cursormovedproc      example2::cursorMoved \
+    -propertiespageproc   example2::propertyPane \
+    -applypropertiesproc  example2::applyProperties \
+    -getconfigurationproc example2::getConfiguration \
+    -soundchangedproc     example2::soundChanged
+
+
+# -----------------------------------------------------------------------------
+# Create own namespace in which to keep all procedures and variables, global,
+# widget-specific, or pane-specific.
+
+namespace eval example2 {
+ variable Info
+
+ set Info(OptionTable) [list \
+			    -voicedcolor   onColor  red \
+			    -unvoicedcolor offColor green \
+			   ]
+} 
+
+
+# -----------------------------------------------------------------------------
+# Add the entry "Example 2" to the "Create Pane" popup-menu,
+# with the command example2::createExample2
+
+proc example2::addMenuEntries {w pane m hook x y} {
+  if {[string match create $hook]} {
+    $m.$hook add command -label "Example 2" \
+	-command [namespace code [list createExample2 $w $pane]]
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called when a new pane is created.
+# Note that we don't know at this point what will be rendered in this pane,
+# so we assume that this plug-in won't handle this pane and keep track of
+# that information in a variable. 
+
+proc example2::paneCreated {w pane} {
+ namespace eval [namespace current]::${pane} {
+  variable var
+ }
+ upvar [namespace current]::${pane}::var v
+ set v(drawExample2) 0
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called when a pane is deleted, allowing
+# the plug-in to clean-up resources used for the pane.
+# The procedure deletes the pane's local namespace, which contains all
+# variables allocated for the pane.
+
+proc example2::paneDeleted {w pane} {
+  namespace delete [namespace current]::${pane}
+}
+
+
+# Create a new pane and add graphics to it showing voicing info
+
+proc example2::createExample2 {w pane} {
+  set pane [$w addPane -before $pane -height 20 -scrollheight 20 \
+      -unit "" -fillcolor lightyellow -framecolor blue]
+  addExample2Stuff $w $pane
+}
+
+
+# Compute and draw voicing info in a given pane.
+
+proc example2::addExample2Stuff {w pane args} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ foreach {option key default} $Info(OptionTable) {
+  set a($option) $default
+ }
+ array set a $args
+ foreach {option key default} $Info(OptionTable) {
+  set v($key) $a($option)
+ }
+ 
+ set v(pitchList) {}
+ 
+ _computeExample2 $w $pane
+ _drawExample2 $w $pane
+}
+
+
+# Compute voicing info in a given pane.
+
+proc example2::_computeExample2 {w pane} {
+  upvar [namespace current]::${pane}::var v
+ 
+  set snd [$w cget -sound]
+  $w messageProc "Calculating voiced segments..."
+  if {[catch {set v(pitchList) [$snd pitch \
+      -progress [$w cget -progressproc]]} ret]} {
+
+    # User probably aborted this computation (or an error occurred)
+    
+    if {$ret != ""} {
+      $w messageProc "$ret"
+      error "$ret"
+    }
+    set v(pitchList) {}
+  } else {
+    $w messageProc "Done calculating voiced segments"
+  }
+}
+
+
+# Draw voicing info in a given pane.
+
+proc example2::_drawExample2 {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  set c [$pane canvas]
+  set height [$pane cget -scrollheight]
+  $c delete example2
+  set i 0
+
+  # Frame interval is 10ms, get corresponding delta-x
+
+  set dx [$pane getCanvasX 0.01]
+
+  foreach val $v(pitchList) {
+    if {$val == 0.0} {
+      set color $v(offColor)
+    } else {
+      set color $v(onColor)
+    }
+    $c create rectangle [expr {$i * $dx}] 0 [expr {($i + 1) * $dx}] $height \
+	-fill $color -outline "" -tags [list example2]
+    incr i
+  }
+  $c lower example2
+  $c create text 0 0 -text "This is an example plugin" -anchor nw
+
+  # We have now rendered plug-in specific stuff in this pane.
+  # Remember that this plug-in will handle this pane from now on.
+
+  set v(drawExample2) 1
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the widget needs to redraw all panes.
+# For example, when the user zooms.
+
+proc example2::redraw {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  if {$v(drawExample2)} {
+    _drawExample2 $w $pane
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the widget needs to know the limits
+# of the information this plug-in shows in this particular pane.
+# Typically returns a list: start_time min_value end_time max_value
+
+proc example2::getBounds {w pane} {
+  upvar [namespace current]::${pane}::var v
+
+  if {$v(drawExample2)} {
+    set snd [$w cget -sound]
+    list 0 0 [$snd length -unit seconds] 0
+  } else {
+    list
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the cursor is moved within the widget.
+
+proc example2::cursorMoved {w pane time value} {
+  upvar [namespace current]::${pane}::var v
+
+  if {$v(drawExample2)} {
+    set i [expr {int($time*100 + .5)}]
+    set pitch [lindex $v(pitchList) $i]
+    if {$pitch == ""} return
+    if {$pitch != 0.0} {
+      set str "voiced segment"
+    } else {
+      set str "unvoiced segment"
+    }
+    $w messageProc [format "Example2 - %s %s" [$w formatTime $time] $str]
+  }
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the properties dialog is opened for
+# this pane. It adds the tab "Example2" and calls example2::drawExample2Page
+# to render the properties notebook-page.
+
+proc example2::propertyPane {w pane} {
+  upvar [namespace current]::${pane}::var v
+  
+  if {$pane==""} return
+  if {$v(drawExample2)} {
+    return [list "Example2" [namespace code drawExample2Page]]
+  }
+}
+
+
+# This procedure is called when the user clicks "OK" or "Apply" in the 
+# "Example2" notebook-page.
+
+proc example2::applyProperties {w pane} {
+  if {[string match *wavebar $pane]} return
+  upvar [namespace current]::${pane}::var v
+
+  if {[info exists v(drawExample2)]} {
+    if {$v(drawExample2)} {
+      foreach var [list onColor offColor] {
+	if {[string compare $v(t,$var) $v($var)] != 0} {
+	  set v($var) $v(t,$var)
+	  set doRedraw 1
+	}
+      }
+      if {[info exists doRedraw]} {
+	$w _redrawPane $pane
+      }
+    }
+  }
+}
+
+
+# This procedure draws the properties notebook-page for the "Example2" tab.
+
+proc example2::drawExample2Page {w pane p} {
+  upvar [namespace current]::${pane}::var v
+
+  foreach f [winfo children $p] {
+    destroy $f
+  }
+
+  foreach var [list onColor offColor] {
+    set v(t,$var) $v($var)
+  }
+
+ colorPropItem $p.f1 "Voiced segment color:" 23 \
+     [namespace current]::${pane}::var(t,onColor)
+ colorPropItem $p.f2 "Unvoiced segment color:" 23 \
+     [namespace current]::${pane}::var(t,offColor)
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure returns the code needed to re-create this pane.
+
+proc example2::getConfiguration {w pane} {
+ variable Info
+ upvar [namespace current]::${pane}::var v
+ 
+ set result {}
+ if {$pane != "" && $v(drawExample2)} {
+  append result "\$widget example2::addExample2Stuff \$pane"
+  
+  foreach {option key default} $Info(OptionTable) {
+   if {$v($key) != $default} {
+    append result " $option \"$v($key)\""
+   }
+  }
+ }
+ append result "\n"
+ 
+ return $result
+}
+
+
+# -----------------------------------------------------------------------------
+# This procedure is called whenever the sound of this widget has changed.
+# For example, after a record operation.
+
+proc example2::soundChanged {w flag} {
+ foreach pane [$w _getPanes] {
+  upvar [namespace current]::${pane}::var v
+  if {$v(drawExample2)} {
+   _computeExample2 $w $pane
+   _drawExample2 $w $pane
+  }
+ }
+}

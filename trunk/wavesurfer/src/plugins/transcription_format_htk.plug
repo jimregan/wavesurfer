@@ -1,0 +1,381 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin transcription_format_htk \
+    -description          "HTK transcription format handler\
+    used by the transcription plug-in. Note that there are special options\
+    available for handling HTK master label files. See the HTK pane in the\
+    properties dialog." \
+    -panecreatedproc      transcription_format_htk::paneCreated \
+    -panedeletedproc      transcription_format_htk::paneDeleted \
+    -propertiespageproc   transcription_format_htk::propertyPane \
+    -applypropertiesproc  transcription_format_htk::applyProperties \
+    -getconfigurationproc transcription_format_htk::getConfiguration \
+    -getoptproc           transcription_format_htk::getopt \
+    -before               transcription
+
+# -----------------------------------------------------------------------------
+
+namespace eval trans {
+ lappend Info(formats) HTK \
+     transcription_format_htk::load \
+     transcription_format_htk::save \
+     transcription_format_htk::test
+} 
+
+# -----------------------------------------------------------------------------
+
+namespace eval transcription_format_htk {
+ variable Info
+
+ set Info(mlfs) {}
+}
+
+proc transcription_format_htk::paneCreated {w pane} {
+ variable Info
+ namespace eval [namespace current]::${pane} {
+  variable var
+ }
+ upvar [namespace current]::${pane}::var v
+ 
+ set v(mlf) ""
+ set v(matchComponents) 1
+ set v(level) 1
+ set v(alternative) 1
+ set v(hideQuotes) 1
+ set v(hideTriphoneContext) 1
+}
+
+proc transcription_format_htk::paneDeleted {w pane} {
+ namespace delete [namespace current]::${pane}
+}
+
+proc transcription_format_htk::load {w pane} {
+ variable Info
+ upvar ::wsurf::trans::${pane}::var v
+ upvar [namespace current]::${pane}::var t
+
+ set map {}
+ set header ""
+ set labelfile ""
+ set end 0
+ 
+ if {$Info(mlfs) != ""} {
+  set paneNo -1
+  foreach pane [$w _getPanes] {
+   upvar ::wsurf::trans::${pane}::var u
+   if {$u(drawTranscription)} {
+    if {$u(format) == "HTK"} {
+     incr paneNo
+    }
+   }
+  }
+  if {[lindex $Info(mlfs) $paneNo] != ""} {
+   set t(mlf) [lindex $Info(mlfs) $paneNo]
+  }
+ }
+
+ # First try reading label file if it exists
+
+ if {[file readable $v(fileName)] && \
+	 [file isfile $v(fileName)]} {
+  if {[catch {open $v(fileName)} in]} {
+   return $in
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $in -encoding $v(encoding)
+   }      
+   if {[catch {set labelfile [read $in]}]} { return 0 }
+   close $in
+  }
+ } elseif {$t(mlf) != ""} {
+  
+  # Otherwise, if an MLF has been specified, search it
+  # If it seems to be a pipe proceed to open it, otherwise make sure it
+  # is a readable file
+  if {[string match {|*} $t(mlf)] == 0} {
+   if {!([file readable $t(mlf)] && \
+	     [file isfile $t(mlf)])} {
+    return
+   }
+  }
+  if {[catch {open $t(mlf)} in]} {
+   return $in
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $in -encoding $v(encoding)
+   }
+   gets $in head
+   if {[string match -nocase "#!MLF!#" $head] == 0} {
+    close $in
+    return "$t(mlf) is not a valid MLF file"
+   }
+   
+   if {$t(matchComponents) == 1} {
+    set fn *$v(fileName)
+   } else {
+    set fn [$w getInfo fileName]
+    set tmp [file split $fn]
+    if {$t(matchComponents) >= [llength $tmp]} {
+     set tmp [file join [file dirname $fn] $v(fileName)]
+    } else {
+     set idx [expr [llength $tmp] - $t(matchComponents)]
+     set tmp [eval file join [lrange $tmp $idx end-1] $v(fileName)]
+    }
+    set fn "*$tmp"
+   }
+   gets $in row
+   
+   while {[eof $in] == 0} {
+    set row [string trim $row " \t\""]
+    if {[string match [file join "." $fn] $row] \
+	    || [string match $fn $row]} {
+     break
+    }
+    gets $in row
+   }
+   gets $in row
+
+   set labelfile ""
+   while {[string match . [string trim $row]] == 0 && [eof $in] == 0} {
+    append labelfile "$row\n"
+    gets $in row
+   }
+   if {[string match {|*} $t(mlf)] == 1} {
+    while {[eof $in] == 0} {
+     gets $in row
+    }   
+   }
+   close $in
+  }
+ }
+ 
+ # Format decoding loop
+
+ set alt 1
+ set i 0
+ foreach row [split $labelfile \n] {
+  if {[regexp {///} $row dummy]} { incr alt }
+  if {$t(alternative) != $alt} continue
+  set rest ""
+  if {$t(level) == 1} {
+   if {[scan $row {%f %f %s %s} start end label rest] >= 3} {
+    set end [expr {$end/10000000.0}]
+    set v(t1,$i,end)   $end
+    if {$t(hideQuotes)} {
+     set label [string trim $label \"]
+    }
+    if {$t(hideTriphoneContext)} {
+     regexp {^(.+)\-(.+)$} $label dummy dummy label
+     regexp {^(.+)\+(.+)$} $label dummy label dummy
+    }
+    set v(t1,$i,label) $label
+    set v(t1,$i,rest)  $rest
+    lappend map $i
+    if {$i == 0} {
+     set v(t1,start) [expr {$start/10000000.0}]
+    }
+    incr i
+   }
+  } else {
+   set n [scan $row {%d %d %s %s} start end junk label]
+   if {$n >= 3} {
+    set end [expr {$end/10000000.0}]
+   }
+   if {$n == 4} {
+    set v(t1,$i,end)   $end
+    set v(t1,$i,label) $label
+    set v(t1,$i,rest)  ""
+    lappend map $i
+    if {$i == 0} {
+     set v(t1,start) [expr {$start/10000000.0}]
+    }
+    incr i
+   } elseif {$n == 3} {
+    set v(t1,[expr $i-1],end) $end
+   }
+  }
+ }
+
+ set v(t1,end)    $end
+ set v(nLabels)   $i
+ set v(map)       $map
+ set v(header)    $header
+ set v(headerFmt) HTK
+}
+
+proc transcription_format_htk::save {w pane} {
+ upvar ::wsurf::trans::${pane}::var v
+
+ if {[catch {open $v(fileName) w} out]} {
+  return $out
+ } else {
+  if {[info command encoding] != ""} {
+   fconfigure $out -encoding $v(encoding)
+  }  
+  fconfigure $out -translation {auto lf}
+  set start [expr {$v(t1,start)*10000000.0}]
+  for {set i 0} {$i < $v(nLabels)} {incr i} {
+   set ind [lindex $v(map) $i]
+   set end [expr {$v(t1,$ind,end)*10000000.0}]
+   set label $v(t1,$ind,label)
+   set rest  $v(t1,$ind,rest)
+   if {$rest != ""} {
+    puts $out [format "%.0f %.0f %s %s" $start $end $label $rest]
+   } else {
+    puts $out [format "%.0f %.0f %s" $start $end $label]
+   }
+   set start $end
+  }
+  close $out
+ }
+ set v(headerFmt) HTK
+
+ $w messageProc \
+     "Wrote $v(fileName) in $v(headerFmt) format"
+ return
+}
+
+proc transcription_format_htk::test {w pane rows} {
+ set lastrow [lindex $rows end]
+ if {[regexp {\s*(\d+)\s+(\d+)\s+\S+} $lastrow a b c] == 1} {
+  if {[info exists c] && $c > 3500000} {
+   return HTK
+  }
+ }
+}
+
+proc transcription_format_htk::propertyPane {w pane} {
+ upvar ::wsurf::trans::${pane}::var v
+ 
+ if {$pane==""} return
+ if {$v(drawTranscription)} {
+  if {$v(format) == "HTK"} {
+   return [list "HTK" [namespace code drawHTKPage]]
+  }
+ }
+}
+
+proc transcription_format_htk::applyProperties {w pane} {
+ if {[string match *wavebar $pane]} return
+ upvar [namespace current]::${pane}::var t
+ upvar ::wsurf::trans::${pane}::var v
+ 
+ if {[info exists v(drawTranscription)]} {
+  if {$v(drawTranscription)} {
+   foreach var [list mlf matchComponents level alternative hideQuotes \
+		   hideTriphoneContext] {
+    if {[info exists t(t,$var)]} {
+     if {[string compare $t(t,$var) $t($var)]!=0} {
+      set doReload 1
+      set t($var) $t(t,$var)
+     }
+    }
+   }
+   if {[info exists doReload]} {
+    ::wsurf::trans::openTranscriptionFile $w $pane [$w getInfo fileName] soundfile
+    ::wsurf::_redrawPane $w $pane
+   }
+  }
+ }
+}
+
+proc transcription_format_htk::drawHTKPage {w pane p} {
+ upvar [namespace current]::${pane}::var v
+
+ foreach f [winfo children $p] {
+  destroy $f
+ }
+ 
+ foreach var [list mlf matchComponents level alternative hideQuotes \
+		 hideTriphoneContext] {
+  set v(t,$var) $v($var)
+ }
+ 
+ pack [frame $p.f1] -anchor w
+ label $p.f1.l -text "Master Label File:" -anchor w
+ entry $p.f1.e -textvariable [namespace current]::${pane}::var(t,mlf) -wi 25
+ button $p.f1.b -text Browse... -command \
+     [namespace code [list browseMLF $w $pane mlf]]
+ pack $p.f1.l $p.f1.e $p.f1.b -side left -padx 3
+
+ pack [frame $p.f2] -anchor w
+ label $p.f2.l -text "Number of filename components in pattern match:" \
+     -anchor w
+ tk_optionMenu $p.f2.om \
+     [namespace current]::${pane}::var(t,matchComponents) 1 2
+ $p.f2.om.menu entryconfigure 0 -value 1
+ $p.f2.om.menu entryconfigure 1 -value 2
+ pack $p.f2.l $p.f2.om -side left -padx 3
+
+ pack [frame $p.f3] -anchor w
+ label $p.f3.l -text "Read label level:" -anchor w -width 23
+ tk_optionMenu $p.f3.om \
+     [namespace current]::${pane}::var(t,level) 1 2
+ $p.f3.om.menu entryconfigure 0 -value 1
+ $p.f3.om.menu entryconfigure 1 -value 2
+ pack $p.f3.l $p.f3.om -side left -padx 3
+
+ stringPropItem $p.f4 "Read label alternative:" 23 5 \
+     "" [namespace current]::${pane}::var(t,alternative)
+
+ booleanPropItem $p.f5 "Hide quotes in labels" "" \
+     [namespace current]::${pane}::var(t,hideQuotes)
+
+ booleanPropItem $p.f6 "Hide triphone context in labels" "" \
+     [namespace current]::${pane}::var(t,hideTriphoneContext)
+}
+
+proc transcription_format_htk::browseMLF {w pane prop} {
+ upvar [namespace current]::${pane}::var v
+
+ set file [file tail $v(mlf)]
+ set path [file dirname $v(mlf)]
+ set types {
+  {{HTK MLF Files} {.mlf}}
+  {{All Files}    *  }
+ }
+ set fileName [tk_getOpenFile -title "Choose MLF" -initialfile $file \
+		   -initialdir $path -filetypes $types]
+ if {$fileName != ""} {
+  set v(t,$prop) $fileName
+ }
+}
+
+proc transcription_format_htk::getConfiguration {w pane} {
+ upvar [namespace current]::${pane}::var v
+ upvar ::wsurf::trans::${pane}::var u
+
+ set var [namespace current]::\${pane}::var
+
+ set result {}
+ if {$pane != "" && $u(drawTranscription)} {
+  append result \
+      "set ${var}(matchComponents) $v(matchComponents)" "\n" \
+      "set ${var}(level) $v(level)" "\n" \
+      "set ${var}(mlf) \"$v(mlf)\"" "\n" \
+      "set ${var}(hideQuotes) $v(hideQuotes)" "\n" \
+      "set ${var}(hideTriphoneContext) $v(hideTriphoneContext)" "\n" \
+      "set ${var}(alternative) $v(alternative)" "\n"
+ }
+ return $result
+}
+
+proc transcription_format_htk::getopt {arglistVar} {
+ variable Info
+ upvar 1 $arglistVar argv
+ 
+ while {1} {
+  if {[cmdline::getopt argv {mlf.arg} opt arg] == 1} {
+   lappend Info(mlfs) $arg
+   continue
+  }
+  break
+ }
+}

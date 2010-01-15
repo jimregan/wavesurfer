@@ -1,0 +1,289 @@
+# -*-Mode:Tcl-*-
+
+wsurf::RegisterPlugin score \
+  -description "Plot recognition scores" \
+  -url "http://www.speech.kth.se/wavesurfer" \
+  -addmenuentriesproc   score::addMenuEntries \
+  -getboundsproc        score::getBounds \
+  -propertiespageproc   score::propertyPane \
+  -applypropertiesproc  score::applyProperties \
+  -panecreatedproc      score::paneCreated \
+  -redrawproc           score::redraw \
+  -printproc            score::print \
+  -cursormovedproc      score::cursorMoved \
+  -getconfigurationproc score::getConfiguration
+
+# -----------------------------------------------------------------------------
+
+namespace eval score {
+ variable Info
+} 
+
+# ----------------------------------------------------------------------------
+
+proc score::paneCreated {w pane} {
+ variable Info
+ set Info($w,$pane,drawScores) 0
+ set Info($w,$pane,font) "Helvetica 10"
+ set Info($w,$pane,sfont) "Helvetica 8 bold"
+ set Info($w,$pane,preDraw) 0
+ set Info($w,$pane,pitchColor) black
+ set Info($w,$pane,maxPitch) 400
+ set Info($w,$pane,minPitch) 60
+
+ set Info(debug) 0
+}
+
+proc score::addMenuEntries {w pane m hook x y} {
+ variable Info
+ if {[string match query $hook]} {
+  return 0
+ }
+ if {[string length $hook] == 0} {
+ } elseif {[string match create $hook]} {
+  $m.$hook add command -label "Scores" \
+   -command [namespace code [list createScores $w $pane]]
+ }
+}
+
+proc score::createScores {w pane} {
+ set pane [$w addPane -before $pane -height 200 -scrollheight 200 -unit NlogP \
+	 -showyaxis true]
+ addScores $w $pane
+}
+
+proc score::addScores {w pane args} {
+ variable Info
+
+# set s [$w cget -sound]
+
+ array set a [list \
+  -labfill red \
+  -outfill blur \
+  -recfill orange \
+  -predraw 0 \
+ ]
+ array set a $args
+
+ set Info($w,$pane,labColor) $a(-labfill)
+ set Info($w,$pane,outColor) $a(-outfill)
+ set Info($w,$pane,recColor) $a(-recfill)
+ set Info($w,$pane,preDraw)  $a(-predraw)
+
+ _computeScores $w $pane
+ _drawScores $w $pane
+}
+
+proc score::_computeScores {w pane} {
+ variable Info
+
+ $w messageProc "Reading label files..."
+
+ set p [lindex [split $pane _] 0]
+ set curr [lsearch [$w _getPanes] $pane]
+ if {$curr < 1} {
+  $c create text 0 0 -anchor nw -tags [list diff] \
+   -text "Must be preeded a transcription tier"
+  return
+ }
+ set n [lindex [split [lindex [$w _getPanes] [expr {$curr - 1}]] _] 1]
+ set Info($w,fileName) $::wsurf::trans::Info($w,${p}_$n,fileName)
+ set root [file rootname $Info($w,fileName)]
+
+ foreach ext [list lab out rec] {
+  set Info($w,$pane,$ext) {}
+ }
+ foreach ext [list lab out rec] {
+  if {[catch {open $root.$ext} in]} {
+   return $in
+  } else {
+   gets $in row
+   set i 0
+   while {[eof $in] == 0} {
+    scan $row "%d %d %s %f" start end label score
+    set Info($w,$pane,$i,end) $end
+    set Info($w,$pane,$i,score) $score
+    gets $in row
+    incr i
+   }
+   close $in
+  }
+  set n [expr {$Info($w,$pane,[expr $i-1],end) / 100000}]
+  set i 0
+  for {set j 0} {$j < $n} {incr j} {
+   if {$j >= [expr {$Info($w,$pane,$i,end) / 100000}]} {
+    incr i
+   }
+   lappend Info($w,$pane,$ext) $Info($w,$pane,$i,score)
+  }
+ }
+ foreach ext [list lab] {
+  set i 0
+  set tmp {}
+  foreach e $Info($w,$pane,$ext) {
+   lappend tmp [expr {$e - [lindex $Info($w,$pane,rec) $i]}]
+   incr i
+  }
+  set Info($w,$pane,$ext) $tmp
+ }
+ foreach ext [list lab] {
+  set i 0
+  set tmp {}
+  foreach e $Info($w,$pane,$ext) {
+   lappend tmp [expr {-100.0 * ($e / [lindex $Info($w,$pane,rec) $i])}]
+   incr i
+  }
+  set Info($w,$pane,out) $tmp ;# special
+ }
+
+ $w messageProc "Scores read"
+}
+
+proc score::_drawScores {w pane} {
+ variable Info
+
+ set c [$pane canvas]
+ set height [$pane cget -scrollheight]
+ $c delete formant
+# foreach f [list lab out] 
+ foreach f [list lab] {
+  set i 0
+  set pl $Info($w,$pane,$f)
+  set coords {}
+  foreach val $pl {
+   lappend coords [expr {$i * 0.01 * [$w cget -pixelspersecond]}] \
+	     [expr {$height-double($height)/(25.0 - -25.0)*($val - -25.0)}]
+#	     [expr {$height/2-double($val)}]
+   incr i
+  }
+
+  foreach {x y} $coords {
+   if {$y != $height} {
+    $c create oval [expr {$x-1}] [expr {$y-1}] [expr {$x+1}] [expr {$y+1}]\
+	    -outline $Info($w,$pane,${f}Color) -tags [list formant]
+   }
+  }
+ }
+
+ set Info($w,$pane,drawScores) 1
+}
+
+proc score::redraw {w pane} {
+ variable Info
+
+ if [$w getInfo isRecording] return
+
+ if {$Info($w,$pane,drawScores)} {
+  _drawScores $w $pane
+ }
+}
+
+proc score::print {w pane c x y} {
+ variable Info
+
+ if {$Info($w,$pane,drawScores)} {
+  set height [$pane cget -scrollheight]
+  foreach f [list lab] {
+   set i 0
+   set pl $Info($w,$pane,$f)
+   set coords {}
+   foreach val $pl {
+    lappend coords [expr {$i * 0.01 * [$w cget -pixelspersecond]}] \
+	     [expr {$height-double($height)/(25.0 - -25.0)*($val - -25.0)}]
+    incr i
+   }
+
+   foreach {xc yc} $coords {
+    if {$yc != $height} {
+     $c create oval [expr {$xc-1}] [expr {$yc-1}] \
+	     [expr {$xc+1}] [expr {$yc+1}]\
+	     -outline $Info($w,$pane,${f}Color) -tags [list formant]
+    } 
+   }
+  }
+ }
+}
+
+proc score::getBounds {w pane} {
+ variable Info
+ set s [$w cget -sound]
+ if {$Info($w,$pane,drawScores)} {
+  list 0 -25 [$s length -unit seconds] 25
+ } else {
+  list
+ }
+}
+
+proc score::cursorMoved {w pane t v} {
+ variable Info
+
+ if [$w getInfo isPlaying] return
+
+ if {$Info($w,$pane,drawScores)} {
+  set i [expr {int($t*100 + .5)}]
+  set f1 [lindex $Info($w,$pane,lab) $i]
+  set f2 [lindex $Info($w,$pane,out) $i]
+  $w messageProc [format "Scores - %s %.2f %.2f" \
+      [$w formatTime $t] $f1 $f2]
+ }
+}
+
+proc score::propertyPane {w pane} {
+ variable Info
+ if {$pane==""} return
+
+ if {$Info($w,$pane,drawScores)} {
+  return [list "Score" [namespace code drawScorePage]]
+ }
+}
+
+proc score::applyProperties {w pane} {
+ variable Info
+
+ if [info exists Info($w,$pane,drawScores)] {
+  if {$Info($w,$pane,drawScores)} {
+   foreach var [list pitchColor maxPitch minPitch] {
+    if {[string compare $Info($w,$pane,t,$var) $Info($w,$pane,$var)] != 0} {
+     set Info($w,$pane,$var) $Info($w,$pane,t,$var)
+     set doRedraw 1
+    }
+   }
+   if [info exists doRedraw] {
+    $w _redrawPane $pane
+   }
+  }
+ }
+}
+
+proc score::drawScorePage {w pane p} {
+ variable Info
+
+ foreach f [winfo children $p] {
+  destroy $f
+ }
+
+}
+
+proc score::chooseColor {w pane prop} {
+ variable Info
+ set color $Info($w,$pane,t,$prop)
+ set res [eval tk_chooseColor -initialcolor $color]
+ if {$res != ""} {
+  set Info($w,$pane,t,$prop) $res
+ }
+}
+
+proc score::getConfiguration {w pane} {
+ variable Info
+
+ set result {}
+ if {$pane==""} return {}
+
+ if {$Info($w,$pane,drawScores)} {
+  append result "\$widget score::addScores \$pane \
+	  -labfill $Info($w,$pane,labColor)\
+	  -outfill $Info($w,$pane,outColor)\
+	  -recfill $Info($w,$pane,recColor)" "\n"
+ }
+ return $result
+}

@@ -1,0 +1,217 @@
+# -*-Mode:Tcl-*-
+#
+#  Copyright (C) 2004-2005 Kare Sjolander 
+#
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+#
+
+# -----------------------------------------------------------------------------
+
+wsurf::RegisterPlugin transcription_format_praat \
+    -description "Format handler for the Praat transcription format. This is used by the transcription plug-in to import and export transcription files in this format." \
+    -before      transcription
+
+# -----------------------------------------------------------------------------
+
+namespace eval trans {
+ lappend Info(formats) Praat \
+     transcription_format_praat::load \
+     transcription_format_praat::save \
+     transcription_format_praat::test
+} 
+
+# -----------------------------------------------------------------------------
+
+namespace eval transcription_format_praat {
+ variable Info
+ 
+ set Info(tfas) {}
+}
+
+proc transcription_format_praat::load {w pane} {
+ variable Info
+ upvar ::wsurf::trans::${pane}::var v
+ 
+ set map {}
+ set i 0
+ set header ""
+ set end 0
+ set tfa ""
+ set labelfile ""
+ set v(source) ""
+ 
+ if {$Info(tfas) != ""} {
+  set paneNo -1
+  foreach pane [$w _getPanes] {
+   upvar ::wsurf::trans::${pane}::var u
+   if {$u(drawTranscription)} {
+    if {$u(format) == "WaveSurfer"} {
+     incr paneNo
+    }
+   }
+  }
+  if {[llength $Info(tfas)] > 1} {
+   if {[lindex $Info(tfas) $paneNo] != ""} {
+    set tfa [lindex $Info(tfas) $paneNo]
+   }
+  } else {
+    set tfa [lindex $Info(tfas) 0]
+  }
+ }
+ 
+ # First try reading label file if it exists
+ 
+ if {[file readable $v(fileName)] && \
+	 [file isfile $v(fileName)]} {
+  if {[catch {open $v(fileName)} in]} {
+   return $in
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $in -encoding $v(encoding)
+   }
+   if {[catch {set labelfile [read $in]}]} { return 0 }
+   close $in
+  }
+  set v(source) labelfile
+ } elseif {$tfa != ""} {
+
+  # Otherwise, if a TFA has been specified, search it
+
+  if {!([file readable $tfa] && \
+	    [file isfile $tfa])} {
+   return
+  }
+
+  if {[catch {open $tfa} in]} {
+   return $in
+  } else {
+   if {[info command encoding] != ""} {
+    fconfigure $in -encoding $v(encoding)
+   }
+
+   gets $in row
+
+   set nComponents [expr [regexp -all {/} $row] - 1]
+   if {[regexp -all {/} $v(fileName)] == 0 && $nComponents > 0} {
+    set name [eval file join [lrange [file split [$w getInfo fileName]] \
+				  end-$nComponents end-1]]
+    append name "/$v(fileName)"
+    set exp *$name?
+   } else {
+    set exp *$v(fileName)?
+   }
+
+   while {[string match $exp $row] == 0 && \
+	      [eof $in] == 0} {
+    gets $in row
+   }
+   gets $in row
+   while {[string match {"*"} $row] == 0 && [eof $in] == 0} {
+    append labelfile $row
+    append labelfile \n
+    gets $in row
+   }
+   close $in
+  }
+  set v(source) tfafile
+ }
+
+ # Format decoding loop
+ set lastend -1 
+ foreach row [split $labelfile \n] {
+  if {[scan $row {%f %f %[^\]} start end label] >= 3} {
+
+   # Next label not contiguous with last one, insert empty label
+   if {$lastend != $start} {
+    set v(t1,$i,end)   $start
+    set v(t1,$i,label) ""
+    set v(t1,$i,rest)  ""
+    lappend map $i
+    incr i
+   }
+   set v(t1,$i,end)   $end
+   set v(t1,$i,label) $label
+   set v(t1,$i,rest)  ""
+   lappend map $i
+   if {$i == 0} {
+    set v(t1,start) $start
+   }
+   set lastend $end
+   incr i
+   if {$start > $end} {
+    puts "Error in label file, line $i: $row"
+#    return "Error in label file, line $i: $row"
+   }
+  }
+ }
+ if {$end > 7200} { set end 7200 }
+ set v(t1,end)  $end
+ set v(nLabels) $i
+ set v(map)     $map
+ set v(header)  $header
+ set v(headerFmt) Praat
+}
+
+proc transcription_format_praat::save {w pane} {
+ upvar ::wsurf::trans::${pane}::var v
+
+ if {[info exists v(source)] && [string match labelfile $v(source)]} {
+ }
+
+ if {[catch {open $v(fileName) w} out]} {
+  return $out
+ } else {
+  if {[info command encoding] != ""} {
+   fconfigure $out -encoding $v(encoding)
+  }  
+  fconfigure $out -translation {auto lf}
+
+  puts $out "File type = \"ooTextFile\"\nObject class = \"TextGrid\"\n"
+  puts $out "xmin = 0 "
+  puts $out "xmax = [format "%f" $v(t1,[lindex $v(map) end],end)] "
+  puts $out "tiers? <exists> "
+  puts $out "size = 1 "
+  puts $out "item \[]: "
+  puts $out "    item \[1]:"
+  puts $out "        class = \"IntervalTier\" "
+  puts $out "        name = \"WaveSurfer\" "
+  puts $out "        xmin = 0 "
+  puts $out "        xmax = [format "%f" $v(t1,[lindex $v(map) end],end)]"
+  puts $out "        intervals: size = $v(nLabels) "
+ 
+  set start 0.0000000
+  set count 1
+  for {set i 0} {$i < $v(nLabels)} {incr i} {
+   set ind   [lindex $v(map) $i]
+   set end   [format "%f" $v(t1,$ind,end)]
+   set label $v(t1,$ind,label)
+
+   # Empty labels are removed, will generate "holes" in the transcription file
+   if {$label != ""} {
+    puts $out "        intervals \[$count]:"
+    puts $out "            xmin = $start "
+    puts $out "            xmax = $end "
+    puts $out "            text = \"$label\" "
+    incr count
+   }
+   set start $end
+  }
+  close $out
+ }
+ set v(headerFmt) Praat
+ 
+ $w messageProc \
+     "Wrote $v(fileName) in $v(headerFmt) format"
+ return
+}
+
+proc transcription_format_praat::test {w pane rows} {
+ set lastrow [lindex $rows 0]
+ if {[regexp {(\w+)\s(\w+)\s=\s(\S+)} $lastrow a b c] == 1} {
+  if {[info exists c]} {
+   return Praat
+  }
+ }
+}
+
