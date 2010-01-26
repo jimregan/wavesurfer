@@ -1,0 +1,66 @@
+=head1 ::wsurf::ApplyPreferences
+
+This command should be invoked if the user hits "OK" or "Apply" in an applications preferences dialog to handle global widget preferences.
+
+=head1 ::wsurf::ChooseConfigurationDialog
+
+This command is used to to display the "Choose configuration" dialog.
+
+=head1 ::wsurf::GetConfigurations
+
+Returns a list with available configurations.
+
+=head1 ::wsurf::GetCurrent
+
+Returns the name of the currently active wsurf widget.
+
+=head1 ::wsurf::getopt
+
+This procedure is invoked to handle option parsing of the command line. This allows plug-ins to handle their own command line switches.
+
+=head1 ::wsurf::GetPreference
+
+Returns the current value for specified preference. Syntax:
+
+C<::wsurf::GetPreference preference>
+
+=head1 ::wsurf::GetPreferences
+
+Returns global widget preferences in text form.
+
+=head1 ::wsurf::GetPlugins
+
+Returns a list with available plug-ins.
+
+=head1 ::wsurf::Initialize
+
+This command initializes the wsurf library and should be called before creating the first widget. The command loads all plug-ins, creates default bindings, and sets default preferences. Syntax:
+
+C<::wsurf::Initialize preference ?-plugindir dir? ?-configdir dir?>
+
+The options are used to specify additional directories to search for plug-ins and configurations.
+
+=head1 ::wsurf::MakeCurrent
+
+Makes a wsurf widget current. Syntax:
+
+C<::wsurf::MakeCurrent widget>
+
+=head1 ::wsurf::PreferencePage
+
+This command returns a list with global widget tab names and corresponding notebook page rendering procedures.
+
+=head1 ::wsurf::NeedSave
+
+Returns 1 if there is an unsaved modification to a sound or to related data in a plug-in.
+
+=head1 ::wsurf::SetDefaultPrefs
+
+Sets default values for global widget preferences.
+
+=head1 ::wsurf::SetPreference
+
+Sets specified preference to given value. Syntax:
+
+C<::wsurf::SetPreference preference value>
+

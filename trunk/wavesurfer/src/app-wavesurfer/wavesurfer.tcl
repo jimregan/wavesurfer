@@ -10,18 +10,13 @@ set BUILD @BUILD@
 # This file is part of the WaveSurfer package.
 # The latest version can be found at http://www.speech.kth.se/wavesurfer/
 #
+
+package provide app-wavesurfer 1.8
+
 catch {package require Tk}
 
-# wrapit.tcl will insert code here to set the elements of the wrap() array
-
-if {[info exists wrap]} {
- # package dirs have to be listed explicitly for wrapping
- # a line setting wrap(dir) is added by the wrapping script
- set dir $wrap(dir)
- set auto_path "[file join $dir snack] [file join $dir wsurf] $auto_path"
-} else {
- set auto_path [concat [list [file dirname [info script]]] $auto_path]
-}
+set dir [file normalize [file dirname [info script]]]
+lappend auto_path [file dirname $dir]
 
 package require tkcon
 set ::tkcon::OPT(exec) {}
@@ -2677,28 +2672,14 @@ proc About {} {
 }
 
 if {![string match macintosh $::tcl_platform(platform)]} {
- if 1 {
-  rename source _source
-  proc source {file args} {
-   incr ::splash::filecount
-   set ::splash::progress "$::splash::filecount"
-   update idletasks
-   if {$file != "-encoding"} {
-    uplevel _source [list $file]
-   } else  {
-    uplevel _source -encoding [lindex $args end-1] [lindex $args end]
-   }
-  }
- } else {
-  rename proc _proc
-  _proc proc {name arglist body} {
-   incr ::splash::filecount
-   set ::splash::progress "$::splash::filecount"
-   update idletasks
-   uplevel _proc [list $name] [list $arglist] [list $body]
-  }
- }
-} 
+    rename source _source
+    proc source {args} {
+	incr ::splash::filecount
+	set ::splash::progress "$::splash::filecount"
+	update idletasks
+	uplevel _source $args
+    }
+}
 
 if {[string match macintosh $::tcl_platform(platform)]} {
   console hide
@@ -2706,31 +2687,7 @@ if {[string match macintosh $::tcl_platform(platform)]} {
   option add *Entry.background white
 }
 
-# re-define load to work with free-wrap
-if {[info exists wrap] && [info command _load]==""} {
- rename load _load
- proc load {filename args} {
-  set f [open $filename]
-  fconfigure $f -encoding binary -translation binary
-  set data [read $f]
-  close $f
-  set fname2 [file join [util::tmpdir] [file rootname [file tail $filename]].[pid]]
-  set f [open $fname2 w]
-  fconfigure $f -encoding binary -translation binary
-  puts -nonewline $f $data
-  close $f
-  eval _load $fname2 $args
- }
-}
-
-if {[info exists wrapdir]} {set dir [file join $wrapdir wsurf$version]}
-
 package require -exact wsurf $version
-
-if {[info exists wrap]} {
- rename load ""
- rename _load load
-}
 
 if {$tcl_version<8.2} {
  set Info(Version) 1.1
@@ -3356,6 +3313,7 @@ CreateMenus .x
 
 wsurf::AddEvent PopupEvent $wsurf::Info(Prefs,popupEvent)
 event add <<Delete>> <Delete>
+
 catch {event add <<Delete>> <hpDeleteChar>}
 
 proc ManageFocus {w} {

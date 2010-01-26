@@ -1,0 +1,273 @@
+=head1 WaveSurfer Plug-in API
+
+WaveSurfer plug-ins are implemented in Tcl/Tk as a collection of procedures. During startup, the application will search certain system and user directories for plug-in scripts, and source them into the interpreter. The plugin script file must contain a call to the following procedure:
+B<wsurf::RegisterPlugin> I<name ?option value? ...>
+I<name> is the name of the plug-in. Many of the options are used to associate event callbacks to procedures in the plug-in implementation. Note that the plug-in does not need to implement all callbacks, only the ones that are relevant to its functionality. It is advisable for all plug-ins to exist in their own namespace, with the same name as the plugin. 
+
+Most callbacks are invoked with the current widget as the first argument, and in the cases where the event refers to a pane, the pane window name will be the second argument.
+
+=head1 Options to RegisterPlugin
+
+=over 4
+
+=item -description
+
+Specifies a textual description of the plugin's functionality. It will be displayed in plug-ins page of the preferences dialog.
+
+Z<>
+
+=item -url
+
+Specify a home page URL for the plugin. It will be displayed in plug-ins page of the preferences dialog.
+
+Z<>
+
+=item -addmenuentriesproc
+
+Specifies a callback procedure to be invoked when a context sensitive popup menu is created for a pane. This will allow the plug-in to add entries to the menu at the time it is posted. Callback syntax: 
+
+C<callback widget pane menu subMenu x y>
+
+I<menu> refers to the window name of the popup menu widget, I<subMenu> is an identifier of a sub-menu, can be I<create> or an empty string. I<x> and I<y> refers to the coordinates where the menu button was pressed.
+
+Z<>
+
+=item -applypropertiesproc
+
+Specifies a callback procedure to be invoked to apply the current values in the properties dialog. Callback syntax:
+
+C<callback widget pane> 
+
+Z<>
+
+=item -copyproc
+
+Specifies a callback procedure to be invoked when a copy operation is performed in the widget. Callback syntax: 
+
+C<callback widget start end>
+
+I<start> and <end> are given in seconds as floating point numbers.
+
+Z<>
+
+=item -cursormovedproc
+
+Specifies a callback procedure to be invoked when the cursor is moved. Callback syntax: 
+
+C<callback widget pane time value>
+
+I<time> is the cursor position along the time axis, in seconds. I<value> is the cursor position along the value axis, in the pane's local units, see B<getBoundsProc>. Both are given as floating point numbers.
+
+Z<>
+
+=item -cutproc
+
+Specifies a callback procedure to be invoked when a cut operation is performed in the widget. Callback syntax: 
+
+C<callback widget start end>
+
+I<start> and <end> are given in seconds as floating point numbers.
+
+Z<>
+
+=item -getboundsproc
+
+When the a pane is redrawn, this callback is invoked to query the plugin for the extents of its contents. Callback syntax:
+
+C<callback widget pane>
+
+The return value of the callback should be a list containing the time and value bounds for the plugin contents, as four elements: I<tmin vmin tmax vmax>, where I<tmin> and I<tmax> are the minimum and maximum time, and I<vmin> and I<vmax> are the minimum and maximum values.
+
+Z<>
+
+=item -getconfigurationproc
+
+Specifies a callback that invoked when the widget's current configuration is to be saved, to allow the plug-in to add its own configuration statements. Callback syntax:
+
+C<callback widget pane>
+
+The callback is first invoked with I<pane> as an empty string, which allows the plug-in to supply configuration statements for the entire widget, then it is invoked once for each pane in the widget. The return value of the callback should be a string containing new-line separated configuration statements for the plugin. Configuration statements are regular tcl-statements that will, when executed, recreate the current configuration of the widget. The configuration statements should refer to the current widget as C<$widget> and to the pane as $<pane>. A typical configuration statement for I<myplugin> might look something like:
+
+C<$widget myplugin::addSomeFeature $pane -option1 value1 -option2 value2> 
+
+Z<>
+
+=item -getoptproc
+
+Specifies a callback procedure to be invoked the command line of the application is being parsed. This allows the plug-in to handle its own command line switches. Callback syntax: 
+
+C<callback arglistVar>
+
+I<arglistVar> refers to a list variable name containing the command line, typically argv. The callback should remove all switches it wants to handle from I<arglistVar>. This easiest done using the cmdline package in the Standard Tcl Library.
+
+Z<>
+
+=item -openfileproc
+
+Specifies a callback procedure to be invoked when a file is to be opened, to allow the plug-in to handle the file. Callback syntax:
+
+C<callback widget fileName>
+
+The callback should return a boolean value to indicate whether or not it handles the file. If a plug-in returns I<true>, the application will not try to handle the file internally.
+
+Z<>
+
+=item -panecreatedproc
+
+Specifies a callback procedure to be invoked when a new pane has been created in the widget. Callback syntax:
+
+C<callback widget pane>
+
+Z<>
+
+=item -panedeletedproc
+
+Specifies a callback procedure to be invoked when a pane is to be deleted in the widget. Callback syntax:
+
+C<callback widget pane>
+
+Z<>
+
+=item -pasteproc
+
+Specifies a callback procedure to be invoked when a paste operation is performed in the widget. Callback syntax: 
+
+C<callback widget start length>
+
+I<start> and I<length> are given in seconds as a floating point numbers.
+
+Z<>
+
+=item -pauseproc
+
+Specifies a callback procedure to be invoked when playback has been paused in the widget. Callback syntax: 
+
+C<callback widget> 
+
+Z<>
+
+=item -playproc
+
+Specifies a callback procedure to be invoked when playback has been started in the widget. Callback syntax: 
+
+C<callback widget> 
+
+Z<>
+
+=item -printproc
+
+Specifies a callback procedure to be invoked when the widget is to be printed, to allow the plug-in to redraw its contents onto a canvas for printing. Callback syntax: 
+
+C<callback widget pane tempCanvas x y> 
+
+I<tempCanvas> is a temporary canvas used during printing. The plug-in is expected to re-draw the pane contents in this canvas at coordinate offset I<x>,I<y>.
+
+Z<>
+
+=item -propertiespageproc
+
+Specifies a callback procedure to be invoked when the properties dialog is displayed. Callback syntax: 
+
+C<callback widget pane> 
+
+The return value should be a list of the form I<{name displayproc name displayproc ...}>. Each name/proc pair specifies one page in the properties dialog notebook widget. I<name> is a text string that will be displayed on the notebook tab. I<displayproc> should be a procedure that will be invoked to render the page. This procedure will be invoked as follows:
+
+C<displayproc widget pane frame>
+
+Frame is the container frame of the notebook page, into which plugin widgets will be arranged.
+
+Z<>
+
+=item -recordproc
+
+Specifies a callback procedure to be invoked when recording has been started in the widget. Callback syntax: 
+
+C<callback widget> 
+
+Z<>
+
+=item -redrawproc
+
+Specifies a callback procedure to be invoked when the contents of a pane are redrawn. All plug-ins that display graphics must implement this callback. Callback syntax:
+
+C<callback widget pane>
+
+Z<>
+
+=item -needsaveproc
+
+Specifies a callback procedure which is used to check whether there is unsaved information present in the pane. Callback syntax:
+
+C<callback widget pane>
+
+The return value should be a boolean, indicating whether or not there is unsaved information in the pane.
+
+Z<>
+
+=item -savefileproc
+
+Specifies a callback procedure to be invoked when a file is to be saved, to allow the plug-in to save the file. Callback syntax:
+
+C<callback widget fileName>
+
+The callback should return a boolean value to indicate whether or not it saves the file. If a plug-in returns I<true>, the application will not try to save the file internally.
+
+Z<>
+
+=item -scrollproc
+
+Specifies a callback procedure to be invoked when the widget is scrolled along the time axis. Callback syntax:
+
+C<callback widget pane>
+
+Z<>
+
+=item -setselectionproc
+
+Specifies a callback procedure to be invoked when the selection has changed.
+
+C<callback widget pane t0 t1>
+
+I<t0> and I<t1> are the start and end times for the new selection, given in seconds as floating point numbers.
+
+Z<>
+
+=item -soundchangedproc
+
+Specifies a callback procedure to be invoked when the sound data has changed. This notifies a plug-in that the sound has been modified. Callback syntax:
+
+C<callback widget flag>
+
+I<flag> is a string describing the type of change.
+
+Z<>
+
+=item -stopproc
+
+Specifies a callback procedure to be invoked when playback has been stopped in the widget. Callback syntax: 
+
+C<callback widget> 
+
+Z<>
+
+=item -undoproc
+
+Specifies a callback procedure to be invoked when an undo operation is performed in the widget, to allow the plugin to restore its data to the state it had before the last change. Callback syntax:
+
+C<callback widget>
+
+Z<>
+
+=item -widgetcreatedproc
+
+Specifies a callback procedure to be invoked upon creation of a new widget. Callback syntax:
+
+C<callback widget>
+
+Z<>
+
+=item -widgetdeletedproc
+
+Specifies a callback procedure to be invoked when a widget is to be deleted. Callback syntax:
+
+C<callback widget>
