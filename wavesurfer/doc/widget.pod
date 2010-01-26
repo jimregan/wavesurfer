@@ -1,0 +1,123 @@
+=head1 NAME
+
+wsurf - Create and manipulate WaveSurfer widgets 
+
+=head1 SYNOPSIS
+
+B<wsurf> I<pathName ?options?>
+
+=head1 OPTIONS
+
+=over 4
+
+=item -collapser
+
+Specifies whether the collapser button should be display or not.
+
+Z<>
+
+=item -configuration
+
+This option is used to specify which configuration the widget should use initially. It takes a configuration filename as argument. The command B<wsurf::chooseConfigurationDialog> can be used to display the standard selection dialog and return the users selection. Also, the emptry string "" can be used to specify that the standard configuration should be used.
+
+Z<>
+
+=item -icons
+
+Specifies a list with names of icons the title bar should display. Valid names are B<play>, B<pause>, B<stop>, B<record>, B<print>, and B<close>.
+
+Z<>
+
+=item -messageproc
+
+Specifies a callback to be called whenever the widget wants to report something to the user. Callback syntax: 
+
+C<callback message>
+
+I<message> is the message string.
+
+Z<>
+
+=item -playmapfilter
+
+Specifies a playback transformation matrix.
+
+Z<>
+
+=item -progressproc
+
+Specifies a callback to be called whenever a time consuming operation is in progress. Callback syntax: 
+
+C<callback operation fraction>
+
+I<operation> is a string describing the operation in progress and I<fraction> is a number between 0.0 and 1.0 describing how much of operation that has been completed.
+
+Z<>
+
+=item -sound
+
+Specifies an existing Snack sound object to be used by the widget. If not given the widget will create one of its own.
+
+Z<>
+
+=item -state
+
+Specifies the initial state of the widget, either B<expanded> or B<collapsed>.
+
+Z<>
+
+=item -slaves
+
+This option is used to specify a list of slave widgets.
+
+Z<>
+
+=item -title
+
+Used to set the title displayed in the title bar.
+
+Z<>
+
+=back
+
+=head1 DESCRIPTION
+
+The B<wsurf> command creates a new window (given by the I<pathName> argument) and makes it into a wsurf widget. The B<wsurf> command returns its I<pathName> argument. At the time this command is invoked, there must not exist a window named I<pathName>, but I<pathName's> parent must exist. 
+
+=head1 WIDGET COMMAND
+
+The B<wsurf> command creates a new Tcl command whose name is I<pathName>. This command may be used to invoke various operations on the widget. It has the following general form: 
+
+I<pathName option ?arg arg ...?>
+
+Option and the args determine the exact behavior of the command. The following commands are possible for wsurf widgets: 
+
+I<pathName> B<cget> I<option>
+
+I<pathName> B<configure> I<?option? ?value option value ...?>
+
+I<pathName> B<getInfo> I<option>
+
+I<pathName> B<closeWidget>
+
+I<pathName> B<openFile> I<filename>
+
+I<pathName> B<saveFile> I<filename>
+
+I<pathName> B<printDialog>
+
+I<pathName> B<undo>
+
+I<pathName> B<cut>
+
+I<pathName> B<copy>
+
+I<pathName> B<paste>
+
+I<pathName> B<play>
+
+I<pathName> B<stop>
+
+I<pathName> B<pause>
+
+To be continued...

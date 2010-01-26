@@ -66,15 +66,17 @@ proc ::tk_optionMenu {w varName firstValue args} {
 }
 
 namespace eval wsurf {
- variable Info
- 
- # find out what directory this package lives in
- set Info(dir) [file dirname [info script]]
- proc ::wsurf {w args} {eval wsurf::create $w $args}
+    variable Info
+    
+    # find out what directory this package lives in
+    set Info(dir) [file dirname [info script]]
+    set Info(parentdir) [file dirname [file dirname [file normalize [info script]]]]
 
- set Info(debug) 0
- set Info(snackDebug) 0 ;#$Info(debug)
- snack::debug $Info(snackDebug)
+    proc ::wsurf {w args} {eval wsurf::create $w $args}
+    
+    set Info(debug) 0
+    set Info(snackDebug) 0 ;#$Info(debug)
+    snack::debug $Info(snackDebug)
 }
 
 
@@ -295,13 +297,13 @@ set Info(Img,record) [image create photo -data R0lGODlhFQAVAKEAANnZ2f8AAP///////
  foreach icon [list playall end print zoomin zoomout zoomall zoomsel] {
   set Info(Prefs,$icon) 0
  }
- if {[string match macintosh $::tcl_platform(platform)] || \
-	 [string match Darwin $::tcl_platform(os)]} {
-  set Info(Prefs,popupEvent) Control-ButtonPress-1
- } else {
-  set Info(Prefs,popupEvent) ButtonPress-3
- }
- event add <<PopupEvent>> <$Info(Prefs,popupEvent)>
+if {[string match macintosh $::tcl_platform(platform)] || \
+	[string match Darwin $::tcl_platform(os)]} {
+    set Info(Prefs,popupEvent) [list Control-ButtonPress-1 ButtonPress-2]
+} else {
+    set Info(Prefs,popupEvent) ButtonPress-3
+}
+# event add <<PopupEvent>> <$Info(Prefs,popupEvent)>
  set Info(Prefs,timeFormat) hms.ddd
  set Info(Prefs,hms) 0
  set Info(Prefs,hms.d) 1
@@ -531,9 +533,12 @@ proc wsurf::_deleteRawFileDef {p} {
 }
 
 
-proc wsurf::AddEvent {name binding} {
-  event delete <<$name>>
+proc wsurf::AddEvent {name bindinglist} {
+ event delete <<$name>>
+ foreach binding $bindinglist {
+  puts "event add <<$name>> <$binding>"
   event add <<$name>> <$binding>
+ }
 }
 
 # -----------------------------------------------------------------------------
@@ -594,7 +599,7 @@ proc wsurf::LoadPlugins {pluginfiles} {
 proc wsurf::GetStandardPlugins {} {
  variable Info
 
- glob -nocomplain [file join $Info(dir) plugins *.plug]
+ glob -nocomplain [file join $Info(parentdir) plugins *.plug]
 }
 
 proc wsurf::GetLocalPlugins {} {
@@ -626,7 +631,7 @@ proc wsurf::GetPlugins {} {
 
 proc wsurf::GetStandardConfigurations {} {
  variable Info
- set tmp $Info(dir)
+ set tmp $Info(parentdir)
  if {[regexp {.+\[.+\].+} $tmp]} { tk_messageBox -message "Error: WaveSurfer file name must not contain \"\[ \]\" characters." }
  # regsub {\[} $tmp \\\[ tmp
  # puts $tmp,[glob  -nocomplain [file join $tmp configurations *.conf]]
