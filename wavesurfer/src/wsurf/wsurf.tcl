@@ -6,17 +6,18 @@
 #
 
 package provide wsurf 1.8
-package require -exact snack 2.2
+
+package require snack 2.2
 package require surfutil
 package require combobox
 
-if {1||[catch {package require tile 0.7} msg]} {
+if {0} {
+    #&& [catch {package require tile 0.7} msg]
  set useTile 0
  set ::ocdir right
-} else {
+} 
+if 0 {
  set useTile 1
-# lappend auto_path /space/tile/tile-0.5/demos
-# eval [package unknown] Tcl [package provide Tcl]
  rename scale tk_scale
  namespace import -force ttk::scale
  rename menubutton tk_menubutton
@@ -25,10 +26,8 @@ if {1||[catch {package require tile 0.7} msg]} {
  namespace import -force ttk::checkbutton
  namespace import -force ttk::radiobutton
  namespace import -force ttk::scale
- if {[string compare [tk windowingsystem] "aqua"]} {
-  rename scrollbar tk_scrollbar
-  namespace import -force ttk::scrollbar
- }
+    rename scrollbar tk_scrollbar
+    namespace import -force ttk::scrollbar
  rename label tk_label
  namespace import -force ttk::label
  rename button tk_button
@@ -40,6 +39,18 @@ if {1||[catch {package require tile 0.7} msg]} {
  namespace import -force ttk::notebook
  namespace import -force ttk::labelframe
  namespace import -force ttk::separator
+}
+
+if 1 {
+    set useTile 1
+    foreach cmd {scale menubutton checkbutton radiobutton scrollbar label button frame entry combobox notebook labelframe separator} {
+	puts "$cmd ..."
+	if {[info command $cmd]!=""} {
+	    rename $cmd tk_$cmd
+	}
+	proc ::$cmd {args} "uplevel ttk::$cmd \$args"
+      
+    }
 }
 
 proc ::tk_optionMenu {w varName firstValue args} {
@@ -342,7 +353,7 @@ if {[string match macintosh $::tcl_platform(platform)] || \
   array set THEMES $THEMELIST
   
   
-  foreach name [tile::availableThemes] {
+  foreach name [ttk::style theme names] {
    if {![info exists THEMES($name)]} {
     lappend THEMELIST $name [set THEMES($name) [string totitle $name]]
    }
@@ -367,7 +378,7 @@ if {[string match macintosh $::tcl_platform(platform)] || \
     set Info(Prefs,theme) "winnative"
    }
   }
-  tile::setTheme $Info(Prefs,theme)
+  ttk::style theme use $Info(Prefs,theme)
  }
 
  set Info(Initialized) 1
@@ -1218,7 +1229,7 @@ proc wsurf::create {w args} {
   set wid(title_f) [frame $wid(titlebar).title]
   set wid(title) [label $wid(titlebar).title.t -anchor w]
  }
- pack $wid(title) -fill both
+ pack $wid(title) -fill both -expand 1
  pack propagate $wid(title_f) 0
 
  array set opCol [list beg black play black playall blue \
@@ -1303,7 +1314,7 @@ proc wsurf::create {w args} {
    -zoomcommand [namespace code [list xzoom $w]] \
    -formattimecommand [namespace code [list formatTime $w]] \
    -command [namespace code [list xscroll $w]] -state passive -shadowwidth 1 \
-   -messageproc [namespace code [list messageProc $w]]
+   -messageproc [namespace code [list messageProc $w]] -foreground black
 
  pack $wid(wavebar) -side top -expand 0 -fill both
  pack propagate $wid(wavebar) 0
@@ -2269,6 +2280,7 @@ proc wsurf::_propertiesDialog {w pane} {
 }
 
 proc wsurf::_drawPropertyPages {w pane} {
+
  variable Info
  upvar [namespace current]::${w}::widgets wid
  upvar [namespace current]::${w}::data d
@@ -2324,6 +2336,7 @@ proc wsurf::_drawPropertyPages {w pane} {
  } else {
   Notebook:raise.page $notebook $d($pane,lastPropertyPage)
  }
+    update idletasks 
 }
 
 proc wsurf::_remeberPropertyPage {w pane} {
@@ -2869,63 +2882,69 @@ proc wsurf::_soundConfigure {w property} {
 # -----------------------------------------------------------------------------
 
 proc wsurf::GetPreferences {} {
- variable Info
-
- set result {}
-
- foreach item [list outDev inDev PrintCmd PrintPVCmd recordLimit linkFile \
-	 autoScroll maxPixelsPerSecond tmpDir icons popupEvent defaultConfig \
-	 timeFormat showLevel defRate defEncoding defChannels createWidgets \
-	 rawFormats prefsWithConf yaxisWidth theme beg play playall playloop pause \
-		  stop record close end print zoomin zoomout zoomall zoomsel] {
-  append result "set wsurf::Info(Prefs,$item) \{$Info(Prefs,$item)\}" "\n"
- }
- append result "\nwsurf::setTheme \{$Info(Prefs,theme)\}\n"
- append result "wsurf::_selectOutDevice dummy \{$Info(Prefs,outDev)\}\n"
- append result "wsurf::_selectInDevice dummy \{$Info(Prefs,inDev)\}\n\n"
-
- foreach plugin [GetRegisteredPlugins] {
-  append result "set wsurf::Info(PluginActive,$plugin) $Info(PluginActive,$plugin)" "\n"
- }
- foreach proc $Info(PrefsGetProcList) {
-   append result [eval $proc]
- }
-
- return $result
+    variable Info
+    
+    set result {}
+    
+    foreach item [list outDev inDev PrintCmd PrintPVCmd recordLimit linkFile \
+		      autoScroll maxPixelsPerSecond tmpDir icons popupEvent defaultConfig \
+		      timeFormat showLevel defRate defEncoding defChannels createWidgets \
+		      rawFormats prefsWithConf yaxisWidth theme beg play playall playloop pause \
+		      stop record close end print zoomin zoomout zoomall zoomsel] {
+	if [info exists Info(Prefs,$item)] {
+	    append result "set wsurf::Info(Prefs,$item) \{$Info(Prefs,$item)\}" "\n"
+	}
+    }
+    if [info exists Info(Prefs,theme)] {
+	append result "\nwsurf::setTheme \{$Info(Prefs,theme)\}\n"
+    }
+    append result "wsurf::_selectOutDevice dummy \{$Info(Prefs,outDev)\}\n"
+    append result "wsurf::_selectInDevice dummy \{$Info(Prefs,inDev)\}\n\n"
+    
+    foreach plugin [GetRegisteredPlugins] {
+	append result "set wsurf::Info(PluginActive,$plugin) $Info(PluginActive,$plugin)" "\n"
+    }
+    foreach proc $Info(PrefsGetProcList) {
+	append result [eval $proc]
+    }
+    
+    return $result
 }
 
 # -----------------------------------------------------------------------------
 
 proc wsurf::ApplyPreferences {} {
- variable Info
-
- foreach var [list outDev inDev PrintCmd PrintPVCmd recordLimit linkFile \
-	 autoScroll maxPixelsPerSecond tmpDir icons popupEvent defaultConfig \
-	 timeFormat showLevel defRate defEncoding defChannels createWidgets \
-	 rawFormats prefsWithConf yaxisWidth theme beg play playall playloop pause \
-		  stop record close end print zoomin zoomout zoomall zoomsel] {
-  if {[string compare $Info(Prefs,$var) $Info(Prefs,t,$var)] != 0} {
-   switch $var {
-    popupEvent {
-     AddEvent PopupEvent $Info(Prefs,t,$var)
+    variable Info
+    
+    foreach var [list outDev inDev PrintCmd PrintPVCmd recordLimit linkFile \
+		     autoScroll maxPixelsPerSecond tmpDir icons popupEvent defaultConfig \
+		     timeFormat showLevel defRate defEncoding defChannels createWidgets \
+		     rawFormats prefsWithConf yaxisWidth theme beg play playall playloop pause \
+		     stop record close end print zoomin zoomout zoomall zoomsel] {
+	if [info exists Info(Prefs,$var)] {
+	    if {[string compare $Info(Prefs,$var) $Info(Prefs,t,$var)] != 0} {
+		switch $var {
+		    popupEvent {
+			AddEvent PopupEvent $Info(Prefs,t,$var)
+		    }
+		    inDev {
+			_selectInDevice dummy $Info(Prefs,t,$var)
+		    }
+		    outDev {
+			_selectOutDevice dummy $Info(Prefs,t,$var)
+		    }
+		    theme {
+			setTheme $Info(Prefs,t,$var)
+		    }
+		}
+		
+		set Info(Prefs,$var) $Info(Prefs,t,$var)
+	    }
+	}
     }
-    inDev {
-     _selectInDevice dummy $Info(Prefs,t,$var)
+    foreach proc $Info(PrefsApplyProcList) {
+	eval $proc
     }
-    outDev {
-     _selectOutDevice dummy $Info(Prefs,t,$var)
-    }
-    theme {
-     setTheme $Info(Prefs,t,$var)
-    }
-   }
-
-   set Info(Prefs,$var) $Info(Prefs,t,$var)
-  }
- }
- foreach proc $Info(PrefsApplyProcList) {
-   eval $proc
- }
 }
 
 proc wsurf::PreferencePages {} {
@@ -2958,7 +2977,9 @@ proc wsurf::_miscPage {p} {
 		  timeFormat yaxisWidth prefsWithConf theme beg play playall \
 		  playloop pause \
 		  stop record close end print zoomin zoomout zoomall zoomsel] {
-  set Info(Prefs,t,$var) $Info(Prefs,$var)
+     if [info exists Info(Prefs,$var)] {
+	 set Info(Prefs,t,$var) $Info(Prefs,$var)
+     }
  }
  
  set wid 26
@@ -3116,7 +3137,7 @@ proc wsurf::_soundPage {p} {
   set Info(Prefs,t,storage) "load into memory"
  }
 
- set wid [::util::mcmax Input device:" "Output device:" "Print command:" \
+ set wid [::util::mcmax "Input device:" "Output device:" "Print command:" \
            "Preview command:" "Sound storage:" "Temporary directory:" \
 	   "New sound default rate:" "New sound default encoding:" \
             "New sound default channels:" "Record time limit:"]
@@ -3226,7 +3247,7 @@ proc wsurf::setTheme {theme} {
   set i [lsearch -exact $Info(Themes) $theme]
   #  puts $Info(Prefs,theme),[lindex $Info(themes) $i]
   if {$i >= 0} {
-   tile::setTheme [lindex $Info(themes) $i]
+      ttk::style theme use [lindex $Info(themes) $i]
   }
  }
 }

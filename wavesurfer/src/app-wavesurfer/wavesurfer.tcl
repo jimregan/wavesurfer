@@ -16,7 +16,7 @@ package provide app-wavesurfer 1.8
 catch {package require Tk}
 
 set dir [file normalize [file dirname [info script]]]
-lappend auto_path [file dirname $dir]
+set auto_path [concat [list [file dirname $dir]] $auto_path]
 
 package require tkcon
 set ::tkcon::OPT(exec) {}
@@ -162,11 +162,13 @@ namespace eval ::splash {
  wm withdraw $splash
  wm withdraw .
  wm overrideredirect $splash 1
- set img [image create photo -data $logodata]
- set width [image width $img]
- set height [image height $img]
+# set img [image create photo -data $logodata]
+ set img [image create photo -file $dir/../../icons/ws10h.gif]
+ set pad 10
+ set width [expr [image width $img]+2*$pad]
+ set height [expr [image height $img]+2*$pad]
  pack [canvas $splash.c -width $width -height $height -bg black -highlightthickness 0] -side top 
- $splash.c create image 0 0 -image $img -anchor nw
+ $splash.c create image $pad $pad -image $img -anchor nw
  pack [label $splash.l0 -text [::util::mc "Initializing..."] -font "helvetica 10" -bg black -fg gray] -side top -expand 1 -fill x
  pack [frame $splash.f] -side top -expand 1 -fill x
  pack [label $splash.f.l1 -text [::util::mc "Components read:"] -font "helvetica 10" -bg black -fg gray] -side left -expand 1 -fill x

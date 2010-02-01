@@ -460,7 +460,7 @@ proc util::chooseColor {colorVar {label ""}} {
 # err -			The error message.
 
 option add *ErrorDialog.msg.wrapLength 3.5i widgetDefault
-namespace eval ::tk {
+list namespace eval ::tk {
     namespace eval errorDialog {
 	variable button -1
 
@@ -520,6 +520,7 @@ namespace eval ::tk {
     }
 }
 
+if 0 {
 proc bgerror err {
     global errorInfo tcl_platform
     set butvar ::tk::errorDialog::button
@@ -697,4 +698,5 @@ proc bgerror err {
     if {$button == 1} {
 	return -code break
     }
+}
 }
