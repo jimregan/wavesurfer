@@ -67,6 +67,8 @@ HTMLFILES = web/man$(MANVERSION).html web/wsguileft.gif web/wsguiright.gif
 WRAPFILES     = $(WAVESURFER_REL) $(PKGFILES) $(CONFIGURATIONS) $(PLUGINFILES)
 PACKAGEVER    = $(shell grep "package provide wsurf" src/wsurf.tcl | cut -f 4 -d " ")
 BUILD         = $(shell echo puts [clock format [clock seconds] -format %y%m%d%H%M] | $(TCLSH))
+BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd snd nsp raw mp3 ogg} </string><string>]</string>\'" | $(TCLSH))
+COPYRIGHT     = "Copyright (C) 2000-2010 Jonas Beskow and Kare Sjolander"
 VER_A	= $(shell head -1 release.txt)
 VER_B 	= $(shell head -2 release.txt|tail -1)
 VER_C   = $(shell head -3 release.txt|tail -1)
@@ -124,32 +126,51 @@ _wrap: srcdist
 	cp build/main.tcl $(TMP)/wavesurfer.vfs
 	cp -f $(TCLKIT) $(TMP)/tclkit
 	cp -r build/binpkg/$(TARGET)/snack2.2 $(TMP)/wavesurfer.vfs/lib
+	mkdir -p $(TMP)/wavesurfer.vfs/icons
+	cp icons/ws10h.gif $(TMP)/wavesurfer.vfs/icons 
 	cd $(TMP); \
 	./tclkit $(ROOT)/build/kit/sdx.kit wrap wavesurfer -runtime $(RUNTIME_$(TARGET)) ;\
 	chmod a+x wavesurfer
 
 linux-wrap:
+	mkdir -p bin
 	$(MAKE) _wrap TARGET=linux
-	cd $(TMP); tar cfz wavesurfer-$(RELEASE)-linux.tgz wavesurfer
+	cd $(TMP); tar cfz $(ROOT)/bin/wavesurfer-$(RELEASE)-linux.tgz wavesurfer
 
 win32-wrap:
+	mkdir -p bin
 	$(MAKE) _wrap TARGET=win32
-	cd $(TMP); mv wavesurfer wavesurfer.exe; zip wavesurfer-$(RELEASE)-win32.zip wavesurfer.exe
+	cd $(TMP); mv wavesurfer wavesurfer.exe; zip $(ROOT)/bin/wavesurfer-$(RELEASE)-win32.zip wavesurfer.exe
 
 osx-wrap: srcdist
-	rm -rf WaveSurfer.app
-	cp -r build/Wish.app WaveSurfer.app
-	chmod -R a+w WaveSurfer.app
-	mkdir WaveSurfer.app/Contents/Resources/Scripts/ 
-	mkdir WaveSurfer.app/Contents/Resources/icons
-	mkdir WaveSurfer.app/Contents/lib
-	cp build/AppMain.tcl WaveSurfer.app/Contents/Resources/Scripts/
-	cp icons/ws10.icns icons/ws10h.gif WaveSurfer.app/Contents/Resources/icons 
-	cd WaveSurfer.app/Contents/Resources; ln -sf icons/ws10.icns Wish.icns
-	cat build/Info.plist.in | sed s/@BUNDLENAME@/WaveSurfer/g > WaveSurfer.app/Contents/Info.plist
-	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* WaveSurfer.app/Contents/Resources/Scripts/
-	cp -r build/binpkg/osx/snack2.2 WaveSurfer.app/Contents/lib
-	tar cfz wavesurfer-$(RELEASE)-osx.tgz WaveSurfer.app
+	mkdir -p bin
+	rm -rf bin/WaveSurfer.app
+	cd bin; tar xfz ../build/Wish.app.tgz
+	mv bin/Wish.app bin/WaveSurfer.app
+	chmod -R a+w bin/WaveSurfer.app
+	mkdir bin/WaveSurfer.app/Contents/Resources/Scripts/ 
+	mkdir bin/WaveSurfer.app/Contents/Resources/icons
+	mkdir bin/WaveSurfer.app/Contents/lib
+	cp build/AppMain.tcl bin/WaveSurfer.app/Contents/Resources/Scripts/
+	cp icons/ws10.icns icons/ws10h.gif bin/WaveSurfer.app/Contents/Resources/icons 
+	cd bin/WaveSurfer.app/Contents/Resources; ln -sf icons/ws10.icns Wish.icns
+	cat build/Info.plist.in | \
+		sed s/@BUNDLENAME@/WaveSurfer/g |\
+		sed s/@BUNDLEVERSION@/$(RELEASE)/g | \
+		sed s/@BUNDLEGETINFOSTRING@/$(COPYRIGHT)/g |\
+		sed s%@BUNDLETYPEEXTENSIONS@%$(BUNDLEEXTENSIONS)%g |\
+		sed s/@BUNDLEIDENTIFIER@/se.kth.speech.wavesurfer/g \
+		> bin/WaveSurfer.app/Contents/Info.plist
+	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* bin/WaveSurfer.app/Contents/Resources/Scripts/
+	cp -r build/binpkg/osx/snack2.2 bin/WaveSurfer.app/Contents/lib
+	cd bin; tar cfz wavesurfer-$(RELEASE)-osx.tgz WaveSurfer.app
+
+dmg: osx-wrap
+	rm -rf $(TMP)/wavesurfer-$(RELEASE)
+	mkdir $(TMP)/wavesurfer-$(RELEASE)
+	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/Applications.tgz
+	cp -pr bin/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)
+	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) bin/wavesurfer-$(RELEASE)-osx.dmg
 
 psphere:
 	tar cf sphere.tar sphere/libsnacksphere.dll sphere/libsnacksphere.so sphere/sphere.plug sphere/sphere.txt ; gzip -f sphere.tar
