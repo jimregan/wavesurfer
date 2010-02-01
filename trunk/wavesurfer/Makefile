@@ -168,7 +168,7 @@ osx-wrap: srcdist
 dmg: osx-wrap
 	rm -rf $(TMP)/wavesurfer-$(RELEASE)
 	mkdir $(TMP)/wavesurfer-$(RELEASE)
-	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/Applications.tgz
+	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/mac-alias-to-Applications.tgz
 	cp -pr bin/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)
 	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) bin/wavesurfer-$(RELEASE)-osx.dmg
 
