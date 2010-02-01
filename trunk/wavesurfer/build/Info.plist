@@ -40,13 +40,10 @@
 	<key>CFBundleExecutable</key>
 	<string>Wish</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Wish Shell 8.6b1,
-Copyright © 2010 Tcl Core Team,
-Copyright © 2002-2010 Daniel A. Steffen,
-Initial MacOS X Port by Jim Ingham &amp; Ian Reid,
-Copyright © 2001-2002, Apple Computer, Inc.</string>
+	<string>WaveSurfer
+Copyright © 2000-2010 Jonas Beskow &amp; K&aring;re Sj&ouml;lander</string>
 	<key>CFBundleIconFile</key>
-	<string>Wish.icns</string>
+	<string>ws10.icns</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.tcltk.wish</string>
 	<key>CFBundleInfoDictionaryVersion</key>
