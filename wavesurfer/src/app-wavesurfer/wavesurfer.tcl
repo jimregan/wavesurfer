@@ -27,152 +27,34 @@ set version_major 1
 set version_minor 8
 set version ${version_major}.${version_minor}
 
+catch {console show}
+
 package require surfutil
+
 namespace eval ::splash {
 
  variable progress
  variable filecount
  set filecount 0
- set logodata {
-  R0lGODdhuAA1APcAAAQCBXOElqLF67iCVHhWVDpFUJWjsevFfVRjd7akrZCEfe/kq7RaQcOl
-  WjwyLzZEgbzb+I+VthojKJWkxHduZVZklcjFpaa0zNbFw5qUgeGle5lzZFxzoWaEstbl98C0
-  q1ZJTHd7lL7H3RwoTOT0/AoTHdnU0LmIeb+0mIKUtJu04FRIfLa726qEdUpUaLmkkXt4a6ek
-  v8LQ4M20qi00O+3bxGVslLLR9KiUhmd0l+7m4EZUiuzXjM+kgpCEkTlDZn2FrQsWMJVRQWh1
-  gJSl49aReGZ0sNjV67DF3qacrrmrka50XaW04y4qJFllp7eafr/U9N20fWllXo+c0bu1xEtb
-  n3dka6m7zdrs+72VYaealgQDHpeMf4dvcod7cq/I8YKPmZCcuVxZThslOR8bFoOUytRyMMzn
-  /JqryPf09Gp7mkVLZX+Lxty0j9bEr9nb2YSDdKyki7isqcjDw0pbj1xsk4d8jTE7UvTWkai8
-  5czV88jf+tG9wLWdlXhuetzN4p18bVw6VFRcisZmOJRiVDw+ZFVdpcSDTsyURc+0mbN7YMV8
-  S4ZQRqqjpEdDOkVMh5OVoGBOcObVshQUMGVcVvrwu+TEoMetrHOEvrSQlPDt78+pdKx2fIhj
-  X+2ndaSu5GVsgsyehJd9fqx+cmdbh7NkQRMbIr3J8rS+9MR2VKWNiPjaqmRutH6Il1xrfNvN
-  wYSbuDI8Q9jd8T87NNGSZ/zivAoLCjxMjsO8sSkwUraQe7y7mM68q8yulJiNkJlXR5qs4Ftr
-  rOW8fbu8ycSbUiMsPszLxMuLSUhLTJSbnuzcqxUdM3V8qe3d3SwuOVVdaTA+cOn6/OTk6hQT
-  DOTVx8SlkMSslOTbytR6PMSmtLx2V6ReRLeNbFVPSUtbbTxNY4CMrmhsbKerseXMq7SuxKyu
-  lHRabPHowcOociQjHnSEqsS+1HZ7hMzR38ScgIl6gfzu9NytgZi85aeMe6atw6qcgmp7sAUN
-  IISbzfb7+uC8k9rMtIlYUXSLvFxkfZyFeywAAAAAuAA1AAAI/gABCBxIsKDBgwgTKlzIsKHD
-  hxAjSpxIsaLFixgzatzIsaPHjyBDigxpa1rJkyZTznK0cpZLlyxnkbGF0tbImzhB2prlgOes
-  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
- }
-
- set splash [toplevel .splash -relief raised -bd 0]
+ set splash [toplevel .splash -relief raised -bd 1]
  wm withdraw $splash
  wm withdraw .
  wm overrideredirect $splash 1
 # set img [image create photo -data $logodata]
  set img [image create photo -file $dir/../../icons/ws10h.gif]
- set pad 10
+ set pad 20
  set width [expr [image width $img]+2*$pad]
  set height [expr [image height $img]+2*$pad]
- pack [canvas $splash.c -width $width -height $height -bg black -highlightthickness 0] -side top 
+ set bg lightgray
+ set fg black
+ set fg2 black
+ pack [label $splash.lx -text [::util::mc "WaveSurfer @RELEASE@"] -font "helvetica 12" -bg $bg -fg $fg] -side top -expand 1 -fill x
+ pack [canvas $splash.c -width $width -height $height -bg $bg -highlightthickness 0] -side top 
  $splash.c create image $pad $pad -image $img -anchor nw
- pack [label $splash.l0 -text [::util::mc "Initializing..."] -font "helvetica 10" -bg black -fg gray] -side top -expand 1 -fill x
- pack [frame $splash.f] -side top -expand 1 -fill x
- pack [label $splash.f.l1 -text [::util::mc "Components read:"] -font "helvetica 10" -bg black -fg gray] -side left -expand 1 -fill x
- pack [label $splash.f.l2 -textvariable ::splash::progress -font "helvetica 10" -bg black -fg orange -anchor w] -side left -expand 1 -fill x
+ pack [label $splash.l0 -text [::util::mc "Initializing..."] -font "helvetica 12" -bg $bg -fg $fg] -side top -expand 1 -fill x
+ pack [frame $splash.f -bg $bg] -side top -expand 1 -fill x
+ pack [label $splash.f.l1 -text [::util::mc "Components read:"] -font "helvetica 12" -bg $bg -fg $fg] -side left -expand 1 -fill x
+ pack [label $splash.f.l2 -textvariable ::splash::progress -font "helvetica 12" -bg $bg -fg $fg2 -anchor w] -side left -expand 1 -fill x
  
  set ww $width
  set wh [expr {$height+150}]
@@ -183,6 +65,7 @@ namespace eval ::splash {
 }
 
 set proctracefile [file join [file dirname [info script]] proctrace.tcl]
+
 if {[file exists $proctracefile]} {
 # source $proctracefile
 }
@@ -2488,31 +2371,31 @@ proc KeyBindingsPage {p} {
  }
 
  if {$::useTile} {
-  tk_frame $p.f -highlightthickness 0 -borderwidth 0
- } else {
-  frame $p.f -highlightthickness 0 -borderwidth 0
- }
-  set t $p.f.text
+	 tk_frame $p.f -highlightthickness 0 -borderwidth 0
+     } else {
+	 frame $p.f -highlightthickness 0 -borderwidth 0
+     }
+     set t $p.f.text
 # set font [[label $p.l] cget -font]
- text $t -yscrollcommand "$p.scroll set" -setgrid true -width 50 \
-     -height 10 -wrap word -highlightthickness 0 -borderwidth 0 \
-     -tabs {5c left}
- pack $t -expand  yes -fill both
- scrollbar $p.scroll -command "$t yview"
- pack $p.scroll -side right -fill y
- pack $p.f -expand yes -fill both
-
- foreach {prefKey script text} $::Prefs(Table) {
-  entry $t.w$prefKey -width 15 -textvar Info(Prefs,t,$prefKey)
-  if {$script == ""} {
-   $t insert end "\n    [::util::mc ${text}]"
-  } else {
-   $t insert end [::util::mc ${text}]:\t
-   $t window create end -window $t.w$prefKey
-  }
-  $t insert end \n
- }
- $t configure -state disabled
+     text $t -yscrollcommand "$p.scroll set" -setgrid true -width 50 \
+	 -height 10 -wrap word -highlightthickness 0 -borderwidth 0 \
+	 -tabs {5c left}
+     pack $t -expand  yes -fill both
+     scrollbar $p.scroll -command "$t yview"
+     pack $p.scroll -side right -fill y
+     pack $p.f -expand yes -fill both
+     
+     foreach {prefKey script text} $::Prefs(Table) {
+	 entry $t.w$prefKey -width 15 -textvar Info(Prefs,t,$prefKey)
+	 if {$script == ""} {
+		 $t insert end "\n    [::util::mc ${text}]"
+	     } else {
+		 $t insert end [::util::mc ${text}]:\t
+		 $t window create end -window $t.w$prefKey
+	     }
+	     $t insert end \n
+     }
+     $t configure -state disabled
 }
 
 # GetCTTRegVars
@@ -2662,14 +2545,15 @@ proc RegTypesDialog {} {
 }
 
 proc ShowConsole {} {
-# if {[catch {console show}]} {
+ if {[catch {console show}]} {
   ::tkcon::Init
 #  uplevel #0 "source $::tkconfile"
-# }
+ }
 }
 
 proc About {} {
- tk_messageBox -title "About WaveSurfer" -message "WaveSurfer $::RELEASE/$::BUILD\n©2006 Kåre Sjölander\nand Jonas Beskow\n"
+ tk_messageBox -title "About WaveSurfer" -message "@ABOUTWAVESURFER@\n"
+# tk_messageBox -title "About WaveSurfer" -message "WaveSurfer $::RELEASE/$::BUILD\n©2006 Kåre Sjölander\nand Jonas Beskow\n"
 #Get the latest version at\nhttp://www.speech.kth.se/wavesurfer"
 }
 
@@ -2763,7 +2647,7 @@ toplevel .x
 #wm iconbitmap .x snackPlay
 set Info(toplevels) .x
 wm withdraw .x
-wm title .x "WaveSurfer $RELEASE"
+wm title .x "WaveSurfer @RELEASE@"
 wm minsize .x 200 1
 wm resizable .x 1 0
 wm protocol .x WM_DELETE_WINDOW [list KillWindow .x]

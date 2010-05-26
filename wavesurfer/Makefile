@@ -68,7 +68,7 @@ WRAPFILES     = $(WAVESURFER_REL) $(PKGFILES) $(CONFIGURATIONS) $(PLUGINFILES)
 PACKAGEVER    = $(shell grep "package provide wsurf" src/wsurf.tcl | cut -f 4 -d " ")
 BUILD         = $(shell echo puts [clock format [clock seconds] -format %y%m%d%H%M] | $(TCLSH))
 BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd snd nsp raw mp3 ogg} </string><string>]</string>\'" | $(TCLSH))
-COPYRIGHT     = "Copyright (C) 2000-2010 Jonas Beskow and Kare Sjolander"
+
 VER_A	= $(shell head -1 release.txt)
 VER_B 	= $(shell head -2 release.txt|tail -1)
 VER_C   = $(shell head -3 release.txt|tail -1)
@@ -84,16 +84,19 @@ WSURF         = wsurf$(PACKAGEVER)
 INSTDIR       = $(PREFIX)/lib/$(WSURF)
 STYLESHEET    = /wavesurfer/wsstyle.css
 
-pkgIndex:
-	build/mkPkgIndex.tcl $(PKGFILES) > src/wsurf/pkgIndex.tcl
-	build/mkPkgIndex.tcl src/app-wavesurfer/wavesurfer.tcl > src/app-wavesurfer/pkgIndex.tcl
+COPYRIGHT     = Copyright © 2000-2010 Jonas Beskow and Kare Sjolander
+#ABOUTWAVESURFER = "WaveSurfer $(RELEASE)-$(BUILD) $(COPYRIGHT)"
+ABOUTWAVESURFER = "WaveSurfer $(RELEASE)-$(BUILD)\\\n$(COPYRIGHT)"
 
 
-srcdist: pkgIndex
+all: src-release osx-release win32-release linux-release
+
+src-release: pkgIndex
 	tar cf $(TMP)/wsdist.tar $(PKGFILES) $(APPWSFILES) $(PLUGINFILES) $(CONFIGURATIONS) $(ICONS) $(DEMOS) $(MSGS) $(TOOLS)
 	cd $(TMP);rm -rf wsdist; mkdir wsdist; cd wsdist; tar xf ../wsdist.tar
-	sed -e s/"@RELEASE@"/$(RELEASE)/ -e s/"@BUILD@"/$(BUILD)/< src/app-wavesurfer/wavesurfer.tcl > $(TMP)/wsdist/src/app-wavesurfer/wavesurfer.tcl
+	cat src/app-wavesurfer/wavesurfer.tcl | sed -e s/@ABOUTWAVESURFER@/$(ABOUTWAVESURFER)/g | sed -e s/@RELEASE@/$(RELEASE)/g > $(TMP)/wsdist/src/app-wavesurfer/wavesurfer.tcl
 	cp src/app-wavesurfer/proctrace.tcl $(TMP)/wsdist/src/app-wavesurfer/_proctrace.tcl
+#	cp src/app-wavesurfer/proctrace.tcl $(TMP)/wsdist/src/app-wavesurfer/proctrace.tcl
 
 	mkdir $(TMP)/wsdist/doc
 	for podfile in $(PODFILES); do \
@@ -116,33 +119,25 @@ srcdist: pkgIndex
 	cp -r $(TMP)/wsdist $(TMP)/wavesurfer-$(RELEASE)
 	tar cfz $(TMP)/wavesurfer-$(RELEASE)-src.tgz $(TMP)/wavesurfer-$(RELEASE)
 
-wrap: linux-wrap win32-wrap osx-wrap
-
-_wrap: srcdist
-	rm -rf $(TMP)/wavesurfer.vfs
-	mkdir -p $(TMP)/wavesurfer.vfs/lib
-	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* $(TMP)/wavesurfer.vfs/lib
-	rm $(TMP)/wavesurfer-$(RELEASE)/src/plugins/example*.plug
-	cp build/main.tcl $(TMP)/wavesurfer.vfs
-	cp -f $(TCLKIT) $(TMP)/tclkit
-	cp -r build/binpkg/$(TARGET)/snack2.2 $(TMP)/wavesurfer.vfs/lib
-	mkdir -p $(TMP)/wavesurfer.vfs/icons
-	cp icons/ws10h.gif $(TMP)/wavesurfer.vfs/icons 
-	cd $(TMP); \
-	./tclkit $(ROOT)/build/kit/sdx.kit wrap wavesurfer -runtime $(RUNTIME_$(TARGET)) ;\
-	chmod a+x wavesurfer
-
-linux-wrap:
+linux-release:
 	mkdir -p bin
 	$(MAKE) _wrap TARGET=linux
 	cd $(TMP); tar cfz $(ROOT)/bin/wavesurfer-$(RELEASE)-linux.tgz wavesurfer
 
-win32-wrap:
+win32-release:
 	mkdir -p bin
 	$(MAKE) _wrap TARGET=win32
 	cd $(TMP); mv wavesurfer wavesurfer.exe; zip $(ROOT)/bin/wavesurfer-$(RELEASE)-win32.zip wavesurfer.exe
 
-osx-wrap: srcdist
+osx-release: macbundle
+	rm -rf $(TMP)/wavesurfer-$(RELEASE)
+	mkdir $(TMP)/wavesurfer-$(RELEASE)
+	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/mac-alias-to-Applications.tgz
+	cp -pr bin/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)
+	rm -f bin/wavesurfer-$(RELEASE)-osx.dmg
+	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) bin/wavesurfer-$(RELEASE)-osx.dmg
+
+macbundle: src-release
 	mkdir -p bin
 	rm -rf bin/WaveSurfer.app
 	cd bin; tar xfz ../build/Wish.app.tgz
@@ -157,20 +152,36 @@ osx-wrap: srcdist
 	cat build/Info.plist.in | \
 		sed s/@BUNDLENAME@/WaveSurfer/g |\
 		sed s/@BUNDLEVERSION@/$(RELEASE)/g | \
-		sed s/@BUNDLEGETINFOSTRING@/$(COPYRIGHT)/g |\
+		sed s/@BUNDLEGETINFOSTRING@/"$(COPYRIGHT)"/g |\
 		sed s%@BUNDLETYPEEXTENSIONS@%$(BUNDLEEXTENSIONS)%g |\
 		sed s/@BUNDLEIDENTIFIER@/se.kth.speech.wavesurfer/g \
 		> bin/WaveSurfer.app/Contents/Info.plist
 	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* bin/WaveSurfer.app/Contents/Resources/Scripts/
-	cp -r build/binpkg/osx/snack2.2 bin/WaveSurfer.app/Contents/lib
-	cd bin; tar cfz wavesurfer-$(RELEASE)-osx.tgz WaveSurfer.app
+	cp -r build/binpkg/osx/snack$(SNACKMAJORV) bin/WaveSurfer.app/Contents/lib
+	rm bin/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsound.dylib
+	cp -a build/binpkg/osx/libportaudio*.dylib bin/WaveSurfer.app/Contents/Frameworks
+	install_name_tool -id @executable_path/../Frameworks/libportaudio.dylib	\
+		bin/WaveSurfer.app/Contents/Frameworks/libportaudio.dylib
+	install_name_tool -change /usr/local/lib/libportaudio.2.dylib @executable_path/../Frameworks/libportaudio.2.dylib bin/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsnack.dylib
 
-dmg: osx-wrap
-	rm -rf $(TMP)/wavesurfer-$(RELEASE)
-	mkdir $(TMP)/wavesurfer-$(RELEASE)
-	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/mac-alias-to-Applications.tgz
-	cp -pr bin/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)
-	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) bin/wavesurfer-$(RELEASE)-osx.dmg
+_wrap: src-release
+	rm -rf $(TMP)/wavesurfer.vfs
+	mkdir -p $(TMP)/wavesurfer.vfs/lib
+	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* $(TMP)/wavesurfer.vfs/lib
+	rm $(TMP)/wavesurfer-$(RELEASE)/src/plugins/example*.plug
+	cp build/main.tcl $(TMP)/wavesurfer.vfs
+	cp -f $(TCLKIT) $(TMP)/tclkit
+	cp -r build/binpkg/$(TARGET)/snack$(SNACKMAJORV) $(TMP)/wavesurfer.vfs/lib
+	mkdir -p $(TMP)/wavesurfer.vfs/icons
+	cp icons/ws10h.gif $(TMP)/wavesurfer.vfs/icons 
+	cd $(TMP); \
+	./tclkit $(ROOT)/build/kit/sdx.kit wrap wavesurfer -runtime $(RUNTIME_$(TARGET)) ;\
+	chmod a+x wavesurfer
+
+pkgIndex:
+	build/mkPkgIndex.tcl $(PKGFILES) > src/wsurf/pkgIndex.tcl
+	build/mkPkgIndex.tcl src/app-wavesurfer/wavesurfer.tcl > src/app-wavesurfer/pkgIndex.tcl
+
 
 psphere:
 	tar cf sphere.tar sphere/libsnacksphere.dll sphere/libsnacksphere.so sphere/sphere.plug sphere/sphere.txt ; gzip -f sphere.tar

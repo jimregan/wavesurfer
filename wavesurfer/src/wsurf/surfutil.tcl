@@ -460,7 +460,7 @@ proc util::chooseColor {colorVar {label ""}} {
 # err -			The error message.
 
 option add *ErrorDialog.msg.wrapLength 3.5i widgetDefault
-list namespace eval ::tk {
+namespace eval ::tk {
     namespace eval errorDialog {
 	variable button -1
 
@@ -520,7 +520,8 @@ list namespace eval ::tk {
     }
 }
 
-if 0 {
+
+if 1 {
 proc bgerror err {
     global errorInfo tcl_platform
     set butvar ::tk::errorDialog::button
@@ -562,8 +563,8 @@ proc bgerror err {
 	unsupported1 style .bgerrorDialog dBoxProc
     }
 
-    frame .bgerrorDialog.bot
-    frame .bgerrorDialog.top
+    tk_frame .bgerrorDialog.bot
+    tk_frame .bgerrorDialog.top
     if {$tcl_platform(platform) == "unix"} {
 	.bgerrorDialog.bot configure -relief raised -bd 1
 	.bgerrorDialog.top configure -relief raised -bd 1
@@ -571,7 +572,7 @@ proc bgerror err {
     pack .bgerrorDialog.bot -side bottom -fill both
     pack .bgerrorDialog.top -side top -fill both -expand 1
 
-    set W [frame $w.top.info]
+    set W [tk_frame $w.top.info]
     text $W.text -bd 2 -yscrollcommand "$W.scroll set" -setgrid true \
 	    -width 20 -height 10 -state normal -wrap char
     if {$tcl_platform(platform) == "macintosh"} {
