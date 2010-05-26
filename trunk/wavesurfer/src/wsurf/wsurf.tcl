@@ -315,7 +315,7 @@ if {[string match macintosh $::tcl_platform(platform)] || \
     set Info(Prefs,popupEvent) ButtonPress-3
 }
 # event add <<PopupEvent>> <$Info(Prefs,popupEvent)>
- set Info(Prefs,timeFormat) hms.ddd
+set Info(Prefs,timeFormat) hms.ddd
  set Info(Prefs,hms) 0
  set Info(Prefs,hms.d) 1
  set Info(Prefs,hms.dd) 2
@@ -333,7 +333,7 @@ if {[string match macintosh $::tcl_platform(platform)] || \
  set Info(Prefs,defEncoding) Lin16
  set Info(Prefs,defChannels) 1
 
- set Info(Prefs,createWidgets) separate
+set Info(Prefs,createWidgets) separate
  set Info(Prefs,yaxisWidth) 40
 
  set Info(PrintSelection) 0
@@ -341,45 +341,37 @@ if {[string match macintosh $::tcl_platform(platform)] || \
  set Info(Prefs,rawFormats) {.alw 8000 Alaw 1 "" 0}
 
 
- if {$::useTile} {
-  set THEMELIST {
-   default  	"Default"
-   classic  	"Classic"
-   alt      	"Revitalized"
-   winnative	"Windows native"
-   xpnative	"XP Native"
-   aqua	"Aqua"
-  }
-  array set THEMES $THEMELIST
-  
-  
-  foreach name [ttk::style theme names] {
-   if {![info exists THEMES($name)]} {
-    lappend THEMELIST $name [set THEMES($name) [string totitle $name]]
-   }
-  }
-  set Info(Themes) {}
-  set Info(themes) {}
-  foreach {theme name} $THEMELIST {
-   if {[lsearch -exact [package names] tile::theme::$theme] != -1} {
-    lappend Info(Themes) $name
-    lappend Info(themes) $theme
-   }
-  }
-
-  if {$::tcl_platform(os) == "Darwin"} {
-   set Info(Prefs,theme) "aqua"
-  } elseif {$::tcl_platform(platform) == "unix"} {
-   set Info(Prefs,theme) "default"
-  } else {
-   if {$::tcl_platform(osVersion) == "5.1"} {
-    set Info(Prefs,theme) "xpnative"
-   } else {
-    set Info(Prefs,theme) "winnative"
-   }
-  }
-  ttk::style theme use $Info(Prefs,theme)
+if {$::useTile} {
+     set Info(themes) [ttk::style theme names]
  }
+
+list {  
+    foreach name [ttk::style theme names] {
+	if {![info exists THEMES($name)]} {
+	    lappend THEMELIST $name [set THEMES($name) [string totitle $name]]
+	}
+    }
+    set Info(Themes) {}
+    set Info(themes) {}
+    foreach {theme name} $THEMELIST {
+	if {[lsearch -exact [package names] tile::theme::$theme] != -1} {
+	    lappend Info(Themes) $name
+	    lappend Info(themes) $theme
+	}
+    }
+}
+if {$::tcl_platform(os) == "Darwin"} {
+    set Info(Prefs,theme) "aqua"
+} elseif {$::tcl_platform(platform) == "unix"} {
+    set Info(Prefs,theme) "default"
+} else {
+    if {$::tcl_platform(osVersion) == "5.1"} {
+	set Info(Prefs,theme) "xpnative"
+    } else {
+	set Info(Prefs,theme) "winnative"
+    }
+}
+ttk::style theme use $Info(Prefs,theme)
 
  set Info(Initialized) 1
  SetDefaultPrefs
@@ -950,7 +942,7 @@ proc wsurf::MakeCurrent {w} {
  # check: how can we get the colors from windows?
  foreach widget $Info(widgets) {
   [set [namespace current]::${widget}::widgets(title)] config \
-    -background #7f7f7f -fg #cfcfcf
+
   [set [namespace current]::${widget}::widgets(top)] config -relief flat
  }
  [set [namespace current]::${w}::widgets(title)] config \
@@ -2547,7 +2539,7 @@ proc booleanPropItem {path label command var} {
   upvar $var v
   pack [frame $path] -anchor w -ipady 2
  if {$::useTile} {
-  pack [tk_checkbutton $path.b -text [::util::mc $label] -anchor w \
+  pack [ttk::checkbutton $path.b -text [::util::mc $label] \
 	    -variable $var -command $command]
  } else {
   pack [checkbutton $path.b -text [::util::mc $label] -anchor w \
@@ -2767,8 +2759,11 @@ proc wsurf::_soundPropertiesPage {w pane path} {
  pack [frame $path.bf.f3] -anchor w -ipady 2
  label $path.bf.f3.l -text [::util::mc "Set sample encoding:"] -width 26 \
      -anchor w
- tk_optionMenu $path.bf.f3.om [namespace current]::${w}::data(t,setEncoding) \
-	 Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float
+# tk_optionMenu $path.bf.f3.om [namespace current]::${w}::data(t,setEncoding) \
+#	 Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float
+    ttk::combobox $path.bf.f3.om -textvariable [namespace current]::${w}::data(t,setEncoding) \ -state readonly -values {
+	Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float
+    }
  pack $path.bf.f3.l $path.bf.f3.om -side left
 
  pack [frame $path.bf.f5] -anchor w -ipady 2
@@ -3001,7 +2996,7 @@ proc wsurf::_miscPage {p} {
 			 record snackRecord]
  pack [frame $p.f1] -anchor w -ipady 2
  if {$::useTile} {
-  pack [tk_label $p.f1.l -text [::util::mc "Icons:"] -anchor w -width 20] \
+  pack [ttk::label $p.f1.l -text [::util::mc "Icons:"] -width 20] \
       -side left
  } else {
   pack [label $p.f1.l -text [::util::mc "Icons:"] -anchor w -width 20] \
@@ -3054,8 +3049,11 @@ proc wsurf::_miscPage {p} {
 # Does not belong here, move to application layer (with lots of the other)
  pack [frame $p.f3] -anchor w
  label $p.f3.l -text [::util::mc "Open new sound in"] -anchor w -width $wid
- tk_optionMenu $p.f3.om [namespace current]::Info(Prefs,t,createWidgets) \
-     separate common
+# tk_optionMenu $p.f3.om [namespace current]::Info(Prefs,t,createWidgets) \
+#     separate common
+    ttk::combobox $p.f3.om -textvariable [namespace current]::Info(Prefs,t,createWidgets) -state readonly -values {
+	separate common
+    }
  label $p.f3.l2 -text "window" -anchor w
  pack $p.f3.l $p.f3.om $p.f3.l2 -side left
 
@@ -3068,8 +3066,11 @@ proc wsurf::_miscPage {p} {
 
  pack [frame $p.f5] -anchor w -ipady 2
  label $p.f5.l -text "Scroll type during playback:" -width 26 -anchor w
- tk_optionMenu $p.f5.om [namespace current]::Info(Prefs,t,autoScroll) \
-     None Scroll Page
+# tk_optionMenu $p.f5.om [namespace current]::Info(Prefs,t,autoScroll) \
+#     None Scroll Page
+    ttk::combobox $p.f5.om -textvariable [namespace current]::Info(Prefs,t,autoScroll) -state readonly -values {
+	None Scroll Page
+    }
  pack $p.f5.l $p.f5.om -side left
 
 # Does not belong here, move to application layer (with lots of the other)
@@ -3080,16 +3081,20 @@ proc wsurf::_miscPage {p} {
  foreach conf [::wsurf::GetConfigurations] {
   lappend tmp [file rootname [file tail $conf]]
  }
- eval tk_optionMenu $p.f6.om \
-     [namespace current]::Info(Prefs,t,defaultConfig) $tmp
+# eval tk_optionMenu $p.f6.om \
+#     [namespace current]::Info(Prefs,t,defaultConfig) $tmp
+    ttk::combobox $p.f6.om -textvariable [namespace current]::Info(Prefs,t,defaultConfig) -state readonly -values $tmp
  pack $p.f6.l $p.f6.om -side left
 
 
  pack [frame $p.f7] -anchor w -ipady 2
  label $p.f7.l -text [::util::mc "Time display format:"] -width 26 \
      -anchor w
- tk_optionMenu $p.f7.om [namespace current]::Info(Prefs,t,timeFormat) \
-	 hms hms.d hms.dd hms.ddd hms.dddd hms.ddddd hms.dddddd samples seconds "10ms frames" "PAL frames" "NTSC frames"
+#    tk_optionMenu $p.f7.om [namespace current]::Info(Prefs,t,timeFormat) \
+#	 hms hms.d hms.dd hms.ddd hms.dddd hms.ddddd hms.dddddd samples seconds "10ms frames" "PAL frames" "NTSC frames"
+    ttk::combobox $p.f7.om -textvariable [namespace current]::Info(Prefs,t,timeFormat) -state readonly -values {
+	hms hms.d hms.dd hms.ddd hms.dddd hms.ddddd hms.dddddd samples seconds "10ms frames" "PAL frames" "NTSC frames"
+    }
  pack $p.f7.l $p.f7.om -side left
 
  pack [frame $p.f8] -anchor w -ipady 2
@@ -3102,8 +3107,8 @@ proc wsurf::_miscPage {p} {
 
  pack [frame $p.f9] -anchor w -ipady 2
  if {$::useTile} {
-  tk_checkbutton $p.f9.b -text [::util::mc "Save copy of preferences in configuration file"] \
-      -anchor w  -variable [namespace current]::Info(Prefs,t,prefsWithConf)
+  ttk::checkbutton $p.f9.b -text [::util::mc "Save copy of preferences in configuration file"] \
+      -variable [namespace current]::Info(Prefs,t,prefsWithConf)
  } else {
   checkbutton $p.f9.b -text [::util::mc "Save copy of preferences in configuration file"] \
       -anchor w  -variable [namespace current]::Info(Prefs,t,prefsWithConf)
@@ -3113,7 +3118,8 @@ proc wsurf::_miscPage {p} {
  if {$::useTile} {
   pack [frame $p.f10] -anchor w -ipady 2
   label $p.f10.l -text [::util::mc "Skin:"] -width $wid -anchor w
-  eval tk_optionMenu $p.f10.om [namespace current]::Info(Prefs,t,theme) $Info(Themes)
+#  eval tk_optionMenu $p.f10.om [namespace current]::Info(Prefs,t,theme) $Info(themes)
+     ttk::combobox $p.f10.om -textvariable [namespace current]::Info(Prefs,t,theme) -state readonly -values $Info(themes)
   pack $p.f10.l $p.f10.om -side left
  }
 
@@ -3147,9 +3153,9 @@ proc wsurf::_soundPage {p} {
 
  set inDevList [snack::audio inputDevices]
  if {$::useTile} {
-  combobox $p.f1.cb -textvariable [namespace current]::Info(Prefs,t,inDev) -width 30 -values $inDevList
+  ttk::combobox $p.f1.cb -textvariable [namespace current]::Info(Prefs,t,inDev) -width 30 -values $inDevList
  } else {
-  combobox::combobox $p.f1.cb -textvariable [namespace current]::Info(Prefs,t,inDev) -width 30 -editable 1
+  ttk::combobox $p.f1.cb -textvariable [namespace current]::Info(Prefs,t,inDev) -width 30
   eval $p.f1.cb list insert end $inDevList
  }
  pack $p.f1.l $p.f1.cb -side left
@@ -3158,7 +3164,7 @@ proc wsurf::_soundPage {p} {
  label $p.f2.l -text [::util::mc "Output device:"] -width $wid -anchor w
  set outDevList [snack::audio outputDevices]
  if {$::useTile} {
-  combobox $p.f2.cb -textvariable [namespace current]::Info(Prefs,t,outDev) -width 30 -values $outDevList
+  ttk::combobox $p.f2.cb -textvariable [namespace current]::Info(Prefs,t,outDev) -width 30 -values $outDevList
  } else {
   combobox::combobox $p.f2.cb -textvariable [namespace current]::Info(Prefs,t,outDev) -width 30 -editable 1
   eval $p.f2.cb list insert end $outDevList
@@ -3180,6 +3186,9 @@ proc wsurf::_soundPage {p} {
 
  tk_optionMenu $p.f5.om [namespace current]::Info(Prefs,t,storage) \
 	 "load into memory" "keep on disk"
+#    ttk::combobox $p.f5.om -textvariable [namespace current]::Info(Prefs,t,storage) -state readonly -values { 
+#	 "load into memory" "keep on disk"
+#    }
 
  $p.f5.om.menu entryconfigure 0 \
    -command "set [namespace current]::Info(Prefs,t,linkFile) 0"
@@ -3203,18 +3212,21 @@ proc wsurf::_soundPage {p} {
  label $p.f7.l -text [::util::mc "New sound default rate:"] -anchor w \
   -width $wid
  if {$::useTile} {
-  combobox $p.f7.cb -textvariable [namespace current]::Info(Prefs,t,defRate) -width 7 -values $rateList
+     ttk::combobox $p.f7.cb -textvariable [namespace current]::Info(Prefs,t,defRate) -width 7 -values $rateList
  } else {
-  combobox::combobox $p.f7.cb -textvariable [namespace current]::Info(Prefs,t,defRate) -width 5 -editable 1
-  eval $p.f7.cb list insert end $rateList
+     combobox::combobox $p.f7.cb -textvariable [namespace current]::Info(Prefs,t,defRate) -width 5 -editable 1
+     eval $p.f7.cb list insert end $rateList
  }
  pack $p.f7.l $p.f7.cb -side left
 
  pack [frame $p.f71] -anchor w -ipady 2
  label $p.f71.l -text [::util::mc "New sound default encoding:"] -anchor w \
   -width $wid
- tk_optionMenu $p.f71.om [namespace current]::Info(Prefs,t,defEncoding) \
-	 Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float
+# tk_optionMenu $p.f71.om [namespace current]::Info(Prefs,t,defEncoding) \
+#	 Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float
+    ttk::combobox $p.f71.om -textvariable [namespace current]::Info(Prefs,t,defEncoding) -state readonly -values {
+	Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float
+    }
  pack $p.f71.l $p.f71.om -side left
 
  pack [frame $p.f72] -anchor w -ipady 2
@@ -3241,15 +3253,20 @@ proc wsurf::_soundPage {p} {
 }
 
 proc wsurf::setTheme {theme} {
- variable Info
- 
- if {$::useTile} {
-  set i [lsearch -exact $Info(Themes) $theme]
-  #  puts $Info(Prefs,theme),[lindex $Info(themes) $i]
-  if {$i >= 0} {
-      ttk::style theme use [lindex $Info(themes) $i]
-  }
- }
+    variable Info
+    
+    if {$::useTile} {
+	ttk::style theme use $theme
+    }
+    
+    list {
+	
+	set i [lsearch -exact $Info(Themes) $theme]
+	#  puts $Info(Prefs,theme),[lindex $Info(themes) $i]
+	if {$i >= 0} {
+	    ttk::style theme use [lindex $Info(themes) $i]
+	}
+    }
 }
 
 proc wsurf::_rawFiles {p} {
