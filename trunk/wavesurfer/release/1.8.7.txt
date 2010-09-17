@@ -1,3 +1,20 @@
-WaveSurfer 1.8.7 - September 2010
+Release Notes - WaveSurfer 1.8.7 - September 2010
+-------------------------------------------------
 
-+ incorporated 
+What? A new WaveSurfer release, already?
+Well, yes. We thought it was time. 
+
+features:
+
++ incorporated a number of fixes accumulated during the past half decade
++ fixed mac osx recording bug (new portaudio-based snack binaries)
++ updated ttk-widget support (Tcl/Tk 8.5+ is now a strict requirement)
++ general code cleanup
++ new directory structure and build system
++ move to sourceforge
++ new icon:-)
+
+bugs:
+
+- probably several, please use the sourceforge bug tracker to file your reports
+
