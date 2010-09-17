@@ -1,8 +1,5 @@
-Release Notes - WaveSurfer 1.8.7 - September 2010
--------------------------------------------------
-
-What? A new WaveSurfer release, already?
-Well, yes. We thought it was time. 
+WaveSurfer 1.8.7 (Code name 'what? already?') - September 2010
+--------------------------------------------------------------
 
 features:
 
@@ -12,7 +9,7 @@ features:
 + general code cleanup
 + new directory structure and build system
 + move to sourceforge
-+ new icon:-)
++ shiny new icon:-)
 
 bugs:
 

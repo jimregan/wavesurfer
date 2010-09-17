@@ -3,7 +3,7 @@ PREFIX	= /usr/local
 TMP     = /tmp/__wavesurfer_build
 ROOT          = $(shell pwd)
 RUNTIME_osx   = $(ROOT)/build/kit/tclkit-darwin-univ-aqua
-RUNTIME_win32 = $(ROOT)/build/kit/tclkit-8.5.8-win32.upx.exe
+RUNTIME_win = $(ROOT)/build/kit/tclkit-8.5.8-win32.upx.exe
 RUNTIME_linux = $(ROOT)/build/kit/tclkit-linux-x86
 
 ifeq ($(shell uname),Darwin)
@@ -93,8 +93,11 @@ COPYRIGHT     = Copyright © 2000-2010 Jonas Beskow and Kare Sjolander
 
 ABOUTWAVESURFER = WaveSurfer $(RELEASE)-$(BUILD)\\\n$(COPYRIGHT)
 
+upload: 
+	scp release/$(RELEASE).txt release/wavesurfer-$(RELEASE)*.* $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/$(RELEASE)/
 
-release: src-release osx-release win32-release linux-release
+
+release: src-release osx-release win-release linux-release
 
 src-release: pkgIndex
 	rm -rf $(TMP)
@@ -112,7 +115,7 @@ src-release: pkgIndex
 	mkdir $(TMP)/wavesurfer-$(RELEASE)
 	cd $(TMP)/wavesurfer-$(RELEASE); sh ../ws-src-dist.shar
 
-	mkdir $(TMP)/wavesurfer-$(RELEASE)/icons; cp -ar $(ICONS) $(TMP)/wavesurfer-$(RELEASE)/icons
+	mkdir $(TMP)/wavesurfer-$(RELEASE)/icons; cp -r $(ICONS) $(TMP)/wavesurfer-$(RELEASE)/icons
 
 	mkdir $(TMP)//wavesurfer-$(RELEASE)/doc
 	for podfile in $(PODFILES); do \
@@ -129,21 +132,21 @@ linux-release:
 	$(MAKE) _wrap TARGET=linux
 	chmod a+x $(TMP)/wavesurfer
 
-	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)-linux-ix86.tgz wavesurfer
+	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)-linux-i386.tgz wavesurfer
 
-win32-release:
+win-release:
 	mkdir -p bin
-	$(MAKE) _wrap TARGET=win32
+	$(MAKE) _wrap TARGET=win
 
-	cd $(TMP); mv wavesurfer wavesurfer.exe; zip $(ROOT)/release/wavesurfer-$(RELEASE)-win32.zip wavesurfer.exe
+	cd $(TMP); mv wavesurfer wavesurfer.exe; zip $(ROOT)/release/wavesurfer-$(RELEASE)-win-i386.zip wavesurfer.exe
 
 osx-release: macbundle
 	rm -rf $(TMP)/wavesurfer-$(RELEASE)
 	mkdir $(TMP)/wavesurfer-$(RELEASE)
 	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/mac-alias-to-Applications.tgz
 	cp -pr bin/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)
-	rm -f bin/wavesurfer-$(RELEASE)-osx.dmg
-	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) release/wavesurfer-$(RELEASE)-osx.dmg
+	rm -f release/wavesurfer-$(RELEASE)-osx-i386.dmg
+	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) release/wavesurfer-$(RELEASE)-osx-i386.dmg
 
 macbundle: src-release
 	mkdir -p bin
