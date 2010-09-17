@@ -4,11 +4,11 @@ exec wish8.4 "$0" "$@"
 
 set RELEASE @RELEASE@
 set BUILD @BUILD@
-
-#  Copyright (C) 2000-2006 Jonas Beskow and Kare Sjolander 
+#
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
 
 package provide app-wavesurfer 1.8
@@ -26,8 +26,6 @@ set ::tkcon::PRIV(protocol) {}
 set version_major 1
 set version_minor 8
 set version ${version_major}.${version_minor}
-
-catch {console show}
 
 package require surfutil
 
@@ -424,7 +422,7 @@ proc OpenFile {args} {
 
  set fileName [lindex $args 0]
  if {![file readable $fileName]} {
-  tk_messageBox -message "[::util::mc "Can't open the file"] \"$fileName\"" \
+  tk_messageBox -message "[::util::mc {Can't open the file}] \"$fileName\"" \
       -icon error
   return
  }
@@ -1031,30 +1029,20 @@ proc MixPaste {} {
  pack [ label $tl.l1 -text [::util::mc "Scale paste sound by:"] -anchor w] \
      -fill x
  pack [ frame $tl.f1] -fill both -expand true
- if {$::useTile} {
   pack [ tk_scale $tl.f1.s1 -command "" -orient horizontal \
 	     -showvalue 0 -variable mixpaste(mixscale) -from 0.0 -to 100.0] -side left
   $tl.f1.s1 set $mixpaste(mixscale)
- } else {
-  pack [ scale $tl.f1.s1 -command "" -orient horizontal \
-	     -resolution .1 -showvalue 0 \
-	     -variable mixpaste(mixscale)] -side left
- }
+
  pack [entry $tl.f1.e -textvariable mixpaste(mixscale) -width 5] -side left
  pack [label $tl.f1.l -text % -width 1] -side left
 
  pack [ label $tl.l2 -text [::util::mc "Scale original sound by:"] -anchor w] \
      -fill x
  pack [ frame $tl.f2] -fill both -expand true
- if {$::useTile} {
   pack [ tk_scale $tl.f2.s1 -command "" -orient horizontal \
 	     -showvalue 0 -variable mixpaste(prescale) -from 0.0 -to 100.0] -side left
   $tl.f2.s1 set $mixpaste(prescale)
- } else {
-  pack [ scale $tl.f2.s1 -command "" -orient horizontal \
-	     -resolution .1 -showvalue 0 \
-	     -variable mixpaste(prescale)] -side left
- }
+
  pack [entry $tl.f2.e -textvariable mixpaste(prescale) -width 5] -side left
  pack [label $tl.f2.l -text % -width 1] -side left
 
@@ -1419,18 +1407,10 @@ proc Convert {} {
  pack [frame $tl.q.f4] -side left -anchor nw -padx 3m -pady 2m
  pack [label $tl.q.f1.l -text [::util::mc "Sample Rate"]]
 
- if {$::useTile} {
   combobox $tl.q.f1.cb \
    -textvariable [namespace current]::convert(rate) \
    -width 7 -values [snack::audio rates]
- } else {
-  combobox::combobox $tl.q.f1.cb \
-      -textvariable [namespace current]::convert(rate) \
-      -width 5 -editable 1
-  foreach e [snack::audio rates] {
-   $tl.q.f1.cb list insert end $e
-  }
- }
+ 
  pack $tl.q.f1.cb -side left
 
  pack [label $tl.q.f2.l -text [::util::mc "Sample Encoding"]]
@@ -1466,9 +1446,7 @@ proc ConfAmplify {flag} {
  }
  if {$flag} {
   set amplify(v) $tmp
-  if {$::useTile} {
    $w.f.s1 set $amplify(v)
-  }
  }
 }
 
@@ -1518,29 +1496,17 @@ proc Amplify {} {
 
  pack [ label $tl.l -text [::util::mc "Amplify by:"] -anchor w] -fill x
  pack [ frame $tl.f] -fill both -expand true
- if {$::useTile} {
   pack [ tk_scale $tl.f.s1 -command "" -orient horizontal \
 	     -showvalue 0 -variable amplify(v)] -side left
- } else {
-  pack [ scale $tl.f.s1 -command "" -orient horizontal \
-	     -resolution .1 -showvalue 0 -variable amplify(v)] -side left
- }
  pack [entry $tl.f.e -textvariable amplify(v) -width 5] -side left
  pack [label $tl.f.l -text xx -width 2] -side left
- if {$::useTile} {
   pack [tk_checkbutton $tl.cb -text [::util::mc "Decibels"] -variable amplify(db) \
 	    -command [list ConfAmplify 1] -anchor c] -fill both -expand true
- } else {
-  pack [checkbutton $tl.cb -text [::util::mc "Decibels"] -variable amplify(db) \
-	    -command [list ConfAmplify 1] -anchor c] -fill both -expand true
- }
 
  insertOKCancelButtons $tl.f3 "DoAmplify $w;destroy $tl" "destroy $tl"
 
  ConfAmplify 0
- if {$::useTile} {
   $tl.f.s1 set $amplify(v)
- }
 }
 
 proc DoFade {w} {
@@ -1630,15 +1596,10 @@ proc Fade {} {
  pack [ frame $tl.f3.f] -fill both -expand true
 
 
- if {$::useTile} {
   pack [ tk_scale $tl.f3.f.s1 -command "" -orient horizontal \
 	 -showvalue 0 -variable fade(floor) -from 0.0 -to 100.0] -side left
   $tl.f3.f.s1 set $fade(floor)
- } else {
-  pack [ scale $tl.f3.f.s1 -command "" -orient horizontal \
-	     -resolution .1 -showvalue 0 \
-	     -variable fade(floor)] -side left
- }
+
  pack [entry $tl.f3.f.e -textvariable fade(floor) -width 5] -side left
  pack [label $tl.f3.f.l -text % -width 1] -side left
 
@@ -1661,9 +1622,7 @@ proc ConfNormalize {flag} {
  }
  if {$flag} {
   set normalize(v) $tmp
-  if {$::useTile} {
    $w.f.s1 set $normalize(v)
-  }
  }
 }
 
@@ -1749,32 +1708,19 @@ proc Normalize {} {
  label $tl.l -text [::util::mc "Normalize to:"]
  frame $tl.f
 
- if {$::useTile} {
   pack [tk_scale $tl.f.s1 -command "" -orient horizontal \
 	    -variable normalize(v) -from 0.0 -to 100.0] -side left
   $tl.f.s1 set $normalize(v)
- } else {
-  scale $tl.f.s1 -command "" -orient horizontal \
-      -resolution .1 -showvalue 0 \
-      -variable normalize(v)
- }
+
  pack [entry $tl.f.e -textvariable normalize(v) -width 5] -side left
  pack [label $tl.f.l -text xx -width 2] -side left
- if {$::useTile} {
   tk_checkbutton $tl.cb1 -text [::util::mc "Decibels"] \
       -variable normalize(db) \
       -command [list ConfNormalize 1]
   tk_checkbutton $tl.cb2 \
       -text [::util::mc "Normalize all channels equally"] \
       -variable normalize(allEqual)
- } else {
-  checkbutton $tl.cb1 -text [::util::mc "Decibels"] \
-      -variable normalize(db) \
-      -command [list ConfNormalize 1] -anchor w
-  checkbutton $tl.cb2 \
-      -text [::util::mc "Normalize all channels equally"] \
-      -variable normalize(allEqual) -anchor w
- }
+
  grid $tl.l  -sticky ew
  grid $tl.f  -sticky ew
  grid $tl.cb1  -sticky ew
@@ -1812,32 +1758,18 @@ proc Normalize {} {
  pack [label $tl.l -text [::util::mc "Normalize to:"]] -fill x
  pack [frame $tl.f] -fill both -expand true
 
- if {$::useTile} {
   pack [tk_scale $tl.f.s1 -command "" -orient horizontal \
 	    -variable normalize(v) -from 0.0 -to 100.0] -side left
   $tl.f.s1 set $normalize(v)
- } else {
-  pack [scale $tl.f.s1 -command "" -orient horizontal \
-      -resolution .1 -showvalue 0 \
-      -variable normalize(v)] -side left
- }
+
  pack [entry $tl.f.e -textvariable normalize(v) -width 5] -side left
  pack [label $tl.f.l -text xx -width 2] -side left
- if {$::useTile} {
   pack [tk_checkbutton $tl.cb1 -text [::util::mc "Decibels"] \
       -variable normalize(db) \
 	    -command [list ConfNormalize 1]] -fill both -expand true
   pack [tk_checkbutton $tl.cb2 \
       -text [::util::mc "Normalize all channels equally"] \
       -variable normalize(allEqual)] -fill both -expand true
- } else {
-  pack [checkbutton $tl.cb1 -text [::util::mc "Decibels"] \
-      -variable normalize(db) \
-      -command [list ConfNormalize 1] -anchor w] -fill both -expand true
-  pack [checkbutton $tl.cb2 \
-      -text [::util::mc "Normalize all channels equally"] \
-      -variable normalize(allEqual) -anchor w] -fill both -expand true
- }
 
  insertOKCancelButtons $tl.f3 "DoNormalize $w;destroy $tl" "destroy $tl"
 
@@ -1857,18 +1789,10 @@ proc ConfEcho {args} {
  set values "$iGain $oGain "
  for {set i 1} {$i <= $echo(n)} {incr i} {
   if {![info exists echo(delay$i)]} {
-   if {$::useTile} {
     set echo(delay$i) 220.0
-   } else {
-    set echo(delay$i) 30.0
-   }
   }
   if {![info exists echo(decay$i)]} {
-   if {$::useTile} {
     set echo(decay$i) 60
-   } else {
-    set echo(decay$i) 40
-   }
   }
   set decay [expr {0.01 * $echo(decay$i)}]
   append values "$echo(delay$i) $decay "
@@ -1936,13 +1860,8 @@ proc AddEchoW {n} {
 
  set tl .proc
  set f [expr {$n + 2}]
- if {$::useTile} {
   pack [tk_frame $tl.f.f$f -relief raised -bd 1] -side left \
       -before $tl.f.hidden
- } else {
-  pack [frame $tl.f.f$f -relief raised -bd 1] -side left \
-      -before $tl.f.hidden
- }
  if {![info exists echo(delay$n)]} {
      set echo(delay$n) 30.0
      set echo(delayI$n) 30.0
@@ -1950,16 +1869,10 @@ proc AddEchoW {n} {
  pack [label $tl.f.f$f.l -text [::util::mc "Echo $n"] -anchor c] -side top \
      -fill x
  pack [frame $tl.f.f$f.f1] -side left
- if {$::useTile} {
   pack [tk_scale $tl.f.f$f.f1.s -from 10.0 -to 250.0 -orient vertical \
 	    -variable echo(delayI$n) -showvalue 0 -command "FlipScaleValue ::echo(delayI$n) ::echo(delay$n) 260.0;ConfEcho"]
- } else {
-  pack [scale $tl.f.f$f.f1.s -from 250.0 -to 10.0 -orient vertical \
-	    -variable echo(delay$n) -showvalue 0 -command ConfEcho]
- }
- if {$::useTile} {
+
   $tl.f.f$f.f1.s set $echo(delay$n)
- }
  pack [frame $tl.f.f$f.f1.f]
  pack [entry $tl.f.f$f.f1.f.e -textvariable echo(delay$n) -width 3] \
 	 -side left
@@ -1970,16 +1883,11 @@ proc AddEchoW {n} {
      set echo(decayI$n) 40
  }
  pack [frame $tl.f.f$f.f2] -side left
- if {$::useTile} {
   pack [tk_scale $tl.f.f$f.f2.s -from 0 -to 100 -orient vertical \
 	    -variable echo(decayI$n) -showvalue 0 -command "FlipScaleValue ::echo(decayI$n) ::echo(decay$n) 100.0;ConfEcho"]
- } else {
-  pack [scale $tl.f.f$f.f2.s -from 100 -to 0 -orient vertical \
-	    -variable echo(decay$n) -showvalue 0 -command ConfEcho]
- }
- if {$::useTile} {
+
   $tl.f.f$f.f2.s set $echo(decay$n)
- }
+
  pack [frame $tl.f.f$f.f2.f]
  pack [entry $tl.f.f$f.f2.f.e -textvariable echo(decay$n) -width 3] \
 	 -side left
@@ -2026,55 +1934,36 @@ proc Echo {} {
  
  pack [frame $tl.f.f1] -side left
  pack [label $tl.f.f1.l -text [::util::mc In]]
- if {$::useTile} {
   pack [tk_scale $tl.f.f1.s -from 0 -to 100 -orient vertical \
 	    -variable echo(iGainI) -showvalue 0 -command "FlipScaleValue ::echo(iGainI) ::echo(iGain) 100.0;ConfEcho"]
   $tl.f.f1.s set $echo(iGain)
- } else {
-  pack [scale $tl.f.f1.s -from 100 -to 0 -orient vertical \
-	    -variable echo(iGain) -showvalue 0 -command ConfEcho]
- }
+
  pack [frame $tl.f.f1.f]
  pack [entry $tl.f.f1.f.e -textvariable echo(iGain) -width 3] -side left
  pack [label $tl.f.f1.f.l -text %] -side left
 
  pack [frame $tl.f.f2] -side left
  pack [label $tl.f.f2.l -text [::util::mc Out]]
- if {$::useTile} {
   pack [tk_scale $tl.f.f2.s -from 0 -to 100 -orient vertical \
 	    -variable echo(oGainI) -showvalue 0 -command  "FlipScaleValue ::echo(oGainI) ::echo(oGain) 100.0;ConfEcho"]
- } else {
-  pack [scale $tl.f.f2.s -from 100 -to 0 -orient vertical \
-	    -variable echo(oGain) -showvalue 0 -command ConfEcho]
- }
- if {$::useTile} {
+
   $tl.f.f2.s set $echo(oGain)
- }
+
  pack [frame $tl.f.f2.f]
  pack [entry $tl.f.f2.f.e -textvariable echo(oGain) -width 3] -side left
  pack [label $tl.f.f2.f.l -text %] -side left
 
  pack [frame $tl.f.fe] -side left
- if {$::useTile} {
   pack [tk_button $tl.f.fe.1 -text + -command AddEcho -font Courier] -padx 3
   pack [tk_button $tl.f.fe.2 -text - -command RemEcho -font Courier \
 	    -state disabled] -padx 3
- } else {
-  pack [button $tl.f.fe.1 -text + -command AddEcho -font Courier] -padx 3
-  pack [button $tl.f.fe.2 -text - -command RemEcho -font Courier \
-	    -state disabled] -padx 3
- }
+
  pack [frame $tl.f.hidden] -side left
  for {set i 1} {$i <= $echo(n)} {incr i} {
      AddEchoW $i
  }
- if {$::useTile} {
   pack [tk_checkbutton $tl.cb -text [::util::mc "Drain beyond selection"] \
 	    -variable echo(drain)] -anchor w -fill x
- } else {
-  pack [checkbutton $tl.cb -text [::util::mc "Drain beyond selection"] \
-	    -variable echo(drain)] -anchor w -fill x
- }
  
  pack [ frame $tl.f3] -pady 0 -expand true -fill both
  pack [ button $tl.f3.b1 -image $::wsurf::Info(Img,play) -command "PlayEcho $w"] \
@@ -2186,24 +2075,14 @@ proc MixChan {} {
   label $tl.f.lx$i -text [::util::mc "Channel $label"]
   grid $tl.f.lx$i -row 0 -column [expr {$i + 1}]
   for {set j 0} {$j < $n} {incr j} {
-   if {$::useTile} {
     tk_frame $tl.f.f$i-f$j -relief raised -bd 1
-   } else {
-    frame $tl.f.f$i-f$j -relief raised -bd 1
-   }
    grid $tl.f.f$i-f$j -row [expr {$i + 1}] -column [expr {$j + 1}]
-   if {$::useTile} {
     pack [tk_scale $tl.f.f$i-f$j.s -command "" -orient horizontal \
 	      -from -100 -to 100 -showvalue 0 -command "ConfMix $w" \
 	      -variable mix($i,$j)]
-   } else {
-    pack [scale $tl.f.f$i-f$j.s -command "" -orient horizontal \
-	      -from -100 -to 100 -showvalue 0 -command "ConfMix $w" \
-	      -variable mix($i,$j)]
-   }
-   if {$::useTile} {
+
     $tl.f.f$i-f$j.s set $mix($i,$j)
-   }
+
    pack [frame $tl.f.f$i-f$j.f]	  
    pack [entry $tl.f.f$i-f$j.f.e -textvariable mix($i,$j) -width 4] \
      -side left
@@ -2249,31 +2128,19 @@ proc PreferencesDialog {} {
    lappend procs $pageProc
   }
  }
- if {$::useTile} {
   notebook $notebook -padding 6
- } else {
-  Notebook:create $notebook -pages $pages -pad 0
- }
+
  pack $notebook -fill both -expand yes
  if {[string match macintosh $::tcl_platform(platform)] || \
 	 [string match Darwin $::tcl_platform(os)]} {
   update
  }
  foreach page $pages proc $procs {
-  if {$::useTile} {
    set lowpage [string tolower $page]
    $notebook add [frame $notebook.$lowpage] -text $page
    $proc $notebook.$lowpage
-  } else {
-   set p [Notebook:frame $notebook $page]
-   eval $proc $p
-  }
  }
- if {$::useTile} {
   $notebook select 2
- } else {
-  Notebook:raise.page $notebook 2
- }
 }
 
 
@@ -2370,11 +2237,7 @@ proc KeyBindingsPage {p} {
   set Info(Prefs,t,$prefKey) $Info(Prefs,$prefKey)
  }
 
- if {$::useTile} {
 	 tk_frame $p.f -highlightthickness 0 -borderwidth 0
-     } else {
-	 frame $p.f -highlightthickness 0 -borderwidth 0
-     }
      set t $p.f.text
 # set font [[label $p.l] cget -font]
      text $t -yscrollcommand "$p.scroll set" -setgrid true -width 50 \
@@ -3072,13 +2935,9 @@ set Info(Img,zoomsel) [image create photo -data R0lGODlhFAATAMIAAAAAAF9fXwAA/8zM
 snack::createIcons
 
 proc CreateToolbar {p} {
- if {$::useTile} {
   set opt "-style"
   set val "Toolbutton"
- } else {
-  set opt "-relief"
-  set val "flat"
- }
+
  pack [ frame $p.tb -relief raised -borderwidth 1] -side top -fill x
  eval pack [ button $p.tb.new  -image $::Info(Img,new) -command New \
 		 $opt $val] -side left
@@ -3117,7 +2976,7 @@ proc CreateToolbar {p} {
    $opt $val] -side left
  pack [ frame $p.tb.sep4 -borderwidth 1 -relief sunken -width 2] -side left \
    -fill y -padx 4 -anchor w -pady 2
- pack [ label $p.tb.time -text 00.000 -relief flat] \
+ pack [ ttk::label $p.tb.time -text 00.000 -relief flat] \
    -side left
 }
 

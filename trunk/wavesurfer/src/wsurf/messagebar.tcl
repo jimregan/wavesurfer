@@ -1,8 +1,8 @@
 #
-#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
 
 package provide wsurf 1.8

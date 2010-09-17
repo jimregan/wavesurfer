@@ -6,7 +6,7 @@ application. The locale is set using the environment variable LANG.
 It is also possible to hard code this in surfutil.tcl, line 15
 WaveSurfer defaults to English for undefined messages.
 
-It is also possible to put .msg-files in the directory ~/.wavesurfer/<MAJORVERSION>/msgs/
+It is also possible to put .msg-files in the directory ~/.wavesurfer/@MAJORVERSION@/msgs/
 
 Another option is to create a plug-in out of the .msg file.
 

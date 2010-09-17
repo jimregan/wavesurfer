@@ -1,10 +1,10 @@
 #
-#  Copyright (C) 2000-2006 Jonas Beskow and Kare Sjolander 
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
-# lappend auto_path .
+
 package require surfutil
 package provide wsurf 1.8
 
@@ -73,42 +73,28 @@ proc vtcanvas::create {w args} {
  set d(selectionT1) 0.0
  set d(xTimeDown) 0.0
  set d(canvasWidth) 0
- if {$::useTile} {
-  set wid(frame) [tk_frame $w -relief raised -bd 0]
- } else {
-  set wid(frame) [frame $w -relief raised -bd 0]
- }
+ set wid(frame) [tk_frame $w -relief raised -bd 0]
+
 
  set wid(top) $w.top
  rename $w ::$wid(top)
  proc ::$w {cmd args} "return \[eval vtcanvas::\$cmd $w \$args\]"
  
  set wid(canvas) [set c [::canvas $w.c -highlightthickness 0]]
- if {$::useTile} {
   tk_frame $w.ff -bd 1 -relief sunken
- } else {
-  frame $w.ff -bd 1 -relief sunken
- }
+
  set wid(yaxis) [::canvas $w.yaxis -highlightthickness 0 -width 0 -bd 1]
- if {$::useTile} {
-  set wid(yscrollbar) [tk_scrollbar $w.ysb \
+ set wid(yscrollbar) [scrollbar $w.ysb \
 			   -relief raised -bd 1 -highlightthickness 0 \
 			   -command [namespace code [list yscroll $w]]]
- } else {
-  set wid(yscrollbar) [scrollbar $w.ysb \
-			   -relief raised -bd 1 -highlightthickness 0 \
-			   -command [namespace code [list yscroll $w]]]
- }
+
  set wid(ysb_filler) [frame $w.ysb.fill]
  bind $wid(ysb_filler) <Visibility> [list raise %W] 
  pack $wid(yaxis) -side left -fill y
  pack $w.ff -side left -fill y -ipadx 1
  pack $wid(canvas) -side right -expand 1 -fill both
- if {$::useTile} {
-  set wid(title) [tk_label $w.title -relief solid -bd 1 -bg #ffff7f]
- } else {
   set wid(title) [label $w.title -relief solid -bd 1 -bg #ffff7f]
- }
+
  foreach {opt key val} $Info(OptionTable) {
   if {[string match @* $key]} {
    foreach tkwid [split [string range $key 1 end] :] {

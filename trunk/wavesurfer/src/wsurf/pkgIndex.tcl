@@ -1,5 +1,5 @@
 # Automatically generated package index file
-# date   : Wed May 26 01:04:30 CEST 2010
+# date   : Fri Sep 17 03:12:24 PM CEST 2010
 # cmdline: build/mkPkgIndex.tcl src/wsurf/wsurf.tcl src/wsurf/surfutil.tcl src/wsurf/resizer.tcl src/wsurf/vtcanvas.tcl src/wsurf/notebook.tcl src/wsurf/wavebar.tcl src/wsurf/messagebar.tcl src/wsurf/cmdline.tcl src/wsurf/combobox.tcl src/wsurf/tkcon.tcl src/wsurf/pkgIndex.tcl src/wsurf/htmllib.tcl
 package ifneeded cmdline 1.1 [list source [file join $dir cmdline.tcl]]
 package ifneeded surfutil 1.8 [list source [file join $dir surfutil.tcl]]

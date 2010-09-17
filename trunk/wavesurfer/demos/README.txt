@@ -40,11 +40,11 @@ Installing the wsurf package
 
 It might be practical to install the wsurf package on your system in
 order to develop and use custom applications like these.
-Simply copy the wsurf<MAJORVERSION> directory to the directory containing
-the snack<SNACKMAJORV> library directory (assuming you have installed Snack <SNACKMAJORV>
+Simply copy the wsurf@MAJORVERSION@ directory to the directory containing
+the snack@SNACKMAJORV@ library directory (assuming you have installed Snack @SNACKMAJORV@
 according to the installation instructions included with that package).
 Something like:
-     /usr/local/lib/snack<SNACKMAJORV>/
-     /usr/local/lib/wsurf<MAJORVERSION>/
+     /usr/local/lib/snack@SNACKMAJORV@/
+     /usr/local/lib/wsurf@MAJORVERSION@/
 Properly installing wsurf in this manner will make the code line that
 sets "auto_path", in the examples, superfluous.

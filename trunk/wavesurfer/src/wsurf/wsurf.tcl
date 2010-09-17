@@ -1,8 +1,8 @@
 #
-#  Copyright (C) 2000-2006 Jonas Beskow and Kare Sjolander 
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
 
 package provide wsurf 1.8
@@ -11,46 +11,15 @@ package require snack 2.2
 package require surfutil
 package require combobox
 
-if {0} {
-    #&& [catch {package require tile 0.7} msg]
- set useTile 0
- set ::ocdir right
-} 
-if 0 {
- set useTile 1
- rename scale tk_scale
- namespace import -force ttk::scale
- rename menubutton tk_menubutton
- namespace import -force ttk::menubutton
- rename checkbutton tk_checkbutton
- namespace import -force ttk::checkbutton
- namespace import -force ttk::radiobutton
- namespace import -force ttk::scale
-    rename scrollbar tk_scrollbar
-    namespace import -force ttk::scrollbar
- rename label tk_label
- namespace import -force ttk::label
- rename button tk_button
- namespace import -force ttk::button
- rename frame tk_frame
- namespace import -force ttk::frame
- namespace import -force ttk::entry
- namespace import -force ttk::combobox
- namespace import -force ttk::notebook
- namespace import -force ttk::labelframe
- namespace import -force ttk::separator
-}
-
-if 1 {
-    set useTile 1
-    foreach cmd {scale menubutton checkbutton radiobutton scrollbar label button frame entry combobox notebook labelframe separator} {
-	puts "$cmd ..."
-	if {[info command $cmd]!=""} {
-	    rename $cmd tk_$cmd
-	}
-	proc ::$cmd {args} "uplevel ttk::$cmd \$args"
-      
+# these mappings should be eliminated
+foreach cmd {scale menubutton checkbutton radiobutton button frame entry combobox notebook labelframe separator} {
+    if {[info command $cmd]!=""} {
+	puts "renaming $cmd -> tk_$cmd ..."
+	rename $cmd tk_$cmd
     }
+    puts "mapping $cmd to ttk::$cmd ..."
+    proc ::$cmd {args} "uplevel ttk::$cmd \$args"
+    
 }
 
 proc ::tk_optionMenu {w varName firstValue args} {
@@ -59,15 +28,10 @@ proc ::tk_optionMenu {w varName firstValue args} {
     if {![info exists var]} {
         set var $firstValue
     }
-    if {$::useTile} {
      tk_menubutton $w -textvariable $varName -indicatoron 1 -menu $w.menu \
 	 -relief raised -bd 2 -highlightthickness 2 -anchor c \
 	 -direction flush
-    } else {
-     menubutton $w -textvariable $varName -indicatoron 1 -menu $w.menu \
-	 -relief raised -bd 2 -highlightthickness 2 -anchor c \
-	 -direction flush
-    }
+
     menu $w.menu -tearoff 0
     $w.menu add radiobutton -label $firstValue -variable $varName
     foreach i $args {
@@ -341,9 +305,7 @@ set Info(Prefs,createWidgets) separate
  set Info(Prefs,rawFormats) {.alw 8000 Alaw 1 "" 0}
 
 
-if {$::useTile} {
-     set Info(themes) [ttk::style theme names]
- }
+set Info(themes) [ttk::style theme names]
 
 list {  
     foreach name [ttk::style theme names] {
@@ -468,19 +430,19 @@ proc wsurf::InterpretRawDialog {ext} {
  pack [frame $w.q.f2] -side left -anchor nw -padx 3m -pady 2m
  pack [frame $w.q.f3] -side left -anchor nw -padx 3m -pady 2m
  pack [frame $w.q.f4] -side left -anchor nw -padx 3m -pady 2m
- pack [label $w.q.f1.l -text [::util::mc "Sample Rate"]]
+ pack [ttk::label $w.q.f1.l -text [::util::mc "Sample Rate"]]
  foreach e [snack::audio rates] {
   pack [radiobutton $w.q.f1.r$e -text $e -value $e \
 	  -variable [namespace current]::Info(guessRate)] -anchor w
  }
  pack [entry $w.q.f1.e -textvariable [namespace current]::Info(guessRate) \
      -width 5] -anchor w
- pack [label $w.q.f2.l -text [::util::mc "Sample Encoding"]]
+ pack [ttk::label $w.q.f2.l -text [::util::mc "Sample Encoding"]]
  foreach e [snack::audio encodings] {
   pack [radiobutton $w.q.f2.r$e -text $e -value $e \
 	  -variable [namespace current]::Info(guessEnc)] -anchor w
  }
- pack [label $w.q.f3.l -text [::util::mc Channels]]
+ pack [ttk::label $w.q.f3.l -text [::util::mc Channels]]
  pack [radiobutton $w.q.f3.1 -text [::util::mc Mono] -value 1 \
 	 -variable [namespace current]::Info(guessChan)] -anchor w
  pack [radiobutton $w.q.f3.2 -text [::util::mc Stereo] -value 2 \
@@ -490,7 +452,7 @@ proc wsurf::InterpretRawDialog {ext} {
  pack [entry $w.q.f3.e -textvariable [namespace current]::Info(guessChan) \
 	 -width 3] -anchor w
 
- pack [label $w.q.f4.l -text [::util::mc "Byte Order"]]
+ pack [ttk::label $w.q.f4.l -text [::util::mc "Byte Order"]]
  pack [radiobutton $w.q.f4.ri -text [::util::mc "Little Endian (Intel)"] \
 	 -value littleEndian \
 	 -variable [namespace current]::Info(guessByteOrder)] -anchor w
@@ -498,13 +460,13 @@ proc wsurf::InterpretRawDialog {ext} {
 	 -value bigEndian \
 	 -variable [namespace current]::Info(guessByteOrder)] -anchor w
 
- pack [label $w.q.f4.f] -pady 30
- pack [label $w.q.f4.f.l2 -text [::util::mc "Read Offset (bytes)"]]
+ pack [ttk::label $w.q.f4.f] -pady 30
+ pack [ttk::label $w.q.f4.f.l2 -text [::util::mc "Read Offset (bytes)"]]
  pack [entry $w.q.f4.f.e -textvar [namespace current]::Info(guessSkip) -wi 6]
 
  set Info(assoc) 0
  if {$ext != ""} {
-  pack [label $w.q.f4.f2] -pady 10
+  pack [ttk::label $w.q.f4.f2] -pady 10
   pack [checkbutton $w.q.f4.f2.cb -variable [namespace current]::Info(assoc) \
     -text "[::util::mc {Associate extension}] \n $ext [::util::mc {with these values}]"] -side bottom
  }
@@ -539,7 +501,7 @@ proc wsurf::_deleteRawFileDef {p} {
 proc wsurf::AddEvent {name bindinglist} {
  event delete <<$name>>
  foreach binding $bindinglist {
-  puts "event add <<$name>> <$binding>"
+     # puts "event add <<$name>> <$binding>"
   event add <<$name>> <$binding>
  }
 }
@@ -688,11 +650,8 @@ proc wsurf::ChooseConfigurationDialog {} {
  wm iconname $wi Dialog
  wm protocol $wi WM_DELETE_WINDOW [list set ::wsPriv(b) cancel]
 
- if {$::useTile} {
   pack [tk_frame $wi.f2 -relief raised -bd 1] -fill x -side bottom
- } else {
-  pack [frame $wi.f2 -relief raised -bd 1] -fill x -side bottom
- }
+
  pack [frame $wi.f1] -expand yes -fill both -side top -padx 3m -pady 2m
 
  button $wi.f2.b1 -text [::util::mc OK] -width 6 \
@@ -701,7 +660,7 @@ proc wsurf::ChooseConfigurationDialog {} {
      -command [list set ::wsPriv(b) cancel]
  pack $wi.f2.b1 $wi.f2.b2 -side $::ocdir -expand yes -padx 3m -pady 2m
 
- pack [scrollbar $wi.f1.sb -command [list $wi.f1.lb yview]] -fill y -side right
+ pack [ttk::scrollbar $wi.f1.sb -command [list $wi.f1.lb yview]] -fill y -side right
  pack [listbox $wi.f1.lb -yscroll [list $wi.f1.sb set] -wi 24] -side left \
 	 -expand true -fill both
 
@@ -1188,11 +1147,9 @@ proc wsurf::create {w args} {
  set d(showExitDialog) 1
 
  # main container frame
- if {$::useTile} {
+
   tk_frame $w -bd 1 -relief flat
- } else {
-  frame $w -bd 1 -relief flat
- }
+
  set wid(top) $w.top
  rename $w ::$wid(top)
  #[set wid(top) [namespace current]::$w.top]
@@ -1201,26 +1158,16 @@ proc wsurf::create {w args} {
  bind $w <Destroy> [namespace code "if \[string match %W $w\] \"_delete $w\""]
 
  # top level widgets
- if {$::useTile} {
-  set wid(titlebar) [tk_frame $w.titlebar -relief solid -bd 0] 
- } else {
-  set wid(titlebar) [frame $w.titlebar -relief solid -bd 0] 
- }
+ set wid(titlebar) [tk_frame $w.titlebar -relief solid -bd 0] 
+
  set wid(workspace) [frame $w.workspace]
 
- if {$::useTile} {
-  set wid(collapser) [button $wid(titlebar).collapser \
-   -style Toolbutton -padding 0 \
-   -command [namespace code [list _collapseToggle $w]] -takefocus 0]
-  set wid(title_f) [frame $wid(titlebar).title]
-  set wid(title) [tk_label $wid(titlebar).title.t -anchor w -foreground white]
- } else {
-  set wid(collapser) [button $wid(titlebar).collapser \
-   -highlightthickness 0 -bd 1 -relief flat -width 16 -height 10\
-   -command [namespace code [list _collapseToggle $w]] -takefocus 0]
-  set wid(title_f) [frame $wid(titlebar).title]
-  set wid(title) [label $wid(titlebar).title.t -anchor w]
- }
+    set wid(collapser) [button $wid(titlebar).collapser \
+			    -style Toolbutton -padding 0 \
+			    -command [namespace code [list _collapseToggle $w]] -takefocus 0]
+    set wid(title_f) [frame $wid(titlebar).title]
+    set wid(title) [label $wid(titlebar).title.t -anchor w -foreground white]
+
  pack $wid(title) -fill both -expand 1
  pack propagate $wid(title_f) 0
 
@@ -1258,15 +1205,10 @@ proc wsurf::create {w args} {
     lappend buttons $wid(${icon},button)
    } else {
     set op $imOp($icon)
-    if {$::useTile} {
      set wid($op,button) [button $wid(titlebar).{$op}button \
      -image $Info(Img,$icon) -style Toolbutton -padding 0 \
      -command [namespace code [list $op $w]] -takefocus 0]
-    } else {
-     set wid($op,button) [button $wid(titlebar).{$op}button \
-     -image $Info(Img,$icon) -highlightthickness 1 -bd 1 \
-     -command [namespace code [list $op $w]] -relief flat -takefocus 0]
-    }
+
     lappend buttons $wid($op,button)
    }
   }
@@ -2303,40 +2245,26 @@ proc wsurf::_drawPropertyPages {w pane} {
  lappend pages [::util::mc Playback]
  lappend procs _playPropertiesPage
  
- if {$::useTile} {
-  notebook $notebook -padding 6
- } else {
-  Notebook:create $notebook -pages $pages -pad 0
- }
+
+ notebook $notebook -padding 6
+ 
  pack $notebook -fill both -expand yes
  if {[string match macintosh $::tcl_platform(platform)] || \
 	 [string match Darwin $::tcl_platform(os)]} {
-  update
+     update
  }
  foreach page $pages proc $procs {
-  if {$::useTile} {
-   set lowpage [string tolower $page]
-   $notebook add [frame $notebook.$lowpage] -text $page
-   $proc $w $pane $notebook.$lowpage
-  } else {
-   set p [Notebook:frame $notebook $page]
-   $proc $w $pane $p
-  }
- }
- if {$::useTile} {
-  $notebook select $d($pane,lastPropertyPage)
- } else {
-  Notebook:raise.page $notebook $d($pane,lastPropertyPage)
- }
-    update idletasks 
+				  set lowpage [string tolower $page]
+				  $notebook add [frame $notebook.$lowpage] -text $page
+				  $proc $w $pane $notebook.$lowpage
+			      }
+ $notebook select $d($pane,lastPropertyPage)
+ update idletasks 
 }
 
 proc wsurf::_remeberPropertyPage {w pane} {
  upvar [namespace current]::${w}::data d
- if {$::useTile} {
- } else {
-  set d($pane,lastPropertyPage) [Notebook:current .props.nb]
- }
+
 }
 
 proc wsurf::_closePropertiesDialog {w pane} {
@@ -2490,14 +2418,10 @@ proc wsurf::_panePropertiesPage {w pane path} {
 
   set p $path.f9
   pack [frame $p] -anchor w -ipady 2
-  label $p.label -text [::util::mc "Vertical zoom factor:"] -width 20 -anchor w
-  if {$::useTile} {
+  ttk::label $p.label -text [::util::mc "Vertical zoom factor:"] -width 20 -anchor w
    combobox $p.combobox -textvariable [namespace current]::${w}::data($pane,t,yzoom) -width 10 -values {100 150 200 500 1000}
-  } else {
-   combobox::combobox $p.combobox -textvariable [namespace current]::${w}::data($pane,t,yzoom) -width 10 -editable 1
-   $p.combobox list insert 0 100 150 200 500 1000
-  }
-  label $p.l2 -text [::util::mc %] -anchor w
+
+  ttk::label $p.l2 -text [::util::mc %] -anchor w
   pack $p.label $p.combobox $p.l2 -side left -padx 3
   booleanPropItem $path.f10 "Display selection length" "" \
       [namespace current]::${w}::data($pane,t,displayLength)
@@ -2507,13 +2431,9 @@ proc wsurf::_panePropertiesPage {w pane path} {
 proc colorPropItem {path label width var} {
   upvar $var v
   pack [frame $path] -anchor w -ipady 2
-  label $path.label -text [::util::mc $label] -width $width -anchor w
+  ttk::label $path.label -text [::util::mc $label] -width $width -anchor w
   entry $path.entry -textvar $var -width 10
-  if {$::useTile} {
-   tk_label $path.l2 -text "    " -bg $v
-  } else {
-   label $path.l2 -text "    " -bg $v
-  }
+  label $path.l2 -text "    " -bg $v
   button $path.button -text [::util::mc Choose...] \
       -command [list util::chooseColor $var $path.l2]
   pack $path.label $path.entry $path.l2 $path.button -side left -padx 3
@@ -2521,15 +2441,15 @@ proc colorPropItem {path label width var} {
 
 proc stringPropItem {path label labelWidth entryWidth unit var} {
   pack [frame $path] -anchor w -ipady 2
-  label $path.label -text [::util::mc $label] -width $labelWidth -anchor w
+  ttk::label $path.label -text [::util::mc $label] -width $labelWidth -anchor w
   entry $path.entry -textvar $var -width $entryWidth
-  label $path.l2 -text [::util::mc $unit] -anchor w
+  ttk::label $path.l2 -text [::util::mc $unit] -anchor w
   pack $path.label $path.entry $path.l2 -side left -padx 3
 }
 
 proc filenamePropItem {path label labelWidth entryWidth browsetext dialogcmd var} {
   pack [frame $path] -anchor w -ipady 2
-  label $path.label -text [::util::mc $label] -width $labelWidth -anchor w
+  ttk::label $path.label -text [::util::mc $label] -width $labelWidth -anchor w
   entry $path.entry -textvar $var -width $entryWidth
   button $path.b -text $browsetext -command [namespace code "set $var \[$dialogcmd\]"]
   pack $path.label $path.entry $path.b -side left -padx 3
@@ -2538,13 +2458,8 @@ proc filenamePropItem {path label labelWidth entryWidth browsetext dialogcmd var
 proc booleanPropItem {path label command var} {
   upvar $var v
   pack [frame $path] -anchor w -ipady 2
- if {$::useTile} {
   pack [ttk::checkbutton $path.b -text [::util::mc $label] \
 	    -variable $var -command $command]
- } else {
-  pack [checkbutton $path.b -text [::util::mc $label] -anchor w \
-	    -variable $var -command $command]
- }
   pack $path.b -side left -padx 3
 }
 
@@ -2671,17 +2586,11 @@ proc wsurf::_soundPropertiesPage {w pane path} {
    set fn ...[string range $fn [expr {[string length $fn]-30}] end]
  }
 
- if {$::useTile} {
   pack [labelframe $path.tf -text [::util::mc "Sound file properties"] \
 	    -padding 6] -fill both -padx 6 -pady 6
   set text [::util::mc "Filename:"]
   append text " $fn"
   pack [label $path.tf.l1 -text $text] -anchor w
- } else {
-  pack [frame $path.tf] -anchor w
-  pack [label $path.tf.l1 -text "Sound file properties for $fn"] \
-      -anchor w
- }
 
  set text [::util::mc "Sound file format:"]
  append text " [lindex [$s info] 6]"
@@ -2734,26 +2643,15 @@ proc wsurf::_soundPropertiesPage {w pane path} {
   set rateList {11025 22050 44100}
  }
 
- if {$::useTile} {
   pack [labelframe $path.bf -text [::util::mc "Change sound properties"] \
 	    -padding 6] -fill both -padx 6 -pady 6
- } else {
-  pack [frame $path.f0 -bd 1 -width 400 -relief ridge] -anchor w -fill x
-  pack [canvas $path.f0.l -height 0] -fill x -expand true
-  pack [frame $path.bf] -anchor w
- }
+
  pack [frame $path.bf.f1] -anchor w -ipady 2
  label $path.bf.f1.l -text [::util::mc "Set sample rate:"] -width 26 -anchor w
 
- if {$::useTile} {
   combobox $path.bf.f1.cb -values $rateList -width 7 \
       -textvariable [namespace current]::${w}::data(t,setRate)
- } else {
-  combobox::combobox $path.bf.f1.cb \
-      -textvariable [namespace current]::${w}::data(t,setRate) \
-      -width 5 -editable 1
-  eval $path.bf.f1.cb list insert end $rateList
- }
+
  pack $path.bf.f1.l $path.bf.f1.cb -side left
 
  pack [frame $path.bf.f3] -anchor w -ipady 2
@@ -2761,7 +2659,7 @@ proc wsurf::_soundPropertiesPage {w pane path} {
      -anchor w
 # tk_optionMenu $path.bf.f3.om [namespace current]::${w}::data(t,setEncoding) \
 #	 Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float
-    ttk::combobox $path.bf.f3.om -textvariable [namespace current]::${w}::data(t,setEncoding) \ -state readonly -values {
+    ttk::combobox $path.bf.f3.om -textvariable [namespace current]::${w}::data(t,setEncoding) -state readonly -values {
 	Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float
     }
  pack $path.bf.f3.l $path.bf.f3.om -side left
@@ -2835,18 +2733,12 @@ proc wsurf::_playPropertiesPage {w pane path} {
     } else {
      set label [expr $i + 1]
     }
-    if {$::useTile} {
      pack [tk_scale $path.f$c.s$i -from 0.0 -to 1.0 -showvalue yes \
 	       -variable [namespace current]::${w}::data(play,$c,$i) -length 70 \
 	       -command [namespace code [list _buildMapStr $w]] \
 	      ] -side left
      $path.f$c.s$i set $d(play,$c,$i)
-    } else {
-     pack [scale $path.f$c.s$i -label $label -from 1.0 -to 0.0 -resolution .01 \
-	       -variable [namespace current]::${w}::data(play,$c,$i) -length 70 \
-	       -command [namespace code [list _buildMapStr $w]] \
-	      ] -side left
-    }
+
    }
   }
   pack [label $path.l -text [::util::mc "Input channel"]] \
@@ -2995,13 +2887,9 @@ proc wsurf::_miscPage {p} {
 			 pause snackPause stop snackStop end snackPlayNext \
 			 record snackRecord]
  pack [frame $p.f1] -anchor w -ipady 2
- if {$::useTile} {
   pack [ttk::label $p.f1.l -text [::util::mc "Icons:"] -width 20] \
       -side left
- } else {
-  pack [label $p.f1.l -text [::util::mc "Icons:"] -anchor w -width 20] \
-      -side left
- }
+
  list {
  foreach icon [list beg play playall playloop pause stop end record \
 		   print close] {
@@ -3018,17 +2906,11 @@ proc wsurf::_miscPage {p} {
     ] -side left
   } else {
    set op $imOp($icon)
-   if {$::useTile} {
     pack [button $p.f1.${op}button -image $Info(Img,$icon) \
 	      -padding 0 -borderwidth 1 -relief $relief \
 	      -command [namespace code [list _iconButton $p.f1.${op}button $icon]] \
 	     ] -side left
-   } else {
-    pack [button $p.f1.${op}button -image $Info(Img,$icon) \
-	      -highlightthickness 0 -bd 1 -relief $relief \
-	      -command [namespace code [list _iconButton $p.f1.${op}button $icon]] \
-	     ] -side left
-   }
+
   }
  }
  }
@@ -3036,36 +2918,36 @@ proc wsurf::_miscPage {p} {
 		   print close] {
   set op $imOp($icon)
   pack [frame $p.f1.${op}] -side left
-  pack [label $p.f1.${op}.label -image $Info(Img,$icon)]
+  pack [ttk::label $p.f1.${op}.label -image $Info(Img,$icon)]
   pack [checkbutton $p.f1.${op}.button \
 	    -variable [namespace current]::Info(Prefs,t,$icon)]
  }
 
  pack [frame $p.f2] -anchor w -ipady 2
- label $p.f2.l -text [::util::mc "Popup-menu event:"] -anchor w -width $wid
+ ttk::label $p.f2.l -text [::util::mc "Popup-menu event:"] -anchor w -width $wid
  entry $p.f2.e -textvar [namespace current]::Info(Prefs,t,popupEvent) -wi 20
  pack $p.f2.l $p.f2.e -side left
 
 # Does not belong here, move to application layer (with lots of the other)
  pack [frame $p.f3] -anchor w
- label $p.f3.l -text [::util::mc "Open new sound in"] -anchor w -width $wid
+ ttk::label $p.f3.l -text [::util::mc "Open new sound in"] -anchor w -width $wid
 # tk_optionMenu $p.f3.om [namespace current]::Info(Prefs,t,createWidgets) \
 #     separate common
     ttk::combobox $p.f3.om -textvariable [namespace current]::Info(Prefs,t,createWidgets) -state readonly -values {
 	separate common
     }
- label $p.f3.l2 -text "window" -anchor w
+ ttk::label $p.f3.l2 -text "window" -anchor w
  pack $p.f3.l $p.f3.om $p.f3.l2 -side left
 
  pack [frame $p.f4] -anchor w -ipady 2
- label $p.f4.l -text [::util::mc "Max zoom-in:"] -anchor w -width $wid
+ ttk::label $p.f4.l -text [::util::mc "Max zoom-in:"] -anchor w -width $wid
  entry $p.f4.e \
      -textvar [namespace current]::Info(Prefs,t,maxPixelsPerSecond) -wi 8
- label $p.f4.l2 -text [::util::mc "pixels/second"] -anchor w -width $wid
+ ttk::label $p.f4.l2 -text [::util::mc "pixels/second"] -anchor w -width $wid
  pack $p.f4.l $p.f4.e $p.f4.l2 -side left
 
  pack [frame $p.f5] -anchor w -ipady 2
- label $p.f5.l -text "Scroll type during playback:" -width 26 -anchor w
+ ttk::label $p.f5.l -text "Scroll type during playback:" -width 26 -anchor w
 # tk_optionMenu $p.f5.om [namespace current]::Info(Prefs,t,autoScroll) \
 #     None Scroll Page
     ttk::combobox $p.f5.om -textvariable [namespace current]::Info(Prefs,t,autoScroll) -state readonly -values {
@@ -3075,7 +2957,7 @@ proc wsurf::_miscPage {p} {
 
 # Does not belong here, move to application layer (with lots of the other)
  pack [frame $p.f6] -anchor w -ipady 2
- label $p.f6.l -text [::util::mc "Use configuration:"] -width 26 \
+ ttk::label $p.f6.l -text [::util::mc "Use configuration:"] -width 26 \
      -anchor w
  set tmp [list "Show dialog"]
  foreach conf [::wsurf::GetConfigurations] {
@@ -3088,7 +2970,7 @@ proc wsurf::_miscPage {p} {
 
 
  pack [frame $p.f7] -anchor w -ipady 2
- label $p.f7.l -text [::util::mc "Time display format:"] -width 26 \
+ ttk::label $p.f7.l -text [::util::mc "Time display format:"] -width 26 \
      -anchor w
 #    tk_optionMenu $p.f7.om [namespace current]::Info(Prefs,t,timeFormat) \
 #	 hms hms.d hms.dd hms.ddd hms.dddd hms.ddddd hms.dddddd samples seconds "10ms frames" "PAL frames" "NTSC frames"
@@ -3098,30 +2980,25 @@ proc wsurf::_miscPage {p} {
  pack $p.f7.l $p.f7.om -side left
 
  pack [frame $p.f8] -anchor w -ipady 2
- label $p.f8.l -text [::util::mc "Y-axis width:"] -anchor w -width $wid
+ ttk::label $p.f8.l -text [::util::mc "Y-axis width:"] -anchor w -width $wid
  entry $p.f8.e \
      -textvar [namespace current]::Info(Prefs,t,yaxisWidth) -wi 8
- label $p.f8.l2 -text [::util::mc "pixels"] -anchor w -width $wid
+ ttk::label $p.f8.l2 -text [::util::mc "pixels"] -anchor w -width $wid
  pack $p.f8.l $p.f8.e $p.f8.l2 -side left
 
 
  pack [frame $p.f9] -anchor w -ipady 2
- if {$::useTile} {
   ttk::checkbutton $p.f9.b -text [::util::mc "Save copy of preferences in configuration file"] \
       -variable [namespace current]::Info(Prefs,t,prefsWithConf)
- } else {
-  checkbutton $p.f9.b -text [::util::mc "Save copy of preferences in configuration file"] \
-      -anchor w  -variable [namespace current]::Info(Prefs,t,prefsWithConf)
- }
+
  pack $p.f9.b -side left
 
- if {$::useTile} {
   pack [frame $p.f10] -anchor w -ipady 2
-  label $p.f10.l -text [::util::mc "Skin:"] -width $wid -anchor w
+  ttk::label $p.f10.l -text [::util::mc "Skin:"] -width $wid -anchor w
 #  eval tk_optionMenu $p.f10.om [namespace current]::Info(Prefs,t,theme) $Info(themes)
      ttk::combobox $p.f10.om -textvariable [namespace current]::Info(Prefs,t,theme) -state readonly -values $Info(themes)
   pack $p.f10.l $p.f10.om -side left
- }
+
 
 }
 
@@ -3149,40 +3026,32 @@ proc wsurf::_soundPage {p} {
             "New sound default channels:" "Record time limit:"]
 
  pack [frame $p.f1] -anchor w -ipady 2
- label $p.f1.l -text [::util::mc "Input device:"] -width $wid -anchor w
+ ttk::label $p.f1.l -text [::util::mc "Input device:"] -width $wid -anchor w
 
  set inDevList [snack::audio inputDevices]
- if {$::useTile} {
   ttk::combobox $p.f1.cb -textvariable [namespace current]::Info(Prefs,t,inDev) -width 30 -values $inDevList
- } else {
-  ttk::combobox $p.f1.cb -textvariable [namespace current]::Info(Prefs,t,inDev) -width 30
-  eval $p.f1.cb list insert end $inDevList
- }
+
  pack $p.f1.l $p.f1.cb -side left
 
  pack [frame $p.f2] -anchor w -ipady 2
- label $p.f2.l -text [::util::mc "Output device:"] -width $wid -anchor w
+ ttk::label $p.f2.l -text [::util::mc "Output device:"] -width $wid -anchor w
  set outDevList [snack::audio outputDevices]
- if {$::useTile} {
   ttk::combobox $p.f2.cb -textvariable [namespace current]::Info(Prefs,t,outDev) -width 30 -values $outDevList
- } else {
-  combobox::combobox $p.f2.cb -textvariable [namespace current]::Info(Prefs,t,outDev) -width 30 -editable 1
-  eval $p.f2.cb list insert end $outDevList
- }
+
  pack $p.f2.l $p.f2.cb -side left
 
  pack [frame $p.f3] -anchor w -ipady 2
- label $p.f3.l -text [::util::mc "Print command:"] -anchor w -width $wid
+ ttk::label $p.f3.l -text [::util::mc "Print command:"] -anchor w -width $wid
  entry $p.f3.e -textvar [namespace current]::Info(Prefs,t,PrintCmd) -wi 40
  pack $p.f3.l $p.f3.e -side left
 
  pack [frame $p.f4] -anchor w -ipady 2
- label $p.f4.l -text [::util::mc "Preview command:"] -anchor w -width $wid
+ ttk::label $p.f4.l -text [::util::mc "Preview command:"] -anchor w -width $wid
  entry $p.f4.e -textvar [namespace current]::Info(Prefs,t,PrintPVCmd) -wi 40
  pack $p.f4.l $p.f4.e -side left
 
  pack [frame $p.f5] -anchor w -ipady 2
- label $p.f5.l -text [::util::mc "Sound storage:"] -width $wid -anchor nw
+ ttk::label $p.f5.l -text [::util::mc "Sound storage:"] -width $wid -anchor nw
 
  tk_optionMenu $p.f5.om [namespace current]::Info(Prefs,t,storage) \
 	 "load into memory" "keep on disk"
@@ -3197,7 +3066,7 @@ proc wsurf::_soundPage {p} {
  pack $p.f5.l $p.f5.om -side left -anchor nw
 
  pack [frame $p.f6] -anchor w -ipady 2
- label $p.f6.l -text [::util::mc "Temporary directory:"] -anchor w -width $wid
+ ttk::label $p.f6.l -text [::util::mc "Temporary directory:"] -anchor w -width $wid
  entry $p.f6.e -textvar [namespace current]::Info(Prefs,t,tmpDir) -wi 40
  pack $p.f6.l $p.f6.e -side left
 
@@ -3209,18 +3078,14 @@ proc wsurf::_soundPage {p} {
   set rateList {11025 22050 44100}
  }
  pack [frame $p.f7] -anchor w -ipady 2
- label $p.f7.l -text [::util::mc "New sound default rate:"] -anchor w \
+ ttk::label $p.f7.l -text [::util::mc "New sound default rate:"] -anchor w \
   -width $wid
- if {$::useTile} {
      ttk::combobox $p.f7.cb -textvariable [namespace current]::Info(Prefs,t,defRate) -width 7 -values $rateList
- } else {
-     combobox::combobox $p.f7.cb -textvariable [namespace current]::Info(Prefs,t,defRate) -width 5 -editable 1
-     eval $p.f7.cb list insert end $rateList
- }
+
  pack $p.f7.l $p.f7.cb -side left
 
  pack [frame $p.f71] -anchor w -ipady 2
- label $p.f71.l -text [::util::mc "New sound default encoding:"] -anchor w \
+ ttk::label $p.f71.l -text [::util::mc "New sound default encoding:"] -anchor w \
   -width $wid
 # tk_optionMenu $p.f71.om [namespace current]::Info(Prefs,t,defEncoding) \
 #	 Lin16 Mulaw Alaw Lin8offset Lin8 Lin24 Lin24packed Lin32 Float
@@ -3230,34 +3095,28 @@ proc wsurf::_soundPage {p} {
  pack $p.f71.l $p.f71.om -side left
 
  pack [frame $p.f72] -anchor w -ipady 2
- label $p.f72.l -text [::util::mc "New sound default channels:"] -anchor w \
+ ttk::label $p.f72.l -text [::util::mc "New sound default channels:"] -anchor w \
   -width $wid
  entry $p.f72.e -textvar [namespace current]::Info(Prefs,t,defChannels) -wi 2
  pack $p.f72.l $p.f72.e -side left
 
  pack [frame $p.f8] -anchor w -ipady 2
- label $p.f8.l -text [::util::mc "Record time limit:"] -anchor w -width $wid
+ ttk::label $p.f8.l -text [::util::mc "Record time limit:"] -anchor w -width $wid
  entry $p.f8.e -textvar [namespace current]::Info(Prefs,t,recordLimit) -wi 6
- label $p.f8.l2 -text "s" -anchor w
+ ttk::label $p.f8.l2 -text "s" -anchor w
  pack $p.f8.l $p.f8.e $p.f8.l2 -side left
 
  pack [frame $p.f9] -anchor w -ipady 2
- if {$::useTile} {
   tk_checkbutton $p.f9.b -text [::util::mc "Show level meter"] \
      -anchor w  -variable [namespace current]::Info(Prefs,t,showLevel)
- } else {
-  checkbutton $p.f9.b -text [::util::mc "Show level meter"] \
-     -anchor w  -variable [namespace current]::Info(Prefs,t,showLevel)
- }
+
  pack $p.f9.b -side left
 }
 
 proc wsurf::setTheme {theme} {
     variable Info
     
-    if {$::useTile} {
-	ttk::style theme use $theme
-    }
+    ttk::style theme use $theme
     
     list {
 	
@@ -3280,12 +3139,12 @@ proc wsurf::_rawFiles {p} {
   set Info(Prefs,t,$var) $Info(Prefs,$var)
  }
 
- grid [label $p.l -text [::util::mc "Defined file extension types:"]] \
+ grid [ttk::label $p.l -text [::util::mc "Defined file extension types:"]] \
      -sticky nw
  grid [frame $p.f1] -sticky news
  listbox $p.f1.lb -width 60 -height 18 -selectmode single \
    -yscrollcommand [list $p.f1.sb set]
- scrollbar $p.f1.sb -orient vert -command [list $p.f1.lb yview]
+ ttk::scrollbar $p.f1.sb -orient vert -command [list $p.f1.lb yview]
  pack $p.f1.sb -side right -fill y
  pack $p.f1.lb -side right -expand 1 -fill both
 
@@ -3294,13 +3153,8 @@ proc wsurf::_rawFiles {p} {
  }
 
  grid [frame $p.f2] -sticky we
- if {$::useTile} {
   pack [tk_button $p.f2.b -text [::util::mc Delete] -anchor w \
 	    -command [namespace code [list _deleteRawFileDef $p]]] -padx 3 -pady 3
- } else {
-  pack [button $p.f2.b -text [::util::mc Delete] -anchor w \
-	    -command [namespace code [list _deleteRawFileDef $p]]] -padx 3 -pady 3
- }
 
  grid columnconfigure $p 0 -weight 1
 }
@@ -3358,40 +3212,40 @@ proc wsurf::pluginsDialog {} {
 
  pack [frame $p.f] -expand true -fill both
 
- grid [label $p.f.l -text [::util::mc "Installed plug-ins:"]] -sticky nw ;#row 0
+ grid [ttk::label $p.f.l -text [::util::mc "Installed plug-ins:"]] -sticky nw ;#row 0
  grid [frame $p.f.f1] -sticky news                          ;#row 1
  listbox $p.f.f1.lb -height 5 -selectmode single \
    -yscrollcommand [list $p.f.f1.sb set]
- scrollbar $p.f.f1.sb -orient vert -command [list $p.f.f1.lb yview]
+ ttk::scrollbar $p.f.f1.sb -orient vert -command [list $p.f.f1.lb yview]
  pack $p.f.f1.sb -side right -fill y
  pack $p.f.f1.lb -side right -expand 1 -fill both
 
- grid [label $p.f.l2 -text [::util::mc "Plug-ins available for installation:"]] \
+ grid [ttk::label $p.f.l2 -text [::util::mc "Plug-ins available for installation:"]] \
    -sticky nw;#row 0
  grid [frame $p.f.f2] -sticky news                          ;#row 1
  listbox $p.f.f2.lb -height 5 -selectmode single \
    -yscrollcommand [list $p.f.f2.sb set]
- scrollbar $p.f.f2.sb -orient vert -command [list $p.f.f2.lb yview]
+ ttk::scrollbar $p.f.f2.sb -orient vert -command [list $p.f.f2.lb yview]
  pack $p.f.f2.sb -side right -fill y
  pack $p.f.f2.lb -side right -expand 1 -fill both
  grid [frame $p.f.f22] -sticky news 
  grid [button $p.f.f22.b -text Install \
    -command [namespace code [list _install $p]]]
 
- grid [label $p.f.l3 -text [::util::mc "Description:"]] -sticky nw       ;#row 2
+ grid [ttk::label $p.f.l3 -text [::util::mc "Description:"]] -sticky nw       ;#row 2
  grid [frame $p.f.f3] -sticky news                          ;#row 3
  text $p.f.f3.t -height 5 -yscrollcommand [list $p.f.f3.sb set] -wrap word \
    -font "helvetica 10"
- scrollbar $p.f.f3.sb -orient vert -command [list $p.f.f3.t yview]
+ ttk::scrollbar $p.f.f3.sb -orient vert -command [list $p.f.f3.t yview]
  pack $p.f.f3.sb -side right -fill y
  pack $p.f.f3.t -side right -expand 1 -fill both
  grid [frame $p.f.f4] -sticky we                            ;#row 3
- pack [label $p.f.f4.l -text [::util::mc "URL:"]] -side left
+ pack [ttk::label $p.f.f4.l -text [::util::mc "URL:"]] -side left
  pack [button $p.f.f4.b -text "" -relief flat -anchor w \
    -font "helvetica 10 underline"] -side left -expand 1 -fill x
  grid [frame $p.f.f5] -sticky we                            ;#row 3
- pack [label $p.f.f5.l1 -text [::util::mc "Location:"]] -side left
- pack [label $p.f.f5.l2 -text "" -relief flat -anchor w \
+ pack [ttk::label $p.f.f5.l1 -text [::util::mc "Location:"]] -side left
+ pack [ttk::label $p.f.f5.l2 -text "" -relief flat -anchor w \
    -font "helvetica 10"] -side left -expand 1 -fill x
 
  foreach plugin [lsort $Info(Plugins)] {
@@ -3598,9 +3452,6 @@ proc wsurf::play {w {start -1} {end -1}} {
  if {$end - $start > .5 || $d(looping) == 0} {
   after 0 [namespace code [list _updatePlayMarker $w]]
  }
- if {[lsearch $d(icons) play] != -1 && $::useTile == 0} {
-  $wid(play,button) configure -relief sunken
- }
 }
 
 proc wsurf::playall {w} {
@@ -3665,9 +3516,7 @@ proc wsurf::playDone {w} {
  }
 
  set Info(ActiveSound) ""
- if {[info exists d(icons)] && [lsearch $d(icons) play] != -1 && $::useTile == 0} {
-  $wid(play,button) configure -relief flat
- }
+
 }
 # -----------------------------------------------------------------------------
 
@@ -3700,13 +3549,6 @@ proc wsurf::pause {w} {
  _callback $w pauseProc
  if {$d(isRecording) || \
      [expr {[string compare $Info(ActiveSound) [$w cget -sound]] == 0}]} {
-  if {$Info(Prefs,pause) && $::useTile == 0} {
-   if {$d(isPaused)} {
-    $wid(pause,button) configure -relief sunken
-   } else {
-    $wid(pause,button) configure -relief flat
-   }
-  }
  }
 }
 
@@ -3734,9 +3576,6 @@ proc wsurf::record {w} {
  set d(isPaused) 0
  _callback $w recordProc
  after [expr {$Info(Prefs,recordLimit)*1000}] [list wsurf::stop $w]
- if {[lsearch $d(icons) record] != -1 && $::useTile == 0} {
-  $wid(record,button) configure -relief sunken
- }
 }
 
 # -----------------------------------------------------------------------------
@@ -3754,15 +3593,8 @@ proc wsurf::stop {w} {
    return
   }
  }
- if {[lsearch $d(icons) play] != -1 && $::useTile == 0} {
-  $wid(play,button) configure -relief flat
- }
- if {$Info(Prefs,pause) && $::useTile == 0} {
-  $wid(pause,button) configure -relief flat
- }
- if {[lsearch $d(icons) record] != -1 && $::useTile == 0} {
-  $wid(record,button) configure -relief flat
- }
+
+
  set Info(ActiveSound) ""
  if {[snack::audio active]} {
   $d(sound) stop
@@ -3814,17 +3646,7 @@ proc wsurf::_updatePlayMarker {w} {
   set flag break
  }
  if {[string compare $Info(ActiveSound) $s]} {
-  if {$Info(ActiveSound) != ""} {
-   if {[lsearch $d(icons) play] != -1 && $::useTile == 0} {
-    $wid(play,button) configure -relief flat
-   }
-   if {$Info(Prefs,pause) && $::useTile == 0} {
-    $wid(pause,button) configure -relief flat
-   }
-   if {[lsearch $d(icons) record] != -1 && $::useTile == 0} {
-    $wid(record,button) configure -relief flat
-   }
-  }
+
   set flag break
  }
  
@@ -3892,9 +3714,9 @@ proc wsurf::printDialog {w} {
  set maxWidth [::util::mcmax "Print command:" "Preview command:" \
 		   "Save to PS-file:"]
  frame $wi.f1
- label $wi.f1.l1 -text [::util::mc "Pages:"]
+ ttk::label $wi.f1.l1 -text [::util::mc "Pages:"]
  entry $wi.f1.e1 -textvar [namespace current]::Info(FirstPage) -width 3
- label $wi.f1.l2 -text [::util::mc "to"]
+ ttk::label $wi.f1.l2 -text [::util::mc "to"]
  entry $wi.f1.e2 -textvar [namespace current]::Info(LastPage) -width 3
  checkbutton $wi.f1.cb -text [::util::mc "Print selection only"] \
    -variable [namespace current]::Info(PrintSelection) \
@@ -3902,7 +3724,7 @@ proc wsurf::printDialog {w} {
  pack $wi.f1.l1 $wi.f1.e1 $wi.f1.l2 $wi.f1.e2 $wi.f1.cb -side left
 
  frame $wi.f2
- label $wi.f2.l1 -text [::util::mc "Print command:"] -wi $maxWidth -anchor e
+ ttk::label $wi.f2.l1 -text [::util::mc "Print command:"] -wi $maxWidth -anchor e
  entry $wi.f2.e1 -textvar [namespace current]::Info(Prefs,PrintCmd) -wi 40
  button $wi.f2.b1 -text [::util::mc Print] -command [namespace code [list print $w print]] -wi 8
  pack $wi.f2.l1 -side left -padx 3
@@ -3911,7 +3733,7 @@ proc wsurf::printDialog {w} {
  bind $wi.f2.e1 <Key-Return> [namespace code [list print $w print]]
 
  frame $wi.f3
- label $wi.f3.l1 -text [::util::mc "Preview command:"] -wi $maxWidth -anchor e
+ ttk::label $wi.f3.l1 -text [::util::mc "Preview command:"] -wi $maxWidth -anchor e
  entry $wi.f3.e1 -textvar [namespace current]::Info(Prefs,PrintPVCmd) -wi 40
  button $wi.f3.b1 -text [::util::mc Preview] \
      -command [namespace code [list print $w preview]] \
@@ -3922,7 +3744,7 @@ proc wsurf::printDialog {w} {
  bind $wi.f3.e1 <Key-Return> [namespace code [list print $w preview]]
 
  frame $wi.f4
- label $wi.f4.l1 -text [::util::mc "Save to PS-file:"] -wi $maxWidth -anchor e
+ ttk::label $wi.f4.l1 -text [::util::mc "Save to PS-file:"] -wi $maxWidth -anchor e
  entry $wi.f4.e1 -textvar [namespace current]::Info(PrintFile) -wi 40
  button $wi.f4.b1 -text [::util::mc Save] \
      -command [namespace code [list print $w save]] -wi 8

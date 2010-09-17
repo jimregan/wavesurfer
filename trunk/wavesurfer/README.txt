@@ -1,11 +1,6 @@
 WaveSurfer
 
-Copyright (C) 2000-2005
-Jonas Beskow	beskow@speech.kth.se
-Kare Sjolander	kare@speech.kth.se
-
-There are several anti-spam methods between us and anybody trying to contact
-us by e-mail. If you don't hear anything try to send a new message
+@COPYRIGHT@
 
 This file only contains information on how to install and run WaveSurfer from
 the source distrubution.
@@ -22,10 +17,7 @@ packages installed
 
 Tcl and Tk version 8.4 or later, download at http://tcl.activestate.com/
 
-Mac OS X users can download Tcl/Tk at http://tcltkaqua.sourceforge.net/
-
-
-Snack version <SNACKMAJORV> or later, download at http://www.speech.kth.se/snack/
+Snack version @SNACKMAJORV@ or later, download at http://www.speech.kth.se/snack/
 
 If the Tile package (http://tktable.sourceforge.net/tile/) is available
 WaveSurfer will use it to provide an improved GUI, this package is contained
@@ -39,7 +31,7 @@ and Tcl/Tk8.4.9 on the Mac.
 Running WaveSurfer
 -------------------------------------------------------------------
 Once you have installed both of the above and made sure they work, change
-directory to wavesurfer-<VERSION>/ and type
+directory to wavesurfer-@RELEASE@/ and type
 
 ./wavesurfer.tcl
 

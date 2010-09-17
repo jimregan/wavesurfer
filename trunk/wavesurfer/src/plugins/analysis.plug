@@ -1,11 +1,11 @@
 # -*-Mode:Tcl-*-
 #
-#  Copyright (C) 2000-2006 Jonas Beskow and Kare Sjolander 
+#
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
-# -----------------------------------------------------------------------------
 
 wsurf::RegisterPlugin analysis \
   -description "This plug-in provides the basic sound analysis and\
@@ -1080,17 +1080,11 @@ proc analysis::drawWaveformPage {w pane p} {
   set max 32768
  }
  pack [frame $p.f3] -anchor w -ipady 2
- if {$::useTile} {
   tk_checkbutton $p.f3.r -text "Auto-scale waveform" -onvalue -1 \
       -offvalue $max \
       -anchor w -variable [namespace current]::${pane}::var(t,limit)
-  tk_label $p.f3.l -text "Value at top:" -anchor w
- } else {
-  checkbutton $p.f3.r -text "Auto-scale waveform" -onvalue -1 \
-      -offvalue $max \
-      -anchor w -variable [namespace current]::${pane}::var(t,limit)
   label $p.f3.l -text "Value at top:" -anchor w
- }
+
  entry $p.f3.e -textvar [namespace current]::${pane}::var(t,limit) \
    -width 8
  button $p.f3.b -text Control... \
@@ -1129,18 +1123,18 @@ proc analysis::drawSpectrogramPage {w pane p} {
      "points" [namespace current]::${pane}::var(t,fftlen)
 
  pack [frame $p.f2] -anchor w -ipady 2
- label $p.f2.l -text "Analysis window type:" -width 21 -anchor w
+    ttk::label $p.f2.l -text "Analysis window type:" -width 21 -anchor w
  tk_optionMenu $p.f2.cm [namespace current]::${pane}::var(t,wintype) \
 	 Hamming Hanning Bartlett Blackman Rectangle
  pack $p.f2.l $p.f2.cm -side left -padx 3
 
  pack [frame $p.f3] -anchor w -ipady 2
- label $p.f3.l -text "Analysis bandwidth:" -width 21 -anchor w
+ ttk::label $p.f3.l -text "Analysis bandwidth:" -width 21 -anchor w
  entry $p.f3.e -textvar [namespace current]::${pane}::var(t,anabw) -wi 6
- label $p.f3.l2 -text "Hz" -anchor w
- label $p.f3.l3 -text " Window:" -anchor w
+ ttk::label $p.f3.l2 -text "Hz" -anchor w
+ ttk::label $p.f3.l3 -text " Window:" -anchor w
  entry $p.f3.e2 -textvar [namespace current]::${pane}::var(t,winlen) -wi 6
- label $p.f3.l4 -text "points" -anchor w
+ ttk::label $p.f3.l4 -text "points" -anchor w
  pack $p.f3.l $p.f3.e $p.f3.l2 $p.f3.l3 $p.f3.e2 $p.f3.l4 -side left -padx 3
  bind $p.f3.e  <Any-KeyRelease> [namespace code [list bw2pts $w $pane]]
  bind $p.f3.e2 <Any-KeyRelease> [namespace code [list pts2bw $w $pane]]
@@ -1154,28 +1148,24 @@ proc analysis::drawSpectrogramPage {w pane p} {
      "Hz" [namespace current]::${pane}::var(t,topfr)
 
  pack [frame $p.f6] -anchor w -ipady 2
- pack [label $p.f6.l -text "Brightness:" -width 21 -anchor w] -sid left -padx 3
+ pack [ttk::label $p.f6.l -text "Brightness:" -width 21 -anchor w] -sid left -padx 3
  pack [entry $p.f6.e -textvar [namespace current]::${pane}::var(t,brightness)\
 	 -wi 6] -side left -padx 3
  pack [scale $p.f6.s \
 	 -variable [namespace current]::${pane}::var(t,brightness) \
 	 -orient horiz -from -100 -to 100] -side left
- if {$::useTile} {
   $p.f6.s set $v(t,brightness)
- }
 
  pack [button $p.f6.b -text Controls... \
 	 -command [namespace code [list bcControls $w $pane]]] -side left
 
  pack [frame $p.f7] -anchor w -ipady 2
- pack [label $p.f7.l -text "Contrast:" -width 21 -anchor w] -side left -padx 3
+ pack [ttk::label $p.f7.l -text "Contrast:" -width 21 -anchor w] -side left -padx 3
  pack [entry $p.f7.e -textvar [namespace current]::${pane}::var(t,contrast) \
 	 -wi 6] -side left -padx 3
  pack [scale $p.f7.s -variable [namespace current]::${pane}::var(t,contrast) \
 	    -orient horiz -from -100 -to 100]
- if {$::useTile} {
   $p.f7.s set $v(t,contrast)
- }
 
  stringPropItem $p.f8 "Grid frequency spacing:" 21 6 \
      "Hz" [namespace current]::${pane}::var(t,gridfspacing)
@@ -1187,7 +1177,7 @@ proc analysis::drawSpectrogramPage {w pane p} {
      [namespace current]::${pane}::var(t,gridColor)
 
  pack [frame $p.f11] -anchor w -ipady 2
- label $p.f11.l -text "Spectrogram color:" -width 21 -anchor w
+ ttk::label $p.f11.l -text "Spectrogram color:" -width 21 -anchor w
  tk_optionMenu $p.f11.cm [namespace current]::${pane}::var(t,cmap) grey color color2
  pack $p.f11.l $p.f11.cm -side left -padx 3
 
@@ -1219,11 +1209,7 @@ proc analysis::drawPitchPage {w pane p} {
  }
 
  pack [frame $p.f1] -anchor w -ipady 2
- if {$::useTile} {
-  tk_label $p.f1.l -text "Pitch method:" -width 21 -anchor w
- } else {
   label $p.f1.l -text "Pitch method:" -width 21 -anchor w
- }
  tk_optionMenu $p.f1.cm [namespace current]::${pane}::var(t,method) ESPS AMDF
  pack $p.f1.l $p.f1.cm -side left -padx 3
 
@@ -1241,16 +1227,12 @@ proc analysis::drawPitchPage {w pane p} {
 
  pack [frame $p.f4] -anchor w -ipady 2
 
- if {$::useTile} {
   tk_checkbutton $p.f4.r -text "Show background note scale" \
       -anchor w -variable [namespace current]::${pane}::var(t,showScale)
- } else {
-  checkbutton $p.f4.r -text "Show background note scale" \
-      -anchor w -variable [namespace current]::${pane}::var(t,showScale)
- }
- label $p.f4.l -text "Tuning (C1):" -anchor w
+
+ ttk::label $p.f4.l -text "Tuning (C1):" -anchor w
  entry $p.f4.e -textvar [namespace current]::${pane}::var(t,scaleBase) -wi 7
- label $p.f4.l2 -text "Hz" -anchor w
+ ttk::label $p.f4.l2 -text "Hz" -anchor w
  pack $p.f4.r $p.f4.l $p.f4.e $p.f4.l2 -side left -padx 3
 
  colorPropItem $p.f5 "Scale color:" 21 \
@@ -1282,7 +1264,7 @@ proc analysis::drawPowerPage {w pane p} {
      "points" [namespace current]::${pane}::var(t,ewinlen)
 
  pack [frame $p.f4] -anchor w -ipady 2
- label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
+ ttk::label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
  tk_optionMenu $p.f4.cm [namespace current]::${pane}::var(t,ewintype) \
 	 Hamming Hanning Bartlett Blackman Rectangle
  pack $p.f4.l $p.f4.cm -side left -padx 3
@@ -1325,7 +1307,7 @@ proc analysis::drawFormantsPage {w pane p} {
      "s" [namespace current]::${pane}::var(t,fwinlen)
  
  pack [frame $p.f4] -anchor w -ipady 2
- label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
+ ttk::label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
  tk_optionMenu $p.f4.cm [namespace current]::${pane}::var(t,fwintype) \
 	 Rectangular Hamming Cos^4 Hanning
  pack $p.f4.l $p.f4.cm -side left -padx 3
@@ -1603,9 +1585,9 @@ proc analysis::bcControls {w pane} {
  set c [$pane canvas]
 
  pack [frame $p.f] -fill both -expand true
- pack [label $p.f.lc -text Contrast] -side left
+ pack [ttk::label $p.f.lc -text Contrast] -side left
  pack [canvas $p.f.c -width 100 -height 100 -bd 1 -relief raised]
- pack [label $p.f.lb -text Brightness]
+ pack [ttk::label $p.f.lb -text Brightness]
  if {[info exists v(t,brightness)] == 0} {
   set v(t,brightness) $v(brightness)
  }
@@ -1625,15 +1607,13 @@ proc analysis::bcControls {w pane} {
  bind $p.f.c <1> [namespace code [list initDrag $w $pane $p.f.c %x %y]]
  bind $p.f.c <B1-Motion> [namespace code [list Drag $w $pane $p.f.c %x %y]]
 
- pack [label $p.f.l -text "Analysis window length:"] -expand true -fill x
+ pack [ttk::label $p.f.l -text "Analysis window length:"] -expand true -fill x
  pack [scale $p.f.s -orient horiz \
 	   -variable [namespace current]::${pane}::var(t,winlen) \
 	   -from 32 -to $v(t,fftlen) \
 	   -command [namespace code [list setAnaWinLen $pane $c]]] -expand true -fill x
- if {$::useTile} {
-  $p.f.s set $v(t,winlen)
- }
 
+  $p.f.s set $v(t,winlen)
 }
 proc analysis::setAnaWinLen {pane c args} {
  upvar [namespace current]::${pane}::var v
@@ -1664,9 +1644,7 @@ proc analysis::waControls {w pane} {
  pack [scale $p.s -variable [namespace current]::${pane}::var(t,limit) \
      -from 1 -to $max -length 150 -orient horizontal \
      -command [namespace code [list waZoom $w $pane]]] -expand 1 -fill x
- if {$::useTile} {
   $p.s set $v(t,limit)
- }
 
  focus $p.s
  pack [entry $p.e -textvariable [namespace current]::${pane}::var(t,limit) \
@@ -1792,44 +1770,37 @@ proc analysis::openSectWindow {w pane} {
  if {$left == $right} { set v(sall) 0 } else { set v(sall) 1 }
 
  pack [frame $e.f] -side bottom -fill x
- if {$::useTile} {
-  tk_label $e.f.lab -width 1 -relief sunken -bd 1 -anchor w
- } else {
   label $e.f.lab -width 1 -relief sunken -bd 1 -anchor w
- }
  pack $e.f.lab -side left -expand yes -fill x
 # pack [button $e.f.exitB -text Close -command [list destroy $e]] -side left
 
  pack [frame $e.f1] -fill x
 
- label $e.f1.l1 -text "Analysis:"
+ ttk::label $e.f1.l1 -text "Analysis:"
  tk_optionMenu $e.f1.m1 [namespace current]::${pane}::var(satype) FFT LPC
  for {set n 0} {$n < 2} {incr n} {
    $e.f1.m1.menu entryconfigure $n \
        -command [namespace code [list drawSect $w $pane]]
  }
 
- label $e.f1.l2 -text "Order:"
+ ttk::label $e.f1.l2 -text "Order:"
  entry $e.f1.e -width 3 \
      -textvariable [namespace current]::${pane}::var(slpcorder)
- if {$::useTile} {
   set v(slpcorder2) $v(slpcorder)
   tk_scale $e.f1.s -variable [namespace current]::${pane}::var(slpcorder2) \
       -from 1 -to 40 -orient horiz -length 80 -show no \
       -command [namespace code [list setVar $w $pane slpcorder slpcorder2]]
   $e.f1.s set $v(slpcorder)
- } else {
-  scale $e.f1.s -variable [namespace current]::${pane}::var(slpcorder) \
-      -from 1 -to 40 -orient horiz -length 80 -show no
- }
+
  bind $e.f1.s <Button1-Motion> [namespace code [list drawSect $w $pane]]
  pack $e.f1.l1 $e.f1.m1 -side left
- if {$::useTile} { pack [separator $e.f1.s1 -orient vertical] -side left -fill y -padx 10}
+    pack [separator $e.f1.s1 -orient vertical] -side left -fill y -padx 10
+ 
  pack $e.f1.l2 $e.f1.e $e.f1.s -side left
 
  pack [frame $e.f2] -anchor w -fill x
 
- label $e.f2.l1 -text "Window:"
+ ttk::label $e.f2.l1 -text "Window:"
  tk_optionMenu $e.f2.m1 [namespace current]::${pane}::var(swintype) \
 	 Hamming Hanning Bartlett Blackman Rectangle
  for {set n 0} {$n < 5} {incr n} {
@@ -1837,7 +1808,7 @@ proc analysis::openSectWindow {w pane} {
        -command [namespace code [list drawSect $w $pane]]
  }
 
- label $e.f2.l2 -text "FFT points:" -anchor w
+ ttk::label $e.f2.l2 -text "FFT points:" -anchor w
  tk_optionMenu $e.f2.m2 [namespace current]::${pane}::var(sfftlen) 64 128 256 512 1024 2048 4096 8192 16384 32768 65536
  for {set n 0} {$n < 11} {incr n} {
    $e.f2.m2.menu entryconfigure $n \
@@ -1845,21 +1816,22 @@ proc analysis::openSectWindow {w pane} {
  }
 
  pack $e.f2.l1 $e.f2.m1 -side left
- if {$::useTile} { pack [separator $e.f2.s1 -orient vertical] -side left -fill y -padx 10}
+  pack [separator $e.f2.s1 -orient vertical] -side left -fill y -padx 10
  pack $e.f2.l2 $e.f2.m2 -side left
 
  pack [frame $e.f3] -fill x
- pack [label $e.f3.l1 -text "Reference:" -anchor w] -side left
+ pack [ttk::label $e.f3.l1 -text "Reference:" -anchor w] -side left
  pack [entry $e.f3.e1 -textvar [namespace current]::${pane}::var(sref) \
 	 -wi 6] -side left
- pack [label $e.f3.u1 -text "dB" -anchor w] -side left
- if {$::useTile} { pack [separator $e.f3.s1 -orient vertical] -side left -fill y -padx 10}
- pack [label $e.f3.l2 -text "Range:" -anchor w] -side left
+ pack [ttk::label $e.f3.u1 -text "dB" -anchor w] -side left
+ pack [separator $e.f3.s1 -orient vertical] -side left -fill y -padx 10
+ pack [ttk::label $e.f3.l2 -text "Range:" -anchor w] -side left
  pack [entry $e.f3.e2 -textvar [namespace current]::${pane}::var(srange) \
 	 -wi 5] -side left
- pack [label $e.f3.u2 -text "dBfs" -anchor w] -side left
- if {$::useTile} { pack [separator $e.f3.s2 -orient vertical] -side left -fill y -padx 10}
- pack [label $e.f3.l3 -text "Pre-emphasis:" -anchor w] -side left
+ pack [ttk::label $e.f3.u2 -text "dBfs" -anchor w] -side left
+
+ pack [separator $e.f3.s2 -orient vertical] -side left -fill y -padx 10
+ pack [ttk::label $e.f3.l3 -text "Pre-emphasis:" -anchor w] -side left
  pack [entry $e.f3.e3 -textvar [namespace current]::${pane}::var(spreemph) \
 	 -wi 6] -side left
  
@@ -1870,14 +1842,11 @@ proc analysis::openSectWindow {w pane} {
      -command [namespace code [list drawSect $w $pane]]] -side left
  # pack [button $e.f4.lockB -text Lock -command [namespace code [list lockSection $w $pane]]] -side left
 
- if {$::useTile} { pack [separator $e.f4.s1 -orient vertical] -side left -fill y -padx 10}
- if {$::useTile} { 
+ pack [separator $e.f4.s1 -orient vertical] -side left -fill y -padx 10
+
   tk_menubutton $e.f4.mb -text "Snapshot" -menu $e.f4.mb.m -relief raised \
       -direction above
- } else {
-  menubutton $e.f4.mb -text "Snapshot" -menu $e.f4.mb.m -relief raised \
-      -direction above
- }
+
  menu $e.f4.mb.m -tearoff 0
  # label $e.f4.l1 -text "Snapshot:"
  set titles ""
@@ -1897,11 +1866,11 @@ proc analysis::openSectWindow {w pane} {
  }
  pack $e.f4.mb -side left
 
- if {$::useTile} { pack [separator $e.f4.s2 -orient vertical] -side left -fill y -padx 10}
+ pack [separator $e.f4.s2 -orient vertical] -side left -fill y -padx 10
 
  pack [checkbutton $e.f4.cb2 -text "Add file header" \
      -variable [namespace current]::${pane}::var(sexphead)] -side left
- if {$::useTile} { pack [separator $e.f4.s3 -orient vertical] -side left -fill y -padx 10}
+ pack [separator $e.f4.s3 -orient vertical] -side left -fill y -padx 10
  pack [button $e.f4.exportB -text Export... -command [namespace code [list exportSpectrum $w $pane]]] -side left
 
  pack [canvas $e.c -closeenough 5 -cursor draft_small -height 20] -fill both \
@@ -1942,16 +1911,16 @@ proc analysis::openBlowUpWindow {w pane} {
   wm attributes $e -topmost 1
  }
  set v(blowUpParent) $w
- pack [label $e.l -text "Adjust selection with arrow-keys"] \
+ pack [ttk::label $e.l -text "Adjust selection with arrow-keys"] \
      -fill x
 
  pack [canvas $e.c -height 100] -expand 1 -fill both
 
  pack [frame $e.f] -anchor w -fill x
- label $e.f.l -text [::util::mc "Time window:"] -anchor w
+ ttk::label $e.f.l -text [::util::mc "Time window:"] -anchor w
  entry $e.f.e \
      -textvar [namespace current]::${pane}::var(blowuptimewin) -wi 10
- label $e.f.l2 -text "s" -anchor w
+ ttk::label $e.f.l2 -text "s" -anchor w
  pack $e.f.l $e.f.e $e.f.l2 -side left -fill x -expand true
  pack propagate $e 0
  set snd [$w cget -sound]
@@ -2194,14 +2163,8 @@ proc analysis::drawSect {w pane} {
   if [winfo exists .sect$widgetPath] {
    if {$v(satype) != "LPC"} {
     .sect$widgetPath.f1.e configure -state disabled
-    if {$::useTile == 0} {
-     .sect$widgetPath.f1.s configure -state disabled
-    }
    } else {
     .sect$widgetPath.f1.e configure -state normal
-    if {$::useTile == 0} {
-     .sect$widgetPath.f1.s configure -state normal
-    }
    }
   }
  }

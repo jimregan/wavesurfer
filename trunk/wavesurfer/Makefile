@@ -1,13 +1,16 @@
 TCLSH   = tclsh8.4
 PREFIX	= /usr/local
-TMP     = /tmp
+TMP     = /tmp/__wavesurfer_build
 ROOT          = $(shell pwd)
 RUNTIME_osx   = $(ROOT)/build/kit/tclkit-darwin-univ-aqua
-RUNTIME_win32 = $(ROOT)/build/kit/tclkit-win32.upx.exe
+RUNTIME_win32 = $(ROOT)/build/kit/tclkit-8.5.8-win32.upx.exe
 RUNTIME_linux = $(ROOT)/build/kit/tclkit-linux-x86
 
 ifeq ($(shell uname),Darwin)
 	TCLKIT = build/kit/tclkit-darwin-x86-aqua
+endif
+ifeq ($(shell uname),Linux)
+	TCLKIT = build/kit/tclkit-linux-x86
 endif
 
 PKGFILES = \
@@ -24,7 +27,9 @@ PKGFILES = \
 	src/wsurf/pkgIndex.tcl \
 	src/wsurf/htmllib.tcl
 
-APPWSFILES = src/app-wavesurfer/pkgIndex.tcl
+APPWSFILES = \
+	src/app-wavesurfer/pkgIndex.tcl \
+	src/app-wavesurfer/wavesurfer.tcl
 
 PLUGINFILES = \
 	src/plugins/timeaxis.plug \
@@ -64,7 +69,8 @@ PODFILES = doc/plugin-api.pod doc/widget.pod doc/wsurf.pod
 
 HTMLFILES = web/man$(MANVERSION).html web/wsguileft.gif web/wsguiright.gif
 
-WRAPFILES     = $(WAVESURFER_REL) $(PKGFILES) $(CONFIGURATIONS) $(PLUGINFILES)
+READMEFILES = README.txt demos/README-Python.txt demos/README.txt msgs/README.txt src/plugins/README.txt 
+
 PACKAGEVER    = $(shell grep "package provide wsurf" src/wsurf.tcl | cut -f 4 -d " ")
 BUILD         = $(shell echo puts [clock format [clock seconds] -format %y%m%d%H%M] | $(TCLSH))
 BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd snd nsp raw mp3 ogg} </string><string>]</string>\'" | $(TCLSH))
@@ -85,49 +91,52 @@ INSTDIR       = $(PREFIX)/lib/$(WSURF)
 STYLESHEET    = /wavesurfer/wsstyle.css
 
 COPYRIGHT     = Copyright © 2000-2010 Jonas Beskow and Kare Sjolander
-#ABOUTWAVESURFER = "WaveSurfer $(RELEASE)-$(BUILD) $(COPYRIGHT)"
-ABOUTWAVESURFER = "WaveSurfer $(RELEASE)-$(BUILD)\\\n$(COPYRIGHT)"
+
+ABOUTWAVESURFER = WaveSurfer $(RELEASE)-$(BUILD)\\\n$(COPYRIGHT)
 
 
 all: src-release osx-release win32-release linux-release
 
 src-release: pkgIndex
-	tar cf $(TMP)/wsdist.tar $(PKGFILES) $(APPWSFILES) $(PLUGINFILES) $(CONFIGURATIONS) $(ICONS) $(DEMOS) $(MSGS) $(TOOLS)
-	cd $(TMP);rm -rf wsdist; mkdir wsdist; cd wsdist; tar xf ../wsdist.tar
-	cat src/app-wavesurfer/wavesurfer.tcl | sed -e s/@ABOUTWAVESURFER@/$(ABOUTWAVESURFER)/g | sed -e s/@RELEASE@/$(RELEASE)/g > $(TMP)/wsdist/src/app-wavesurfer/wavesurfer.tcl
-	cp src/app-wavesurfer/proctrace.tcl $(TMP)/wsdist/src/app-wavesurfer/_proctrace.tcl
-#	cp src/app-wavesurfer/proctrace.tcl $(TMP)/wsdist/src/app-wavesurfer/proctrace.tcl
+	rm -rf $(TMP)
+	mkdir -p $(TMP)
+	shar --text-files --no-character-count --no-md5-digest $(PKGFILES) $(APPWSFILES) $(PLUGINFILES) $(CONFIGURATIONS) $(DEMOS) $(MSGS) $(TOOLS) $(READMEFILES) > $(TMP)/ws-src-dist.shar.in
+	cat $(TMP)/ws-src-dist.shar.in |\
+	sed -e s/@ABOUTWAVESURFER@/"$(ABOUTWAVESURFER)"/g |\
+	sed -e s/@MAJORVERSION@/$(MAJORVERSION)/g |\
+	sed -e s/@SNACKMAJORV@/$(SNACKMAJORV)/g |\
+	sed -e s/@RELEASE@/$(RELEASE)/g |\
+	sed -e s/@COPYRIGHT@/"$(COPYRIGHT)"/g \
+	> $(TMP)/ws-src-dist.shar
 
-	mkdir $(TMP)/wsdist/doc
+	rm -rf $(TMP)/wavesurfer-$(RELEASE)
+	mkdir $(TMP)/wavesurfer-$(RELEASE)
+	cd $(TMP)/wavesurfer-$(RELEASE); sh ../ws-src-dist.shar
+
+	mkdir $(TMP)/wavesurfer-$(RELEASE)/icons; cp -ar $(ICONS) $(TMP)/wavesurfer-$(RELEASE)/icons
+
+	mkdir $(TMP)//wavesurfer-$(RELEASE)/doc
 	for podfile in $(PODFILES); do \
 		base=`basename $${podfile} .pod`; \
-		pod2html $${podfile} > $(TMP)/wsdist/doc/$${base}.html; \
+		echo $${podfile},$(TMP)/wavesurfer-$(RELEASE)/doc/$${base}.html;\
+		pod2html $${podfile} > $(TMP)/wavesurfer-$(RELEASE)/doc/$${base}.html;\
 	done
 
-	sed -e s/"<VERSION>"/$(RELEASE)/ -e s/"<SNACKMAJORV>"/$(SNACKMAJORV)/\
-	< README.txt > $(TMP)/wsdist/README.txt
-	sed s/"<MAJORVERSION>"/$(MAJORVERSION)/g < README2.txt > \
-	$(TMP)/wsdist/src/plugins/README.txt
-	sed -e s/"<MAJORVERSION>"/$(MAJORVERSION)/ \
-	-e s/"<VERSION>"/$(RELEASE)/  -e s/"<SNACKMAJORV>"/$(SNACKMAJORV)/ \
-	< README3.txt > $(TMP)/wsdist/demos/README.txt
-	sed s/"<MAJORVERSION>"/$(MAJORVERSION)/ < README4.txt \
-	 > $(TMP)/wsdist/msgs/README.txt
-	sed s/"<MAJORVERSION>"/$(MAJORVERSION)/ < README5.txt \
-	 > $(TMP)/wsdist/demos/README-Python.txt
-	rm -rf $(TMP)/wavesurfer-$(RELEASE)
-	cp -r $(TMP)/wsdist $(TMP)/wavesurfer-$(RELEASE)
-	tar cfz $(TMP)/wavesurfer-$(RELEASE)-src.tgz $(TMP)/wavesurfer-$(RELEASE)
+	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)-src.tgz wavesurfer-$(RELEASE)
+
 
 linux-release:
 	mkdir -p bin
 	$(MAKE) _wrap TARGET=linux
-	cd $(TMP); tar cfz $(ROOT)/bin/wavesurfer-$(RELEASE)-linux.tgz wavesurfer
+	chmod a+x $(TMP)/wavesurfer
+
+	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)-linux-ix86.tgz wavesurfer
 
 win32-release:
 	mkdir -p bin
 	$(MAKE) _wrap TARGET=win32
-	cd $(TMP); mv wavesurfer wavesurfer.exe; zip $(ROOT)/bin/wavesurfer-$(RELEASE)-win32.zip wavesurfer.exe
+
+	cd $(TMP); mv wavesurfer wavesurfer.exe; zip $(ROOT)/release/wavesurfer-$(RELEASE)-win32.zip wavesurfer.exe
 
 osx-release: macbundle
 	rm -rf $(TMP)/wavesurfer-$(RELEASE)
@@ -135,7 +144,7 @@ osx-release: macbundle
 	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/mac-alias-to-Applications.tgz
 	cp -pr bin/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)
 	rm -f bin/wavesurfer-$(RELEASE)-osx.dmg
-	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) bin/wavesurfer-$(RELEASE)-osx.dmg
+	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) release/wavesurfer-$(RELEASE)-osx.dmg
 
 macbundle: src-release
 	mkdir -p bin
@@ -165,6 +174,7 @@ macbundle: src-release
 	install_name_tool -change /usr/local/lib/libportaudio.2.dylib @executable_path/../Frameworks/libportaudio.2.dylib bin/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsnack.dylib
 
 _wrap: src-release
+	cd $(TMP); tar xvfz  $(ROOT)/release/wavesurfer-$(RELEASE)-src.tgz
 	rm -rf $(TMP)/wavesurfer.vfs
 	mkdir -p $(TMP)/wavesurfer.vfs/lib
 	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* $(TMP)/wavesurfer.vfs/lib
@@ -174,6 +184,7 @@ _wrap: src-release
 	cp -r build/binpkg/$(TARGET)/snack$(SNACKMAJORV) $(TMP)/wavesurfer.vfs/lib
 	mkdir -p $(TMP)/wavesurfer.vfs/icons
 	cp icons/ws10h.gif $(TMP)/wavesurfer.vfs/icons 
+	cp icons/ws10-tkformat.ico $(TMP)/wavesurfer.vfs/tclkit.ico
 	cd $(TMP); \
 	./tclkit $(ROOT)/build/kit/sdx.kit wrap wavesurfer -runtime $(RUNTIME_$(TARGET)) ;\
 	chmod a+x wavesurfer
