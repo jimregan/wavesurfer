@@ -1,17 +1,14 @@
 # -*-Mode:Tcl-*-
 #
-#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#  @COPYRIGHT@
 #
+# This file is part of the WaveSurfer package.
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
+# -----------------------------------------------------------------------------
 # This is a sample plugin showing how to use the WaveSurfer plugin API.
 # It certainly does not claim to compute voiced segments, only to be used
 # as a source code example. Put this file in ~/.wavesurfer/1.8/plugins/
-#
-# -----------------------------------------------------------------------------
-#
-# This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
-#
-# -----------------------------------------------------------------------------
+
 
 # Register plug-in with the callbacks we want to use.
 

@@ -1,8 +1,8 @@
 #
-#  Copyright (C) 2000-2006 Jonas Beskow and Kare Sjolander 
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
 
 package provide wsurf 1.8
@@ -44,10 +44,6 @@ namespace eval wavebar {
     -pixelspersecond    0.0 \
     -zoomevent          {{Shift 1} 2} \
     ]
-  if {$::useTile} {
-#   lappend Info(OptionTable) -foreground $::tile::colors(-selectfg) \
-     -background $::tile::colors(-selectbg)
-  }
   set Info(emptysound) [snack::sound]
   set Info(Initialized) 1
   set Info(debug) $::wsurf::Info(debug)

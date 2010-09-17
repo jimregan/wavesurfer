@@ -122,13 +122,11 @@ proc naq::openNAQwin {w pane} {
 
  foreach {name var max} {f1 ::f1 7000 f2 ::f2 7000 f3 ::f3 7000 f4 ::f4 7000 b1 ::b1 500 b2 ::b2 500 b3 ::b3 500 b4 ::b4 500} {
   pack [frame .naq.$name] -side top -fill y -expand 1
-  pack [label .naq.$name.l -text [string toupper $name]] -side left
+  pack [ttk::label .naq.$name.l -text [string toupper $name]] -side left
   pack [scale .naq.$name.s -length 400 -from 10 -to $max -variable $var -orient horizontal -command [namespace code [list Display $w]]] -side left
-  if {$::useTile} {
    .naq.$name.s set [set $var]
-  }
  }
- pack [label .naq.lab -text "ggg"] -side bottom
+ pack [ttk::label .naq.lab -text "ggg"] -side bottom
  Display $w
  set Info($w,naq) 1
 }

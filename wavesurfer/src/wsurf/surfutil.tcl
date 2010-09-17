@@ -1,8 +1,8 @@
 #
-#  Copyright (C) 2000-2006 Jonas Beskow and Kare Sjolander 
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
 
 package provide surfutil 1.8
@@ -580,11 +580,7 @@ proc bgerror err {
     } else {
 	$W.text configure -relief sunken
     }
-    if {$::useTile} {
-     tk_scrollbar $W.scroll -relief sunken -command "$W.text yview"
-    } else {
-     scrollbar $W.scroll -relief sunken -command "$W.text yview"
-    }
+    scrollbar $W.scroll -relief sunken -command "$W.text yview"
     pack $W.scroll -side right -fill y
     pack $W.text -side left -expand yes -fill both
     $W.text insert 0.0 $info
@@ -609,11 +605,8 @@ proc bgerror err {
      if {($tcl_platform(platform) == "macintosh") && ($bitmap == "error")} {
       set bitmap "stop"
      }
-     if {$::useTile} {
-      tk_label .bgerrorDialog.bitmap -bitmap $bitmap
-     } else {
       label .bgerrorDialog.bitmap -bitmap $bitmap
-     }
+
 	grid .bgerrorDialog.bitmap -in .bgerrorDialog.top -row 0 -column 0 \
 		-padx 3m -pady 3m
     }

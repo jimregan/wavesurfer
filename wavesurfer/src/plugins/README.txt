@@ -2,9 +2,9 @@ This directory contains a number of example plug-ins showing how
 the WaveSurfer plugin API can be used.
 
 Move these files to
- wsurf<MAJORVERSION>/plugins/
+ wsurf@MAJORVERSION@/plugins/
 or to
- ~/.wavesurfer/<MAJORVERSION>/plugins/
+ ~/.wavesurfer/@MAJORVERSION@/plugins/
 in order to use them.
 
 

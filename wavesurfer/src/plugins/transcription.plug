@@ -1,11 +1,10 @@
 # -*-Mode:Tcl-*-
 #
-#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
-# -----------------------------------------------------------------------------
 
 wsurf::RegisterPlugin transcription \
   -description "This plug-in is used to create transcription panes. Use the\
@@ -1968,7 +1967,7 @@ proc trans::print {w pane c x y} {
      set start $tv(t1,$ind2,end)
     }
     set end $tv(t1,$ind,end)
-    set label $tv(t1,$ind,label)
+    set ttk::label $tv(t1,$ind,label)
     set lx [$pane getCanvasX $start]
     set rx [$pane getCanvasX $end]
     
@@ -2131,7 +2130,7 @@ proc trans::drawPage1 {w pane path} {
  }
 
  pack [frame $path.f1] -anchor w
- label $path.f1.l -text "Label file format:" -width 25 -anchor w
+ ttk::label $path.f1.l -text "Label file format:" -width 25 -anchor w
  foreach {format loadProc saveProc testProc} $Info(formats) {
   lappend tmp $format
  }
@@ -2140,7 +2139,7 @@ proc trans::drawPage1 {w pane path} {
  pack $path.f1.l $path.f1.om -side left -padx 3
 
  pack [frame $path.f2] -anchor w
- label $path.f2.l -text "Label alignment:" -width 25 -anchor w
+ ttk::label $path.f2.l -text "Label alignment:" -width 25 -anchor w
  tk_optionMenu $path.f2.om [namespace current]::${pane}::var(t,alignment) \
    left center right
  $path.f2.om.menu entryconfigure 0 -value w
@@ -2152,7 +2151,7 @@ proc trans::drawPage1 {w pane path} {
    [namespace current]::${pane}::var(t,labext)
 
  pack [frame $path.f4] -anchor w
- label $path.f4.l -text "Label file path:" -width 25 -anchor w
+ ttk::label $path.f4.l -text "Label file path:" -width 25 -anchor w
  entry $path.f4.e -textvar [namespace current]::${pane}::var(t,labdir) -wi 16
  pack $path.f4.l $path.f4.e -side left -padx 3
  if {[info command tk_chooseDirectory] != ""} {
@@ -2276,12 +2275,12 @@ proc trans::drawPage2 {w pane path} {
    [namespace current]::${pane}::var(t,labelMenuEvent)
 
  pack [frame $path.f5] -anchor w
- pack [label $path.f5.l -text "Label menu pane:" -width 25 -anchor w] -padx 3
+ pack [ttk::label $path.f5.l -text "Label menu pane:" -width 25 -anchor w] -padx 3
  pack [frame $path.f6] -anchor w
- pack [label $path.f6.lc -text "Columns:" -anchor w] -side left -padx 3
+ pack [ttk::label $path.f6.lc -text "Columns:" -anchor w] -side left -padx 3
  pack [entry $path.f6.ec -width 2 -textvar \
    [namespace current]::${pane}::var(t,menuNcols)] -side left
- pack [label $path.f6.lr -text "Rows:" -anchor w] -side left
+ pack [ttk::label $path.f6.lr -text "Rows:" -anchor w] -side left
  pack [entry $path.f6.er -width 2 -textvar \
    [namespace current]::${pane}::var(t,menuNrows)] -side left
  pack [button $path.f6.b -text Update \
@@ -2554,27 +2553,22 @@ proc trans::browse {w pane} {
 	    -variable [namespace current]::${pane}::var(selectMode) \
 	    -command [namespace code [list listSelect $w $pane]]] \
      -padx 20 -side left
- pack [ label $p.b.f0.l1 -text "Insert line break at label:"] -side left
+ pack [ ttk::label $p.b.f0.l1 -text "Insert line break at label:"] -side left
  pack [ entry $p.b.f0.e1 -width 15 \
 	    -textvar [namespace current]::${pane}::var(breakAtLab)] -side left
- pack [ label $p.b.f0.l2 -text "longer than"] -side left
+ pack [ ttk::label $p.b.f0.l2 -text "longer than"] -side left
  pack [ entry $p.b.f0.e2 -width 4 \
 	    -textvar [namespace current]::${pane}::var(breakAtLen)] -side left
- pack [ label $p.b.f0.l3 -text "s"] -side left
+ pack [ ttk::label $p.b.f0.l3 -text "s"] -side left
 
  pack [ frame $p.b.f1] -pady 20
  pack [ entry $p.b.f1.e -textvar [namespace current]::${pane}::var(pattern)] \
      -side left
  pack [ button $p.b.f1.l -text Find \
 	    -command [namespace code [list find $w $pane]]] -side left
- if {$::useTile} {
   pack [ tk_checkbutton $p.b.f1.cb -text "Match case" -anchor w \
 	     -variable [namespace current]::${pane}::var(matchCase)]
- } else {
-  pack [ checkbutton $p.b.f1.cb -text "Match case" -anchor w \
-	     -variable [namespace current]::${pane}::var(matchCase)]
- }
- pack [ label $p.b.l -text "Results:"]
+ pack [ ttk::label $p.b.l -text "Results:"]
  pack [ frame $p.b.f2] -fill both -expand true
  pack [ scrollbar $p.b.f2.scroll -command "$p.b.f2.list yview"] -side right \
    -fill y
@@ -2663,11 +2657,11 @@ proc trans::convert {w pane} {
  set p [toplevel .convert$tmp]
  wm title $p "Convert Transcription File format"
 
- pack [ label $p.l1 -text "Current transcription file format: $v(format)"]
+ pack [ ttk::label $p.l1 -text "Current transcription file format: $v(format)"]
 
  set v(t,format) $v(format)
  pack [frame $p.f1] -anchor w
- label $p.f1.l -text "New transcription file format:" -anchor w
+ ttk::label $p.f1.l -text "New transcription file format:" -anchor w
  foreach {format loadProc saveProc testProc} $Info(formats) {
   lappend fmtlist $format
  }

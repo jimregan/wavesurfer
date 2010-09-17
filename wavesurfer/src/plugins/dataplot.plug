@@ -1,11 +1,10 @@
 # -*-Mode:Tcl-*-
 #
-#  Copyright (C) 2000-2006 Jonas Beskow and Kare Sjolander 
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
-# -----------------------------------------------------------------------------
 
 wsurf::RegisterPlugin dataplot \
   -description "This plug-in is used to plot tabulated numerical ASCII data.\
@@ -985,7 +984,7 @@ proc dataplot::drawDataplotPage {w pane p} {
    [namespace current]::${pane}::var(t,fileExt)
  
  pack [frame $p.f2] -anchor w -ipady 2
- label $p.f2.l -text "Data file path:" -width 26 -anchor w
+ ttk::label $p.f2.l -text "Data file path:" -width 26 -anchor w
  entry $p.f2.e -textvar [namespace current]::${pane}::var(t,dataDir) -wi 16
  pack $p.f2.l $p.f2.e -side left -padx 3
  if {[info command tk_chooseDirectory] != ""} {
@@ -998,7 +997,7 @@ proc dataplot::drawDataplotPage {w pane p} {
    [namespace current]::${pane}::var(t,skipLines)
  
  pack [frame $p.f4] -anchor w -ipady 2
- label $p.f4.l -text "Column delimiter:" -width 26 -anchor w
+ ttk::label $p.f4.l -text "Column delimiter:" -width 26 -anchor w
  radiobutton $p.f4.b1 -text space \
    -variable [namespace current]::${pane}::var(t,delimiter) -value " "
  radiobutton $p.f4.b2 -text tab \
@@ -1009,7 +1008,7 @@ proc dataplot::drawDataplotPage {w pane p} {
  
  if {[string match direct $v(invocation)]} {
   pack [frame $p.f5] -anchor w -ipady 2
-  label $p.f5.l -text "Data spacing:" -anchor w
+  ttk::label $p.f5.l -text "Data spacing:" -anchor w
   radiobutton $p.f5.b1 -text fixed(s) \
       -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "fixedtime"
   entry $p.f5.e1 -textvariable [namespace current]::${pane}::var(t,frameInterval) -width 4
@@ -1031,7 +1030,7 @@ proc dataplot::drawDataplotPage {w pane p} {
  }
  
  pack [frame $p.f7] -anchor w -ipady 2
- label $p.f7.l -text "Backdrop type:" -width 26 -anchor w
+ ttk::label $p.f7.l -text "Backdrop type:" -width 26 -anchor w
  tk_optionMenu $p.f7.cm [namespace current]::${pane}::var(t,backdrop) \
    None Spectrogram Waveform
  pack $p.f7.l $p.f7.cm -side left
@@ -1043,15 +1042,11 @@ proc dataplot::drawDataplotPage {w pane p} {
   set v(t,color$i) $color
   set v(t,style$i) $style
   pack [frame $p.e$f] -anchor w
-  label $p.e$f.l1 -text "Plot column:" -width 12 -anchor w
+  ttk::label $p.e$f.l1 -text "Plot column:" -width 12 -anchor w
   entry $p.e$f.e -textvar [namespace current]::${pane}::var(t,column$i) -wi 3
-  label $p.e$f.l2 -text "using" -anchor w
+  ttk::label $p.e$f.l2 -text "using" -anchor w
   entry $p.e$f.e2 -textvar [namespace current]::${pane}::var(t,color$i) -wi 10
-  if {$::useTile} {
-   tk_label $p.e$f.l3 -text "    " -bg $v(t,color$i)
-  } else {
    label $p.e$f.l3 -text "    " -bg $v(t,color$i)
-  }
   button $p.e$f.b -text [::util::mc Choose...] \
     -command [list util::chooseColor [namespace current]::${pane}::var(t,color$i) $p.e$f.l3]
   tk_optionMenu $p.e$f.cm [namespace current]::${pane}::var(t,style$i) \
@@ -1069,10 +1064,10 @@ proc dataplot::drawDataplotPage {w pane p} {
    [namespace current]::${pane}::var(t,saveSelection)
 
  pack [frame $p.f10] -anchor w -ipady 2
- label $p.f10.l -text "Plot value bounds:" -width 26 -anchor w
- label $p.f10.l2 -text "min" -anchor w
+ ttk::label $p.f10.l -text "Plot value bounds:" -width 26 -anchor w
+ ttk::label $p.f10.l2 -text "min" -anchor w
  entry $p.f10.e1 -textvar [namespace current]::${pane}::var(t,minVal) -wi 8
- label $p.f10.l3 -text "max" -anchor w
+ ttk::label $p.f10.l3 -text "max" -anchor w
  entry $p.f10.e2 -textvar [namespace current]::${pane}::var(t,maxVal) -wi 8
  pack $p.f10.l $p.f10.l2 $p.f10.e1 $p.f10.l3 $p.f10.e2 -side left
 
@@ -1150,15 +1145,9 @@ proc dataplot::statWin {w pane} {
  text $p.f2.text -yscroll "$p.f2.scroll set" -height 7 -width 65
  pack $p.f2.text -side left -expand true -fill both
 
- if {$::useTile} {
   pack [tk_checkbutton $p.cb \
     -text "Ignore data points with value 0.0 when computing statistics" -anchor w \
     -variable [namespace current]::${pane}::var(ignoreZero)] -fill x -expand true
- } else {
-  pack [checkbutton $p.cb \
-    -text "Ignore data points with value 0.0 when computing statistics" -anchor w \
-    -variable [namespace current]::${pane}::var(ignoreZero)] -fill x -expand true
- }
   
  pack [ frame $p.f3] -ipady 10 -fill x
  pack [ button $p.f3.b1 -text Compute -command [namespace code [list compute $w $pane $p]]] -side left -padx 20

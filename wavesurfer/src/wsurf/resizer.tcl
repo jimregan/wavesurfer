@@ -1,10 +1,9 @@
 #
-#  Copyright (C) 2000-2005 Jonas Beskow and Kare Sjolander 
+#  @COPYRIGHT@
 #
 # This file is part of the WaveSurfer package.
-# The latest version can be found at http://www.speech.kth.se/wavesurfer/
+# The latest version can be found at http://sourceforge.net/projects/wavesurfer
 #
-
 
 package provide wsurf 1.8
 
@@ -122,11 +121,7 @@ proc resizer::_divider {w} {
   if {![string match pack [winfo manager $w]]} {
    error "window \"$w\" is not managed by pack"
   }
-  if {$::useTile} {
-   tk_frame $h -cursor sb_v_double_arrow -relief raised -bd 1
-  } else {
-   frame $h -cursor sb_v_double_arrow -relief raised -bd 1
-  }
+  tk_frame $h -cursor sb_v_double_arrow -relief raised -bd 1
   eval configure $w
   pack $h -side top -fill x -after $w
   foreach event {ButtonPress B1-Motion ButtonRelease} {
@@ -189,19 +184,6 @@ proc resizer::handleCB {event h w X Y} {
    }
   }
  }
-}
-if 0 {
-set row 0
-foreach c {red green blue yellow black} {
- set w .f$c
- pack [frame $w -height 100 -relief raised -bd 0] -side top -expand 1 -fill both
- pack [label $w.l -bg $c] -side top -expand 1 -fill both
- pack propagate $w 0
- resizer::addResizer $w -type divider -width 3 -minheight 20 -bg blue
-}
-resizer::mode outline
-wm resizable . 1 0
-catch {console show; update}
 }
 
 
