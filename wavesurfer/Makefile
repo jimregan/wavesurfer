@@ -18,7 +18,6 @@ PKGFILES = \
 	src/wsurf/surfutil.tcl \
 	src/wsurf/resizer.tcl \
 	src/wsurf/vtcanvas.tcl \
-	src/wsurf/notebook.tcl \
 	src/wsurf/wavebar.tcl \
 	src/wsurf/messagebar.tcl \
 	src/wsurf/cmdline.tcl \
@@ -95,7 +94,7 @@ COPYRIGHT     = Copyright © 2000-2010 Jonas Beskow and Kare Sjolander
 ABOUTWAVESURFER = WaveSurfer $(RELEASE)-$(BUILD)\\\n$(COPYRIGHT)
 
 
-all: src-release osx-release win32-release linux-release
+release: src-release osx-release win32-release linux-release
 
 src-release: pkgIndex
 	rm -rf $(TMP)
