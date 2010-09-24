@@ -16,7 +16,7 @@ namespace eval wavebar {
   set Info(OptionTable) [list \
     -height             25 \
     -width              300 \
-    -troughcolor        grey \
+    -troughcolor        darkgrey \
     -fg                 black \
     -sound              "" \
     -shapefile          "" \
@@ -27,9 +27,9 @@ namespace eval wavebar {
     -zoomlimit          0.0 \
     -repeatdelay        300 \
     -repeatinterval     50 \
-    -background         grey \
-    -foreground         grey \
-    -shadowwidth        2 \
+    -background         lightgray \
+    -foreground         gray \
+    -shadowwidth        4 \
     -jump               0 \
     -zoomjump           1 \
     -selection          [list 0.0 0.0] \
@@ -112,21 +112,7 @@ proc wavebar::create {w args} {
  bind $w <Enter> [namespace code [list _msgHelp $w "B1: Scroll, B2/shift-B1: Zoom, ctrl-B2: Zoom full out"]\n[list _msgTime $w]]
  bind $w <Leave> [namespace code [list _msgHelp $w ""]]
 
- if {[string match windows $::tcl_platform(platform)]} {
-  bind $w <MouseWheel> [namespace code [list _event $w wheel %D ""]]
- } else {
-  bind $w <4> {
-   if {!$tk_strictMotif} {
-    [namespace code [list _event $w wheel 120 ""]]
-   }
-  }
-  bind $w <5> {
-   if {!$tk_strictMotif} {
-    [namespace code [list _event $w wheel -120 ""]]
-   }
-  }
- }
- focus $w
+    focus $w
 
  $w.c0 bind a1 <<ScrollBegin>> [namespace code [list _event $w downArrow 1 ""]]
  $w.c0 bind a2 <<ScrollBegin>> [namespace code [list _event $w downArrow 2 ""]]
@@ -391,10 +377,10 @@ proc wavebar::_autoScroll {w element repeat} {
  variable Info
 
  switch $element {
-  "arrow1"	{_scroll $w -1 units}
-  "trough1"	{_scroll $w -1 pages}
-  "trough2"	{_scroll $w 1 pages}
-  "arrow2"	{_scroll $w 1 units}
+  "arrow1"	{scroll $w -1 units}
+  "trough1"	{scroll $w -1 pages}
+  "trough2"	{scroll $w 1 pages}
+  "arrow2"	{scroll $w 1 units}
  }
 
  # cancel all pending repeats
@@ -449,7 +435,6 @@ proc wavebar::t->frac {w t} {
  if {$d(minT) == $d(maxT)} {return 0.0}
  expr {1.0*($t-$d(minT))/($d(maxT)-$d(minT))}
 }
-
 
 proc wavebar::_event {w evt x y} {
  upvar [namespace current]::${w}::data d
@@ -583,9 +568,6 @@ proc wavebar::_event {w evt x y} {
     }
    }
   }
-  wheel {
-   _scroll $w [expr {$x/-120}] units
-  }
   downArrow {
    _autoScroll $w arrow$x initial
    $w.c0 itemconfigure arrow$x -outline $d(bottomShadow) 
@@ -616,9 +598,15 @@ proc wavebar::_event {w evt x y} {
 }
 
 
-proc wavebar::_scroll {w number unit} {
+proc wavebar::scroll {w number unit} {
  upvar [namespace current]::${w}::data d
- 
+
+ if {$number > 0} {
+  set number [expr {int(ceil($number))}]
+ } else {
+  set number [expr {int(floor($number))}]
+ }
+
  set delta [expr {$d(time2)-$d(time1)}]
  switch $unit {
   units {set increment [expr {$number*$delta*.2}]}
@@ -636,6 +624,35 @@ proc wavebar::_scroll {w number unit} {
  }
  if {$d(command) != ""} {
   eval $d(command) scroll $number $unit
+ }
+}
+
+
+proc wavebar::zoom {w number} {
+ upvar [namespace current]::${w}::data d
+ 
+ set delta [expr {$d(time2)-$d(time1)}]
+ set increment [expr {(pow(1.1667,$number)-1)*$delta}]
+
+ if {$delta + 2*$increment > $d(maxT)-$d(minT)} {
+  # full zoom-out
+  set d(time1) $d(minT)
+  set d(time2) $d(maxT)
+ } elseif {$d(time1) - $increment < $d(minT)} {
+  # from beginning
+  set d(time2) [expr $d(time2)+2*$increment+$d(minT)-$d(time1)]
+  set d(time1) $d(minT)
+ } elseif {$d(time2) + $increment > $d(maxT)} {
+  # from end
+  set d(time1) [expr $d(time1)-2*$increment+$d(maxT)-$d(time2)]
+  set d(time2) $d(maxT)
+ } else {
+  # default case
+  set d(time1) [expr {$d(time1)-$increment}]
+  set d(time2) [expr {$d(time2)+$increment}]
+ }
+ if {$d(zoomcommand) != ""} {
+  eval $d(zoomcommand) [t->frac $w $d(time1)] [t->frac $w $d(time2)]
  }
 }
 
