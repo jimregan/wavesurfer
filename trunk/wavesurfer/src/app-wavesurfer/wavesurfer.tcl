@@ -18,7 +18,11 @@ catch {package require Tk}
 set dir [file normalize [file dirname [info script]]]
 set auto_path [concat [list [file dirname $dir]] $auto_path]
 
+
 package require tkcon
+
+# console show
+
 set ::tkcon::OPT(exec) {}
 set ::tkcon::PRIV(root) .tkcon
 set ::tkcon::PRIV(protocol) {}
@@ -683,6 +687,7 @@ proc KillWindow {w} {
  }
 }
 set Info(showExitDialog) 1
+
 proc Exit {} {
  if {[::wsurf::NeedSave]} {
   if {$::Info(showExitDialog)} {
@@ -695,6 +700,45 @@ proc Exit {} {
    return
   }
  }
+
+# Remember geometry
+
+ if {[winfo exists .x]} {
+  if {[catch {open $::Info(geometryFile) w} out]} {
+  } else {
+   regexp {([\d]+)[x][\d]+[+]([\d]+)[+]([\d]+)} [wm geometry .x] dummy w x y
+   if {[info exists w]} {
+    puts $out "set Info(Prefs,wsWidth) $w"
+    puts $out "set Info(Prefs,wsLeft)  $x"
+    puts $out "set Info(Prefs,wsTop)   $y"
+   }
+   close $out
+  }
+ }
+
+ foreach f $::surf(tmpfiles) {
+  file delete -force $::surf(tmpfiles)
+ }
+ CleanUp
+ if {[info exists ::wrap] && [info commands winico] != ""} {
+#   winico taskbar delete $::surf(board)
+ }
+
+ exit
+}
+
+proc Exit-new {} {
+ if {[::wsurf::NeedSave]} {
+  if {$::Info(showExitDialog)} {
+   set ::Info(showExitDialog) 0
+   set reply [tk_messageBox -message [list [::util::mc "Do you want to save the changes made to You have unsaved changes."] \n [::util::mc "Do you really want to exit?"]] -type yesnocancel -icon question] == "no"} {
+    set ::Info(showExitDialog) 1
+    return
+   }
+  } else {
+   return
+  }
+
 
 # Remember geometry
 
@@ -2930,54 +2974,51 @@ set Info(Img,zoomsel) [image create photo -data R0lGODlhFAATAMIAAAAAAF9fXwAA/8zM
 snack::createIcons
 
 proc CreateToolbar {p} {
-  set opt "-style"
-  set val "Toolbutton"
-
- pack [ frame $p.tb -relief raised -borderwidth 1] -side top -fill x
- eval pack [ button $p.tb.new  -image $::Info(Img,new) -command New \
-		 $opt $val] -side left
- eval pack [ button $p.tb.open -image $::Info(Img,open) -command Open \
-		 $opt $val] -side left
- eval pack [ button $p.tb.save -image $::Info(Img,save) -command Save \
-		 $opt $val] -side left
- 
- pack [ frame $p.tb.sep1 -borderwidth 1 -relief sunken -width 2] \
-   -side left -fill y -padx 4 -anchor w -pady 2
- eval pack [ button $p.tb.print -image $::Info(Img,print) -command Print \
-		 $opt $val] -side left
- eval pack [ button $p.tb.mixer -image snackGain -command snack::mixerDialog \
-		 $opt $val] -side left
- #pack [button $p.tb.prefs -image $::Info(Img,preferences) \
-   -command PreferencesDialog -relief flat] -side left
- pack [ frame $p.tb.sep2 -borderwidth 1 -relief sunken -width 2] -side left \
-   -fill y -padx 4 -anchor w -pady 2
- eval pack [ button $p.tb.cut   -image $::Info(Img,cut) -command Cut $opt $val] \
-   -side left
- eval pack [ button $p.tb.copy -image $::Info(Img,copy) -command Copy \
-   $opt $val] -side left
- eval pack [ button $p.tb.paste -image $::Info(Img,paste) -command Paste \
-   $opt $val] -side left
- eval pack [ button $p.tb.undo -image $::Info(Img,undo) -command Undo \
-   $opt $val] -side left
- pack [ frame $p.tb.sep3 -borderwidth 1 -relief sunken -width 2] -side left \
-   -fill y -padx 4 -anchor w -pady 2
- eval pack [ button $p.tb.zoomin  -image snackZoomIn -command ZoomIn \
-   $opt $val] -side left
- eval pack [ button $p.tb.zoomout -image snackZoomOut -command ZoomOut \
-   $opt $val] -side left
- eval pack [ button $p.tb.zoomall -image $::Info(Img,zoomall) -command ZoomAll \
-   $opt $val] -side left
- eval pack [ button $p.tb.zoomsel -image $::Info(Img,zoomsel) -command ZoomSel \
-   $opt $val] -side left
- pack [ frame $p.tb.sep4 -borderwidth 1 -relief sunken -width 2] -side left \
-   -fill y -padx 4 -anchor w -pady 2
- pack [ ttk::label $p.tb.time -text 00.000 -relief flat] \
-   -side left
+    set opt "-style"
+    set val "Toolbutton"
+    
+    pack [ frame $p.tb -relief raised -borderwidth 1] -side top -fill x
+    eval pack [ button $p.tb.new  -image $::Info(Img,new) -command New \
+		    $opt $val] -side left
+    eval pack [ button $p.tb.open -image $::Info(Img,open) -command Open \
+		    $opt $val] -side left
+    eval pack [ button $p.tb.save -image $::Info(Img,save) -command Save \
+		    $opt $val] -side left
+    
+    pack [ frame $p.tb.sep1 -borderwidth 1 -relief sunken -width 2] \
+	-side left -fill y -padx 4 -anchor w -pady 2
+    eval pack [ button $p.tb.print -image $::Info(Img,print) -command Print \
+		    $opt $val] -side left
+    eval pack [ button $p.tb.mixer -image snackGain -command snack::mixerDialog \
+		    $opt $val] -side left
+    #pack [button $p.tb.prefs -image $::Info(Img,preferences) -command PreferencesDialog -relief flat] -side left
+    pack [ frame $p.tb.sep2 -borderwidth 1 -relief sunken -width 2] -side left \
+	-fill y -padx 4 -anchor w -pady 2
+    eval pack [ button $p.tb.cut   -image $::Info(Img,cut) -command Cut $opt $val] \
+	-side left
+    eval pack [ button $p.tb.copy -image $::Info(Img,copy) -command Copy \
+		    $opt $val] -side left
+    eval pack [ button $p.tb.paste -image $::Info(Img,paste) -command Paste \
+		    $opt $val] -side left
+    eval pack [ button $p.tb.undo -image $::Info(Img,undo) -command Undo \
+		    $opt $val] -side left
+    pack [ frame $p.tb.sep3 -borderwidth 1 -relief sunken -width 2] -side left \
+	-fill y -padx 4 -anchor w -pady 2
+    eval pack [ button $p.tb.zoomin  -image snackZoomIn -command ZoomIn \
+		    $opt $val] -side left
+    eval pack [ button $p.tb.zoomout -image snackZoomOut -command ZoomOut \
+		    $opt $val] -side left
+    eval pack [ button $p.tb.zoomall -image $::Info(Img,zoomall) -command ZoomAll \
+		    $opt $val] -side left
+    eval pack [ button $p.tb.zoomsel -image $::Info(Img,zoomsel) -command ZoomSel \
+		    $opt $val] -side left
+    pack [ frame $p.tb.sep4 -borderwidth 1 -relief sunken -width 2] -side left \
+	-fill y -padx 4 -anchor w -pady 2
+    pack [ ttk::label $p.tb.time -text 00.000 -relief flat] \
+	-side left
+    
 }
 
-# Create toolbar
-
-CreateToolbar .x
 
 proc CreateMessagebar {p} {
  pack [ frame $p.bf] -side bottom -fill x
@@ -2986,9 +3027,46 @@ proc CreateMessagebar {p} {
  pack $p.bf.lab -side left -expand yes -fill x
 }
 
+proc InitializeDnD {} {
+    if {[catch {package require tkdnd}]} {
+	set ::Info(dnd) 0
+	puts "no DnD :-("
+    } else {
+	set ::Info(dnd) 1
+	puts "have DnD!"
+    }
+    
+}
+
+proc handleDnDEvent {w event data} {
+    puts [info level 0]
+    update idletasks
+    switch -glob $event {
+	enter -
+	position {
+	    return copy
+	}
+	drop:files {
+	    foreach droppedfile $data {
+		puts "now: OpenFile $droppedfile [lindex $::surf(conf) 0]"
+		after idle [list OpenFile $droppedfile]
+	    }
+	    return copy
+	}
+    }
+    return copy
+}
+
+InitializeDnD
+
+# Create toolbar
+
+CreateToolbar .x
+
 # Create messagebar
 
 CreateMessagebar .x
+
 
 update idletasks  ;# <------- is this necessary?
 
@@ -3304,3 +3382,36 @@ if {$newVersion} {
 #after 500 {.x.s1.titlebar.stopbutton invoke}
 #PreferencesDialog
 #after 100 Normalize
+
+
+proc initDnDbindings {w type} {
+    puts [info level 0]
+    dnd bindtarget $w $type <Drop> [list handleDnDEvent $w drop:files %D]
+}
+
+if $Info(dnd) {
+
+    bind .x.tb <Expose> [list initDnDbindings .x.tb DND_Files]
+
+
+}
+ 
+if 0 {
+   set type *
+    toplevel .target -bg green
+    wm title .target "drop here"
+    
+    dnd bindtarget .target $type <Drop> [list tk_messageBox -message "somebody dropped %D on me!"]
+
+    set p .x
+    set target $p.tb.target
+    puts "registering drop target $target"
+    dnd bindtarget $target * <Drop> [list handleDnDEvent $target drop:files %D]
+    dnd bindtarget $p $type <Drop> [list tk_messageBox -message "somebody dropped %D on me!"]
+    #	tkdnd::drop_target register $target *
+    #	bind $target <<DropEnter>> [list handleDnDEvent $target enter %d]
+    #	bind $target <<DropPosition>> [list handleDnDEvent $target position %D]
+    #	bind $target <<Drop>> [list handleDnDEvent $target drop:files %D]
+     
+
+}

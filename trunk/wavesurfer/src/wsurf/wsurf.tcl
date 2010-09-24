@@ -225,11 +225,43 @@ set Info(Img,record) [image create photo -data R0lGODlhFQAVAKEAANnZ2f8AAP///////
  set Info(PrefsApplyProcList)   {}
  set Info(PrefsGetProcList)     {}
  set Info(PrefsDefaultProcList) {}
+ 
+ if {$::tcl_platform(os) == "Darwin"} {
+  set Info(scrollwheelstep) 4.
+ } else {
+  set Info(scrollwheelstep) 120.
+ }
 
  bind Wsurf    <ButtonPress-1> [namespace code [list MakeCurrent %W]]
  bind Wavebar  <ButtonPress-1> [namespace code [list MakeCurrent %W]]
  bind Vtcanvas <ButtonPress-1> [namespace code [list MakeCurrent %W]]
  
+ # make global mouse wheel bindings for scrolling and zooming
+ bind Vtcanvas <MouseWheel> [namespace code [list ScrollCallback %W %D]]
+ bind Vtcanvas <Control-MouseWheel> [namespace code [list ZoomCallback %W %D]]
+ bind Vtcanvas <Shift-MouseWheel> [namespace code [list ZoomCallback %W %D]]
+ bind Wavebar <MouseWheel> [namespace code [list ScrollCallback %W %D]]
+ bind Wavebar <Control-MouseWheel> [namespace code [list ZoomCallback %W %D]]
+ bind Wavebar <Shift-MouseWheel> [namespace code [list ZoomCallback %W %D]]
+
+ # on tk8.4* under linux, wheel up/down events are encoded as button 4 & 5
+ bind Vtcanvas <ButtonPress-4> \
+  [namespace code [list ScrollCallback %W $Info(scrollwheelstep)]]
+ bind Vtcanvas <ButtonPress-5> \
+  [namespace code [list ScrollCallback %W -$Info(scrollwheelstep)]]
+ bind Vtcanvas <Control-ButtonPress-4> \
+  [namespace code [list ZoomCallback %W $Info(scrollwheelstep)]]
+ bind Vtcanvas <Control-ButtonPress-5> \
+  [namespace code [list ZoomCallback %W -$Info(scrollwheelstep)]]
+ bind Wavebar <ButtonPress-4> \
+  [namespace code [list ScrollCallback %W $Info(scrollwheelstep)]]
+ bind Wavebar <ButtonPress-5> \
+  [namespace code [list ScrollCallback %W -$Info(scrollwheelstep)]]
+ bind Wavebar <Control-ButtonPress-4> \
+  [namespace code [list ZoomCallback %W $Info(scrollwheelstep)]]
+ bind Wavebar <Control-ButtonPress-5> \
+  [namespace code [list ZoomCallback %W -$Info(scrollwheelstep)]]
+
  LoadPlugins [GetPlugins]
  foreach dir $Info(PluginDir) {
   LoadPlugins [glob -nocomplain [file join $dir *.plug]]
@@ -930,6 +962,49 @@ proc wsurf::NeedSave {} {
  }
  return 0
 }
+
+proc wsurf::GetUnsavedWidgets {} {
+    variable Info
+    set savelist [list]
+    foreach w $Info(widgets) {
+	upvar [namespace current]::${w}::data d
+	if {$d(soundChanged)} { return 1 }
+	foreach pane [_getPanes $w] {
+	    foreach res [_callback $w needSaveProc $pane] {
+		if {$res} { lappend savelist $w }
+	    }
+	}
+    }
+    return $savelist
+}
+
+
+proc wsurf::ZoomCallback {canvas amt} {
+ variable Info
+
+ set w $canvas
+ while {![info exists [namespace current]::${w}::data]} {
+  set w [winfo parent $w]
+ }
+ upvar [namespace current]::${w}::widgets wid
+ 
+ $wid(wavebar) zoom [expr 1.0*$amt/$Info(scrollwheelstep)]
+}
+
+
+proc wsurf::ScrollCallback {canvas amt} {
+ variable Info
+
+ set w $canvas
+ while {![info exists [namespace current]::${w}::data]} {
+  set w [winfo parent $w]
+ }
+ upvar [namespace current]::${w}::widgets wid
+ 
+ $wid(wavebar) scroll [expr 1.0*$amt/-$Info(scrollwheelstep)] units
+}
+
+
 
 # -----------------------------------------------------------------------------
 

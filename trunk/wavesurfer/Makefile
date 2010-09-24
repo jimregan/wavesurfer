@@ -66,8 +66,6 @@ TOOLS = tools/*.tcl
 
 PODFILES = doc/plugin-api.pod doc/widget.pod doc/wsurf.pod
 
-HTMLFILES = web/man$(MANVERSION).html web/wsguileft.gif web/wsguiright.gif
-
 READMEFILES = README.txt demos/README-Python.txt demos/README.txt msgs/README.txt src/plugins/README.txt 
 
 PACKAGEVER    = $(shell grep "package provide wsurf" src/wsurf.tcl | cut -f 4 -d " ")
@@ -94,8 +92,8 @@ COPYRIGHT     = Copyright © 2000-2010 Jonas Beskow and Kare Sjolander
 ABOUTWAVESURFER = WaveSurfer $(RELEASE)-$(BUILD)\\\n$(COPYRIGHT)
 
 upload: 
-	scp release/$(RELEASE).txt release/wavesurfer-$(RELEASE)*.* $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/$(RELEASE)/
-
+#	scp release/$(RELEASE).txt release/wavesurfer-$(RELEASE)*.* $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/$(RELEASE)/
+	scp release/*.html $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/$(RELEASE)/
 
 release: src-release osx-release win-release linux-release
 
@@ -125,7 +123,7 @@ src-release: pkgIndex
 	done
 
 	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)-src.tgz wavesurfer-$(RELEASE)
-
+	cp $(TMP)/wavesurfer-$(RELEASE)/doc/*.html $(ROOT)/release/
 
 linux-release:
 	mkdir -p bin
@@ -171,6 +169,8 @@ macbundle: src-release
 	cp -r build/binpkg/osx/snack$(SNACKMAJORV) bin/WaveSurfer.app/Contents/lib
 	rm bin/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsound.dylib
 	cp -a build/binpkg/osx/libportaudio*.dylib bin/WaveSurfer.app/Contents/Frameworks
+	cp -r build/binpkg/osx/tkdnd2.2 bin/WaveSurfer.app/Contents/lib
+
 	install_name_tool -id @executable_path/../Frameworks/libportaudio.dylib	\
 		bin/WaveSurfer.app/Contents/Frameworks/libportaudio.dylib
 	install_name_tool -change /usr/local/lib/libportaudio.2.dylib @executable_path/../Frameworks/libportaudio.2.dylib bin/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsnack.dylib
@@ -184,6 +184,7 @@ _wrap: src-release
 	cp build/main.tcl $(TMP)/wavesurfer.vfs
 	cp -f $(TCLKIT) $(TMP)/tclkit
 	cp -r build/binpkg/$(TARGET)/snack$(SNACKMAJORV) $(TMP)/wavesurfer.vfs/lib
+	cp -r build/binpkg/$(TARGET)/tkdnd* $(TMP)/wavesurfer.vfs/lib
 	mkdir -p $(TMP)/wavesurfer.vfs/icons
 	cp icons/ws10h.gif $(TMP)/wavesurfer.vfs/icons 
 	cp icons/ws10-tkformat.ico $(TMP)/wavesurfer.vfs/tclkit.ico
