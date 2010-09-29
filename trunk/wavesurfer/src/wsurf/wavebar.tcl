@@ -599,6 +599,7 @@ proc wavebar::_event {w evt x y} {
 
 
 proc wavebar::scroll {w number unit} {
+#    puts [info level 0]
  upvar [namespace current]::${w}::data d
 
  if {$number > 0} {
@@ -626,9 +627,33 @@ proc wavebar::scroll {w number unit} {
   eval $d(command) scroll $number $unit
  }
 }
+# this command is invoked by the scroll wheel zooming
+# amount is how much the wheel has turned, relx is the
+# position of the cursor relative to the width of the
+# window. we want to center the zooming around that point.
+proc wavebar::zoom {w amount relx} {
+#    puts [info level 0]
+    upvar [namespace current]::${w}::data d
 
+    # delta - length of visible area
+    set delta [expr {$d(time2)-$d(time1)}]
+    # factor by which the visible area shrink or expand
+    set factor [expr {pow(1.1667,$amount)}]
+    # the cursor position translated into time
+    set curpos [expr {$d(time1)+$delta*$relx}]
 
-proc wavebar::zoom {w number} {
+    set newt1 [expr {$curpos - $factor*($curpos-$d(time1))}]
+    set newt2 [expr {$curpos + $factor*($d(time2)-$curpos)}]
+    if {$newt1 < $d(minT)} {set newt1 $d(minT)}
+    if {$newt2 > $d(maxT)} {set newt2 $d(maxT)}
+    set d(time1) $newt1
+    set d(time2) $newt2
+    if {$d(zoomcommand) != ""} {
+	eval $d(zoomcommand) [t->frac $w $d(time1)] [t->frac $w $d(time2)]
+    }
+}
+
+proc wavebar::zoom-old {w number} {
  upvar [namespace current]::${w}::data d
  
  set delta [expr {$d(time2)-$d(time1)}]

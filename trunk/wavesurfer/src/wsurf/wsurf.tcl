@@ -238,11 +238,11 @@ set Info(Img,record) [image create photo -data R0lGODlhFQAVAKEAANnZ2f8AAP///////
  
  # make global mouse wheel bindings for scrolling and zooming
  bind Vtcanvas <MouseWheel> [namespace code [list ScrollCallback %W %D]]
- bind Vtcanvas <Control-MouseWheel> [namespace code [list ZoomCallback %W %D]]
- bind Vtcanvas <Shift-MouseWheel> [namespace code [list ZoomCallback %W %D]]
+ bind Vtcanvas <Control-MouseWheel> [namespace code [list ZoomCallback %W %D %x %y]]
+ bind Vtcanvas <Shift-MouseWheel> [namespace code [list ZoomCallback %W %D %x %y]]
  bind Wavebar <MouseWheel> [namespace code [list ScrollCallback %W %D]]
- bind Wavebar <Control-MouseWheel> [namespace code [list ZoomCallback %W %D]]
- bind Wavebar <Shift-MouseWheel> [namespace code [list ZoomCallback %W %D]]
+ bind Wavebar <Control-MouseWheel> [namespace code [list ZoomCallback %W %D %x %y]]
+ bind Wavebar <Shift-MouseWheel> [namespace code [list ZoomCallback %W %D %x %y]]
 
  # on tk8.4* under linux, wheel up/down events are encoded as button 4 & 5
  bind Vtcanvas <ButtonPress-4> \
@@ -250,17 +250,17 @@ set Info(Img,record) [image create photo -data R0lGODlhFQAVAKEAANnZ2f8AAP///////
  bind Vtcanvas <ButtonPress-5> \
   [namespace code [list ScrollCallback %W -$Info(scrollwheelstep)]]
  bind Vtcanvas <Control-ButtonPress-4> \
-  [namespace code [list ZoomCallback %W $Info(scrollwheelstep)]]
+  [namespace code [list ZoomCallback %W $Info(scrollwheelstep) %x %y]]
  bind Vtcanvas <Control-ButtonPress-5> \
-  [namespace code [list ZoomCallback %W -$Info(scrollwheelstep)]]
+  [namespace code [list ZoomCallback %W -$Info(scrollwheelstep) %x %y]]
  bind Wavebar <ButtonPress-4> \
   [namespace code [list ScrollCallback %W $Info(scrollwheelstep)]]
  bind Wavebar <ButtonPress-5> \
   [namespace code [list ScrollCallback %W -$Info(scrollwheelstep)]]
  bind Wavebar <Control-ButtonPress-4> \
-  [namespace code [list ZoomCallback %W $Info(scrollwheelstep)]]
+  [namespace code [list ZoomCallback %W $Info(scrollwheelstep) %x %y]]
  bind Wavebar <Control-ButtonPress-5> \
-  [namespace code [list ZoomCallback %W -$Info(scrollwheelstep)]]
+  [namespace code [list ZoomCallback %W -$Info(scrollwheelstep) %x %y]]
 
  LoadPlugins [GetPlugins]
  foreach dir $Info(PluginDir) {
@@ -979,16 +979,20 @@ proc wsurf::GetUnsavedWidgets {} {
 }
 
 
-proc wsurf::ZoomCallback {canvas amt} {
- variable Info
-
- set w $canvas
- while {![info exists [namespace current]::${w}::data]} {
-  set w [winfo parent $w]
- }
- upvar [namespace current]::${w}::widgets wid
- 
- $wid(wavebar) zoom [expr 1.0*$amt/$Info(scrollwheelstep)]
+proc wsurf::ZoomCallback {canvas amt x y} {
+    variable Info
+    
+    set w $canvas
+    while {![info exists [namespace current]::${w}::data]} {
+	set w [winfo parent $w]
+    }
+    upvar [namespace current]::${w}::widgets wid
+    upvar [namespace current]::${w}::data d
+    set pane [lindex [_getPanes $w] 0]
+    set c [$pane canvas]
+    set relx [expr {1.0*$x/[winfo width $c]}]
+    
+    $wid(wavebar) zoom [expr 1.0*$amt/$Info(scrollwheelstep)] $relx
 }
 
 
@@ -1168,6 +1172,7 @@ proc wsurf::create {w args} {
  set d(canvasWidth) 1
  set d(xviewT1) 0.0
  set d(xviewT2) 0.0
+    set d(cursorPos) 0.0
  if {$a(-sound) == ""} {
   if {$Info(Prefs,linkFile)} {
    set d(sound) [snack::sound -rate $Info(Prefs,defRate) \
@@ -1654,6 +1659,8 @@ proc wsurf::_xsbSet {w frac1 frac2} {
 # -----------------------------------------------------------------------------
 
 proc wsurf::_setCursor {w p x y t v} {
+ upvar [namespace current]::${w}::data d
+    set d(cursorPos) $t
 
  if {![snack::audio active]} {
   foreach pane [_getPanes $w] {
@@ -1663,9 +1670,6 @@ proc wsurf::_setCursor {w p x y t v} {
   }
  }
 
- if {$p == "" || $x < 0} return
-
- upvar [namespace current]::${w}::data d
  array unset d msg,*
  _callback $w cursorMovedProc $p $t $v
 }
