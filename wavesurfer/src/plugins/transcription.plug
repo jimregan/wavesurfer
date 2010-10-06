@@ -2134,14 +2134,12 @@ proc trans::drawPage1 {w pane path} {
  foreach {format loadProc saveProc testProc} $Info(formats) {
   lappend tmp $format
  }
- eval tk_optionMenu $path.f1.om [namespace current]::${pane}::var(t,format) \
-   $tmp
+ ttk::combobox $path.f1.om -textvariable [namespace current]::${pane}::var(t,format) -values $tmp -state readonly
  pack $path.f1.l $path.f1.om -side left -padx 3
 
  pack [frame $path.f2] -anchor w
  ttk::label $path.f2.l -text "Label alignment:" -width 25 -anchor w
- tk_optionMenu $path.f2.om [namespace current]::${pane}::var(t,alignment) \
-   left center right
+    ttk::combobox $path.f2.om -textvariable [namespace current]::${pane}::var(t,alignment) -values [list left center right] -state readonly
  $path.f2.om.menu entryconfigure 0 -value w
  $path.f2.om.menu entryconfigure 1 -value c
  $path.f2.om.menu entryconfigure 2 -value e
@@ -2546,10 +2544,10 @@ proc trans::browse {w pane} {
  pack [ frame $p.b] -fill both -expand true
  pack [ frame $p.b.f0]
 
- pack [ radiobutton $p.b.f0.r1 -text [::util::mc "Select start"] -value start \
+ pack [ ttk::radiobutton $p.b.f0.r1 -text [::util::mc "Select start"] -value start \
 	    -variable [namespace current]::${pane}::var(selectMode) \
 	    -command [namespace code [list listSelect $w $pane]]] -side left
- pack [ radiobutton $p.b.f0.r2 -text [::util::mc "Select word"] -value word \
+ pack [ ttk::radiobutton $p.b.f0.r2 -text [::util::mc "Select word"] -value word \
 	    -variable [namespace current]::${pane}::var(selectMode) \
 	    -command [namespace code [list listSelect $w $pane]]] \
      -padx 20 -side left
@@ -2665,13 +2663,12 @@ proc trans::convert {w pane} {
  foreach {format loadProc saveProc testProc} $Info(formats) {
   lappend fmtlist $format
  }
- eval tk_optionMenu $p.f1.om [namespace current]::${pane}::var(t,format) \
-   $fmtlist
+    ttk::combobox $p.f1.om -textvariable [namespace current]::${pane}::var(t,format) -values $fmtlist -state readonly
  pack $p.f1.l $p.f1.om -side left -padx 3
 
  pack [frame $p.f]
- pack [ button $p.f.b1 -text OK -command [namespace code [list doConvert $w $pane]]\n[list destroy $p]] -side left -padx 3
- pack [ button $p.f.b2 -text Close -command "destroy $p"] -side left -padx 3
+ pack [ ttk::button $p.f.b1 -text OK -command [namespace code [list doConvert $w $pane]]\n[list destroy $p]] -side left -padx 3
+ pack [ ttk::button $p.f.b2 -text Close -command "destroy $p"] -side left -padx 3
 }
 
 proc trans::doConvert {w pane} {

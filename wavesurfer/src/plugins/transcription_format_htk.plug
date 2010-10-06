@@ -308,18 +308,12 @@ proc transcription_format_htk::drawHTKPage {w pane p} {
  pack [frame $p.f2] -anchor w
  label $p.f2.l -text "Number of filename components in pattern match:" \
      -anchor w
- tk_optionMenu $p.f2.om \
-     [namespace current]::${pane}::var(t,matchComponents) 1 2
- $p.f2.om.menu entryconfigure 0 -value 1
- $p.f2.om.menu entryconfigure 1 -value 2
+    ttk::combobox $p.f2.om -textvariable [namespace current]::${pane}::var(t,matchComponents) -values {1 2} -state readonly
  pack $p.f2.l $p.f2.om -side left -padx 3
 
  pack [frame $p.f3] -anchor w
  label $p.f3.l -text "Read label level:" -anchor w -width 23
- tk_optionMenu $p.f3.om \
-     [namespace current]::${pane}::var(t,level) 1 2
- $p.f3.om.menu entryconfigure 0 -value 1
- $p.f3.om.menu entryconfigure 1 -value 2
+    ttk::combobox $p.f3.om -textvariable [namespace current]::${pane}::var(t,level) -values {1 2}
  pack $p.f3.l $p.f3.om -side left -padx 3
 
  stringPropItem $p.f4 "Read label alternative:" 23 5 \

@@ -1080,14 +1080,14 @@ proc analysis::drawWaveformPage {w pane p} {
   set max 32768
  }
  pack [frame $p.f3] -anchor w -ipady 2
-  tk_checkbutton $p.f3.r -text "Auto-scale waveform" -onvalue -1 \
+    ttk::checkbutton $p.f3.r -text "Auto-scale waveform" -onvalue -1 \
       -offvalue $max \
-      -anchor w -variable [namespace current]::${pane}::var(t,limit)
-  label $p.f3.l -text "Value at top:" -anchor w
+      -variable [namespace current]::${pane}::var(t,limit)
+    ttk::label $p.f3.l -text "Value at top:"
 
  entry $p.f3.e -textvar [namespace current]::${pane}::var(t,limit) \
    -width 8
- button $p.f3.b -text Control... \
+ ttk::button $p.f3.b -text Control... \
 	 -command [namespace code [list waControls $w $pane]]
  pack $p.f3.r $p.f3.l $p.f3.e $p.f3.b -side left -padx 3
 
@@ -1124,8 +1124,7 @@ proc analysis::drawSpectrogramPage {w pane p} {
 
  pack [frame $p.f2] -anchor w -ipady 2
     ttk::label $p.f2.l -text "Analysis window type:" -width 21 -anchor w
- tk_optionMenu $p.f2.cm [namespace current]::${pane}::var(t,wintype) \
-	 Hamming Hanning Bartlett Blackman Rectangle
+    ttk::combobox $p.f2.cm -textvariable [namespace current]::${pane}::var(t,wintype) -values [list Hamming Hanning Bartlett Blackman Rectangle] -state readonly
  pack $p.f2.l $p.f2.cm -side left -padx 3
 
  pack [frame $p.f3] -anchor w -ipady 2
@@ -1156,7 +1155,7 @@ proc analysis::drawSpectrogramPage {w pane p} {
 	 -orient horiz -from -100 -to 100] -side left
   $p.f6.s set $v(t,brightness)
 
- pack [button $p.f6.b -text Controls... \
+ pack [ttk::button $p.f6.b -text Controls... \
 	 -command [namespace code [list bcControls $w $pane]]] -side left
 
  pack [frame $p.f7] -anchor w -ipady 2
@@ -1178,7 +1177,7 @@ proc analysis::drawSpectrogramPage {w pane p} {
 
  pack [frame $p.f11] -anchor w -ipady 2
  ttk::label $p.f11.l -text "Spectrogram color:" -width 21 -anchor w
- tk_optionMenu $p.f11.cm [namespace current]::${pane}::var(t,cmap) grey color color2
+    ttk::combobox $p.f11.cm -textvariable [namespace current]::${pane}::var(t,cmap) -values [list grey color color2] -state readonly
  pack $p.f11.l $p.f11.cm -side left -padx 3
 
  stringPropItem $p.f12 "Record scroll speed:" 21 6 \
@@ -1209,8 +1208,8 @@ proc analysis::drawPitchPage {w pane p} {
  }
 
  pack [frame $p.f1] -anchor w -ipady 2
-  label $p.f1.l -text "Pitch method:" -width 21 -anchor w
- tk_optionMenu $p.f1.cm [namespace current]::${pane}::var(t,method) ESPS AMDF
+    ttk::label $p.f1.l -text "Pitch method:" -width 21
+    ttk::combobox $p.f1.cm -textvariable [namespace current]::${pane}::var(t,method) -values [list ESPS AMDF] -state readonly
  pack $p.f1.l $p.f1.cm -side left -padx 3
 
  stringPropItem $p.f2 "Max pitch value:" 23 6 \
@@ -1227,8 +1226,8 @@ proc analysis::drawPitchPage {w pane p} {
 
  pack [frame $p.f4] -anchor w -ipady 2
 
-  tk_checkbutton $p.f4.r -text "Show background note scale" \
-      -anchor w -variable [namespace current]::${pane}::var(t,showScale)
+    ttk::checkbutton $p.f4.r -text "Show background note scale" \
+     -variable [namespace current]::${pane}::var(t,showScale)
 
  ttk::label $p.f4.l -text "Tuning (C1):" -anchor w
  entry $p.f4.e -textvar [namespace current]::${pane}::var(t,scaleBase) -wi 7
@@ -1265,8 +1264,7 @@ proc analysis::drawPowerPage {w pane p} {
 
  pack [frame $p.f4] -anchor w -ipady 2
  ttk::label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
- tk_optionMenu $p.f4.cm [namespace current]::${pane}::var(t,ewintype) \
-	 Hamming Hanning Bartlett Blackman Rectangle
+    ttk::combobox $p.f4.cm -textvariable [namespace current]::${pane}::var(t,ewintype) -values [list Hamming Hanning Bartlett Blackman Rectangle] -state readonly
  pack $p.f4.l $p.f4.cm -side left -padx 3
 
  stringPropItem $p.f5 "Pre-emphasis factor:" 23 6 \
@@ -1308,8 +1306,7 @@ proc analysis::drawFormantsPage {w pane p} {
  
  pack [frame $p.f4] -anchor w -ipady 2
  ttk::label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
- tk_optionMenu $p.f4.cm [namespace current]::${pane}::var(t,fwintype) \
-	 Rectangular Hamming Cos^4 Hanning
+    ttk::combobox $p.f4.cm -textvariable [namespace current]::${pane}::var(t,fwintype) -values [list Rectangular Hamming Cos^4 Hanning] -state readonly
  pack $p.f4.l $p.f4.cm -side left -padx 3
 
  stringPropItem $p.f5 "Pre-emphasis factor:" 23 6 \
@@ -1770,18 +1767,20 @@ proc analysis::openSectWindow {w pane} {
  if {$left == $right} { set v(sall) 0 } else { set v(sall) 1 }
 
  pack [frame $e.f] -side bottom -fill x
-  label $e.f.lab -width 1 -relief sunken -bd 1 -anchor w
+ label $e.f.lab -width 1 -relief sunken -bd 1
  pack $e.f.lab -side left -expand yes -fill x
 # pack [button $e.f.exitB -text Close -command [list destroy $e]] -side left
 
  pack [frame $e.f1] -fill x
 
  ttk::label $e.f1.l1 -text "Analysis:"
- tk_optionMenu $e.f1.m1 [namespace current]::${pane}::var(satype) FFT LPC
- for {set n 0} {$n < 2} {incr n} {
-   $e.f1.m1.menu entryconfigure $n \
-       -command [namespace code [list drawSect $w $pane]]
- }
+    ttk::combobox $e.f1.m1 -textvariable [namespace current]::${pane}::var(satype) -values [list FFT LPC] -state readonly
+    bind $e.f1.m1 <<ComboboxSelected>> [namespace code [list drawSect $w $pane]]
+    
+# for {set n 0} {$n < 2} {incr n} {
+#   $e.f1.m1.menu entryconfigure $n \
+#       -command [namespace code [list drawSect $w $pane]]
+# }
 
  ttk::label $e.f1.l2 -text "Order:"
  entry $e.f1.e -width 3 \
@@ -1801,19 +1800,20 @@ proc analysis::openSectWindow {w pane} {
  pack [frame $e.f2] -anchor w -fill x
 
  ttk::label $e.f2.l1 -text "Window:"
- tk_optionMenu $e.f2.m1 [namespace current]::${pane}::var(swintype) \
-	 Hamming Hanning Bartlett Blackman Rectangle
- for {set n 0} {$n < 5} {incr n} {
-   $e.f2.m1.menu entryconfigure $n \
-       -command [namespace code [list drawSect $w $pane]]
- }
+    ttk::combobox $e.f2.m1 -textvariable [namespace current]::${pane}::var(swintype) -values [list Hamming Hanning Bartlett Blackman Rectangle] -state readonly
+    bind $e.f2.l1 <<ComboboxSelected>> [namespace code [list drawSect $w $pane]]
+# for {set n 0} {$n < 5} {incr n} {
+#   $e.f2.m1.menu entryconfigure $n \
+#       -command [namespace code [list drawSect $w $pane]]
+# }
 
  ttk::label $e.f2.l2 -text "FFT points:" -anchor w
- tk_optionMenu $e.f2.m2 [namespace current]::${pane}::var(sfftlen) 64 128 256 512 1024 2048 4096 8192 16384 32768 65536
- for {set n 0} {$n < 11} {incr n} {
-   $e.f2.m2.menu entryconfigure $n \
-       -command [namespace code [list drawSect $w $pane]]
- }
+    ttk::combobox $e.f2.m2 -textvariable [namespace current]::${pane}::var(sfftlen) -values [list 64 128 256 512 1024 2048 4096 8192 16384 32768 65536] -state readonly
+    bind $e.f2.m2 <<ComboboxSelected>> [namespace code [list drawSect $w $pane]]
+# for {set n 0} {$n < 11} {incr n} {
+#   $e.f2.m2.menu entryconfigure $n \
+#       -command [namespace code [list drawSect $w $pane]]
+# }
 
  pack $e.f2.l1 $e.f2.m1 -side left
   pack [separator $e.f2.s1 -orient vertical] -side left -fill y -padx 10
@@ -1844,8 +1844,7 @@ proc analysis::openSectWindow {w pane} {
 
  pack [separator $e.f4.s1 -orient vertical] -side left -fill y -padx 10
 
-  tk_menubutton $e.f4.mb -text "Snapshot" -menu $e.f4.mb.m -relief raised \
-      -direction above
+    ttk::menubutton $e.f4.mb -text "Snapshot" -menu $e.f4.mb.m
 
  menu $e.f4.mb.m -tearoff 0
  # label $e.f4.l1 -text "Snapshot:"
@@ -1854,7 +1853,7 @@ proc analysis::openSectWindow {w pane} {
   lappend titles [$q cget -title]
  }
  lappend titles Clear
- # eval tk_optionMenu $e.f4.snap [namespace current]::${pane}::var(snapo) $titles
+
  # pack $e.f4.l1 $e.f4.snap -side left
  for {set n 0} {$n <= [llength $::wsurf::Info(widgets)]} {incr n} {
   set label [lindex $titles $n]
@@ -1871,7 +1870,7 @@ proc analysis::openSectWindow {w pane} {
  pack [checkbutton $e.f4.cb2 -text "Add file header" \
      -variable [namespace current]::${pane}::var(sexphead)] -side left
  pack [separator $e.f4.s3 -orient vertical] -side left -fill y -padx 10
- pack [button $e.f4.exportB -text Export... -command [namespace code [list exportSpectrum $w $pane]]] -side left
+ pack [ttk::button $e.f4.exportB -text Export... -command [namespace code [list exportSpectrum $w $pane]]] -side left
 
  pack [canvas $e.c -closeenough 5 -cursor draft_small -height 20] -fill both \
 	 -before $e.f1 -expand true
