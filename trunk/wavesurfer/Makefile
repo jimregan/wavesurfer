@@ -94,9 +94,11 @@ COPYRIGHT     = Copyright © 2000-2010 Jonas Beskow and Kare Sjolander
 
 ABOUTWAVESURFER = WaveSurfer $(RELEASE)-$(BUILD)\\\n$(COPYRIGHT)
 
-upload: 
-#	scp release/$(RELEASE).txt release/wavesurfer-$(RELEASE)*.* $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/$(RELEASE)/
-	scp release/*.html $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/$(RELEASE)/
+upload:
+	rm -rf $(TMP)/$(RELEASE)
+	mkdir -p $(TMP)/$(RELEASE)
+	cp  release/$(RELEASE).txt release/wavesurfer-$(RELEASE)*.* $(TMP)/$(RELEASE)
+	scp -r $(TMP)/$(RELEASE) $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/
 
 release: src-release osx-release win-release linux-release
 
@@ -168,6 +170,7 @@ macbundle: src-release
 		sed s/@BUNDLEIDENTIFIER@/se.kth.speech.wavesurfer/g \
 		> $(TMP)/WaveSurfer.app/Contents/Info.plist
 	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* $(TMP)/WaveSurfer.app/Contents/Resources/Scripts/
+	cp build/snack-fix/*.tcl build/binpkg/osx/snack$(SNACKMAJORV)
 	cp -r build/binpkg/osx/snack$(SNACKMAJORV) $(TMP)/WaveSurfer.app/Contents/lib
 	rm $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsound.dylib
 	cp -a build/binpkg/osx/libportaudio*.dylib $(TMP)/WaveSurfer.app/Contents/Frameworks
@@ -186,6 +189,7 @@ _wrap: src-release
 	rm $(TMP)/wavesurfer-$(RELEASE)/src/plugins/example*.plug
 	cp build/kit/main.tcl $(TMP)/wavesurfer.vfs
 	cp -f $(TCLKIT) $(TMP)/tclkit
+	cp build/snack-fix/*.tcl build/binpkg/$(TARGET)/snack$(SNACKMAJORV)
 	cp -r build/binpkg/$(TARGET)/snack$(SNACKMAJORV) $(TMP)/wavesurfer.vfs/lib
 	cp -r build/binpkg/$(TARGET)/tkdnd* $(TMP)/wavesurfer.vfs/lib
 	mkdir -p $(TMP)/wavesurfer.vfs/icons
