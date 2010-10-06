@@ -96,7 +96,7 @@ namespace eval snack {
 	    } else {
 	      snack::mixer volume $line snack::v(l$line) snack::v(r$line)
 	      if {[info exists tile::version]} {
-	       pack [scale $wi.f.g$line.e -from 0 -to 100 -show no -orient vertical \
+	       pack [ttk::scale $wi.f.g$line.e -from 0 -to 100 -show no -orient vertical \
 			 -var snack::v(lI$line) -command  [namespace code [list flipScaleValue ::snack::v(lI$line) ::snack::v(l$line)]]] -side left -expand yes -fill y
 	       set snack::v(lI$line) [expr 100-[lindex [snack::mixer volume $line] end]]
 	       $wi.f.g$line.e set $snack::v(lI$line)
@@ -106,7 +106,7 @@ namespace eval snack {
 	      }
 	    }
   	    if {[info exists tile::version]} {
-	     pack [scale $wi.f.g$line.s -from 0 -to 100 -show no -orient vertical \
+	     pack [ttk::scale $wi.f.g$line.s -from 0 -to 100 -show no -orient vertical \
 		       -var snack::v(rI$line) -command  [namespace code [list flipScaleValue ::snack::v(rI$line) ::snack::v(r$line)]]] -expand yes -fill y
 	     set snack::v(rI$line) [expr 100-[lindex [snack::mixer volume $line] end]]
 	     $wi.f.g$line.s set $snack::v(rI$line)
@@ -171,30 +171,21 @@ namespace eval snack {
 	    set data(-initialdir) "."
 	}
         if {[string match Darwin $::tcl_platform(os)]} {
-	 return [tk_getOpenFile -title $data(-title) \
-		    -multiple $data(-multiple) \
-		    -filetypes [loadTypes $data(-format)] \
-		    -defaultextension [fmt2ext $data(-format)] \
-		     -initialdir $data(-initialdir)]
-	}
-	# Later Tcl's allow multiple files returned as a list
-	if {$::tcl_version <= 8.3} {
-	    set res [tk_getOpenFile -title $data(-title) \
-		    -filetypes [loadTypes $data(-format)] \
-		    -defaultextension [fmt2ext $data(-format)] \
-		    -initialdir $data(-initialdir) \
-		    -initialfile $data(-initialfile)]
+	    # tk_getOpenFile on Darwin doesn't provide a file type selector,
+	    # so we run it without file type filters to allow any file to be opened
+	    return [tk_getOpenFile -title $data(-title) \
+			-multiple $data(-multiple) \
+			-initialdir $data(-initialdir)]
 	} else {
-	    set res [tk_getOpenFile -title $data(-title) \
-		    -multiple $data(-multiple) \
-		    -filetypes [loadTypes $data(-format)] \
-		    -defaultextension [fmt2ext $data(-format)] \
-		    -initialdir $data(-initialdir) \
-		    -initialfile $data(-initialfile)]
+	    
+	    return [tk_getOpenFile -title $data(-title) \
+			-multiple $data(-multiple) \
+			-filetypes [loadTypes $data(-format)] \
+			-initialdir $data(-initialdir) \
+			-initialfile $data(-initialfile)]
 	}
-	return $res
     }
-
+    
     set loadTypes ""
 
     proc addLoadTypes {typelist fmtlist} {
@@ -744,19 +735,36 @@ namespace eval snack {
     #
 
     variable icon
-    set icon(open) R0lGODlhFAATAOMAAAAAAFeEAKj/AYQAV5o2AP8BqP9bAQBXhC8AhJmZmWZmZszMzAGo/1sB/////9zc3CH5BAEAAAsALAAAAAAUABMAQARFcMlJq13ANc03uGAoTp+kACWpAUjruum4nAqI3hdOZVtz/zoS6/WKyY7I4wlnPKIqgB7waet1VqHoiliE+riw3PSXlEUAADs=
 
-    set icon(save) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQARBcMlJq5VACGDzvkAojiGocZWHUiopflcsL2p32lqu3+lJYrCZcCh0GVeTWi+Y5LGczY0RCtxZkVUXEEvzjbbEWQQAOw==
+    set icon(new) R0lGODlhEAAQALMAAAAAAMbGxv///////////////////////////////////////////////////////yH5BAEAAAEALAAAAAAQABAAAAQwMMhJ6wQ4YyuB+OBmeeDnAWNpZhWpmu0bxrKAUu57X7VNy7tOLxjIqYiapIjDbDYjADs=
 
-    set icon(print) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQARHcMlJq53A6b2BEIAFjGQZXlTGdZX3vTAInmiNqqtGY3Ev76bgCGQrGo8toS3DdIycNWZTupMITbPUtfQBznyz6sLl84iRlAgAOw==
+    set icon(open) R0lGODlhEAAQALMAAAAAAISEAMbGxv//AP///////////////////////////////////////////////yH5BAEAAAIALAAAAAAQABAAAAQ4UMhJq6Ug3wpm7xsHZqBFCsBADGTLrbCqllIaxzSKt3wmA4GgUPhZAYfDEQuZ9ByZAVqPF6paLxEAOw==
 
-    set icon(cut) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQAQ3cMlJq71LAYUvANPXVVsGjpImfiW6nK87aS8nS+x9gvvt/xgYzLUaEkVAI0r1ao1WMWSn1wNeIgA7
+    set icon(save) R0lGODlhEAAQALMAAAAAAISEAMbGxv///////////////////////////////////////////////////yH5BAEAAAIALAAAAAAQABAAAAQ3UMhJqwQ4a30DsJfwiR4oYt1oASWpVuwYm7NLt6y3YQHe/8CfrLfL+HQcGwmZSXWYKOWpmDSBIgA7
 
-    set icon(copy) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQARFcMlJq5XAZSB0FqBwjSTmnF45ASzbbZojqrTJyqgMjDAXwzNSaAiqGY+UVsuYQRGDluap49RcpLjcNJqjaqEXbxdJLkUAADs=
+    set icon(print) R0lGODlhEAAQALMAAAAAAISEhMbGxv//AP///////////////////////////////////////////////yH5BAEAAAIALAAAAAAQABAAAAQ5UMhJqwU450u67wCnAURYkZ9nUuRYbhKalkJoj1pdYxar40ATrxIoxn6WgTLGC4500J6N5Vz1roIIADs=
 
-    set icon(paste) R0lGODlhFAATAOMAAAAAAFeEAKj/AYQAV5o2AP8BqP9bAQBXhC8AhJmZmWZmZszMzAGo/1sB/////9zc3CH5BAEAAAsALAAAAAAUABMAQARTcMlJq11A6c01uFXjAGNJNpMCrKvEroqVcSJ5NjgK7tWsUr5PryNyGB04GdHE1PGe0OjrGcR8qkPPCwsk5nLCLu1oFCUnPk2RfHSqXms2cvetJyMAOw==
+#    set icon(open) R0lGODlhFAATAOMAAAAAAFeEAKj/AYQAV5o2AP8BqP9bAQBXhC8AhJmZmWZmZszMzAGo/1sB/////9zc3CH5BAEAAAsALAAAAAAUABMAQARFcMlJq13ANc03uGAoTp+kACWpAUjruum4nAqI3hdOZVtz/zoS6/WKyY7I4wlnPKIqgB7waet1VqHoiliE+riw3PSXlEUAADs=
 
-    set icon(undo) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQAQ7cMlJq6UKALmpvmCIaWQJZqXidWJboWr1XSgpszTu7nyv1IBYyCSBgWyWjHAUnE2cnBKyGDxNo72sKwIAOw==
+#    set icon(save) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQARBcMlJq5VACGDzvkAojiGocZWHUiopflcsL2p32lqu3+lJYrCZcCh0GVeTWi+Y5LGczY0RCtxZkVUXEEvzjbbEWQQAOw==
+
+#    set icon(print) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQARHcMlJq53A6b2BEIAFjGQZXlTGdZX3vTAInmiNqqtGY3Ev76bgCGQrGo8toS3DdIycNWZTupMITbPUtfQBznyz6sLl84iRlAgAOw==
+
+#    set icon(cut) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQAQ3cMlJq71LAYUvANPXVVsGjpImfiW6nK87aS8nS+x9gvvt/xgYzLUaEkVAI0r1ao1WMWSn1wNeIgA7
+
+#    set icon(copy) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQARFcMlJq5XAZSB0FqBwjSTmnF45ASzbbZojqrTJyqgMjDAXwzNSaAiqGY+UVsuYQRGDluap49RcpLjcNJqjaqEXbxdJLkUAADs=
+
+#    set icon(paste) R0lGODlhFAATAOMAAAAAAFeEAKj/AYQAV5o2AP8BqP9bAQBXhC8AhJmZmWZmZszMzAGo/1sB/////9zc3CH5BAEAAAsALAAAAAAUABMAQARTcMlJq11A6c01uFXjAGNJNpMCrKvEroqVcSJ5NjgK7tWsUr5PryNyGB04GdHE1PGe0OjrGcR8qkPPCwsk5nLCLu1oFCUnPk2RfHSqXms2cvetJyMAOw==
+
+#    set icon(undo) R0lGODlhFAATAOMAAAAAAAAAhAAA/wCEAACZmQD/AAD//4QAAISEAJmZmWZmZszMzP8AAP//AP///9zc3CH5BAEAAAsALAAAAAAUABMAQAQ7cMlJq6UKALmpvmCIaWQJZqXidWJboWr1XSgpszTu7nyv1IBYyCSBgWyWjHAUnE2cnBKyGDxNo72sKwIAOw==
+
+ set icon(cut) R0lGODlhEAAQALMAAAAAAAAAhMbGxv///////////////////////////////////////////////////yH5BAEAAAIALAAAAAAQABAAAAQvUMhJqwUTW6pF314GZhjwgeXImSrXTgEQvMIc3ONtS7PV77XNL0isDGs9YZKmigAAOw==
+
+ set icon(copy) R0lGODlhEAAQALMAAAAAAAAAhMbGxv///////////////////////////////////////////////////yH5BAEAAAIALAAAAAAQABAAAAQ+UMhJqwA4WwqGH9gmdV8HiKYZrCz3ecG7TikWf3EwvkOM9a0a4MbTkXCgTMeoHPJgG5+yF31SLazsTMTtViIAOw==
+
+ set icon(paste) R0lGODlhEAAQALMAAAAAAAAAhISEAISEhMbGxv//AP///////////////////////////////////////yH5BAEAAAQALAAAAAAQABAAAARMkMhJqwUYWJlxKZ3GCYMAgCdQDqLKXmUrGGE2vIRK7usu94GgMNDqDQKGZDI4AiqXhkDOiMxEhQCeAPlUEqm0UDTX4XbHlaFaumlHAAA7
+
+ set icon(undo) R0lGODlhEAAQALMAAAAAhMbGxv///////////////////////////////////////////////////////yH5BAEAAAEALAAAAAAQABAAAAQgMMhJq704622BB93kUSAJlhUafJj6qaLJklxc33iuXxEAOw==
 
     set icon(redo) R0lGODlhFAATAKEAAMzMzGZmZgAAAAAAACH5BAEAAAAALAAAAAAUABMAAAI4hI+py+0fhBQhPDCztCzSkzWS4nFJZCLTMqrGxgrJBistmKUHqmo3jvBMdC9Z73MBEZPMpvOpKAAAOw==
 
@@ -767,6 +775,13 @@ namespace eval snack {
     set icon(zoomIn) R0lGODlhFAATAMIAAMzMzF9fXwAAAP///wAA/8zM/wAAAAAAACH5BAEAAAAALAAAAAAUABMAAANBCLrc/jBKGYQVYao6es2U0FlDJUjimFbocF1u+5JnhKldHAUB7mKom+oTupiImo2AUAAmAQECE/SMWp6LK3arSQAAOw==
 
     set icon(zoomOut) R0lGODlhFAATAMIAAMzMzF9fXwAAAP///wAA/8zM/wAAAAAAACH5BAEAAAAALAAAAAAUABMAAANCCLrc/jBKGYQVYao6es2U0I2VIIkjaUbidQ0r1LrtGaRj/AQ3boEyTA6DCV1KH82iQigUlYAAoQlUSi3QBTbL1SQAADs=
+
+    set icon(play) R0lGODlhFQAVAKEAANnZ2QAAAP///////yH+FUNyZWF0ZWQgd2l0aCBUaGUgR0lNUAAh+QQBCgAAACwAAAAAFQAVAAACJISPqcvtD10IUc1Zz7157+h5Txg2pMicmESCqLt2VEbX9o1XBQA7
+
+    set icon(pause) R0lGODlhFQAVAKEAANnZ2QAAAP///////yH+FUNyZWF0ZWQgd2l0aCBUaGUgR0lNUAAh+QQBCgAAACwAAAAAFQAVAAACLISPqcvtD12Y09DKbrC3aU55HfBlY7mUqKKO6emycGjSa9LSrx1H/g8MCiMFADs=
+    set icon(stop) R0lGODlhFQAVAKEAANnZ2QAAAP///////yH+FUNyZWF0ZWQgd2l0aCBUaGUgR0lNUAAh+QQBCgAAACwAAAAAFQAVAAACJISPqcvtD12YtM5mc8C68n4xIPWBZXdqabZarSeOW0TX9o3bBQA7
+
+    set icon(record) R0lGODlhFQAVAKEAANnZ2f8AAP///////yH+FUNyZWF0ZWQgd2l0aCBUaGUgR0lNUAAh+QQBCgAAACwAAAAAFQAVAAACJoSPqcvtDyMINMhZM8zcuq41ICeOVWl6S0p95pNu4BVe9o3n+lIAADs=
 
     proc createIcons {} {
 	variable icon
@@ -783,6 +798,10 @@ namespace eval snack {
 	image create photo snackZoom  -data $icon(zoom)
 	image create photo snackZoomIn -data $icon(zoomIn)
 	image create photo snackZoomOut -data $icon(zoomOut)
+	image create photo snackPlay  -data $icon(play)
+	image create photo snackPause  -data $icon(pause)
+	image create photo snackStop  -data $icon(stop)
+	image create photo snackRecord  -data $icon(record)
     }
 
     #

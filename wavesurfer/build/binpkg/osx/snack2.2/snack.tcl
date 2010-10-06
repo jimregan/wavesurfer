@@ -171,30 +171,21 @@ namespace eval snack {
 	    set data(-initialdir) "."
 	}
         if {[string match Darwin $::tcl_platform(os)]} {
-	 return [tk_getOpenFile -title $data(-title) \
-		    -multiple $data(-multiple) \
-		    -filetypes [loadTypes $data(-format)] \
-		    -defaultextension [fmt2ext $data(-format)] \
-		     -initialdir $data(-initialdir)]
-	}
-	# Later Tcl's allow multiple files returned as a list
-	if {$::tcl_version <= 8.3} {
-	    set res [tk_getOpenFile -title $data(-title) \
-		    -filetypes [loadTypes $data(-format)] \
-		    -defaultextension [fmt2ext $data(-format)] \
-		    -initialdir $data(-initialdir) \
-		    -initialfile $data(-initialfile)]
+	    # tk_getOpenFile on Darwin doesn't provide a file type selector,
+	    # so we run it without file type filters to allow any file to be opened
+	    return [tk_getOpenFile -title $data(-title) \
+			-multiple $data(-multiple) \
+			-initialdir $data(-initialdir)]
 	} else {
-	    set res [tk_getOpenFile -title $data(-title) \
-		    -multiple $data(-multiple) \
-		    -filetypes [loadTypes $data(-format)] \
-		    -defaultextension [fmt2ext $data(-format)] \
-		    -initialdir $data(-initialdir) \
-		    -initialfile $data(-initialfile)]
+	    
+	    return [tk_getOpenFile -title $data(-title) \
+			-multiple $data(-multiple) \
+			-filetypes [loadTypes $data(-format)] \
+			-initialdir $data(-initialdir) \
+			-initialfile $data(-initialfile)]
 	}
-	return $res
     }
-
+    
     set loadTypes ""
 
     proc addLoadTypes {typelist fmtlist} {
