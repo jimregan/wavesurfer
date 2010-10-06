@@ -10,44 +10,44 @@ package require snack 2.2
 package require surfutil 1.8
 
 namespace eval wavebar {
- variable Info
- 
- if {![info exists Info(Initialized)]} {
-  set Info(OptionTable) [list \
-    -height             25 \
-    -width              300 \
-    -troughcolor        darkgrey \
-    -fg                 black \
-    -sound              "" \
-    -shapefile          "" \
-    -progress           "" \
-    -command            "" \
-    -messageproc        "" \
-    -zoomcommand        "" \
-    -zoomlimit          0.0 \
-    -repeatdelay        300 \
-    -repeatinterval     50 \
-    -background         lightgray \
-    -foreground         gray \
-    -shadowwidth        4 \
-    -jump               0 \
-    -zoomjump           1 \
-    -selection          [list 0.0 0.0] \
-    -state              interactive \
-    -cursorcolor        red \
-    -cursorpos          -1 \
-    -isrecording        0 \
-    -mintime            0.0 \
-    -maxtime            0.0 \
-    -formattimecommand  "" \
-    -scrollevent        1 \
-    -pixelspersecond    0.0 \
-    -zoomevent          {{Shift 1} 2} \
-    ]
-  set Info(emptysound) [snack::sound]
-  set Info(Initialized) 1
-  set Info(debug) $::wsurf::Info(debug)
- }
+    variable Info
+    
+    if {![info exists Info(Initialized)]} {
+	set Info(OptionTable) \
+	    [list \
+		 -height             25 \
+		 -width              300 \
+		 -troughcolor        [ttk::style lookup TLabel -background] \
+		 -sound              "" \
+		 -shapefile          "" \
+		 -progress           "" \
+		 -command            "" \
+		 -messageproc        "" \
+		 -zoomcommand        "" \
+		 -zoomlimit          0.0 \
+		 -repeatdelay        300 \
+		 -repeatinterval     50 \
+		 -background         gray \
+		 -foreground         [ttk::style lookup TLabel -foreground] \
+		 -shadowwidth        4 \
+		 -jump               0 \
+		 -zoomjump           1 \
+		 -selection          [list 0.0 0.0] \
+		 -state              interactive \
+		 -cursorcolor        red \
+		 -cursorpos          -1 \
+		 -isrecording        0 \
+		 -mintime            0.0 \
+		 -maxtime            0.0 \
+		 -formattimecommand  "" \
+		 -scrollevent        1 \
+		 -pixelspersecond    0.0 \
+		 -zoomevent          {{Shift 1} 2} \
+		]
+	set Info(emptysound) [snack::sound]
+	set Info(Initialized) 1
+	set Info(debug) $::wsurf::Info(debug)
+    }
 }
 
 # -----------------------------------------------------------------------------
@@ -240,7 +240,7 @@ proc wavebar::configure {w args} {
       $w.c0 itemconfigure arrow2shadow -fill $d(bottomShadow)
      }
     }
-    -foreground {
+    -fg - -foreground {
      if {$val != ""} {
       $w.c0 itemconfigure waveform -fill $val
      } 

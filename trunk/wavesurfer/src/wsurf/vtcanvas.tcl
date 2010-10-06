@@ -81,7 +81,8 @@ proc vtcanvas::create {w args} {
  proc ::$w {cmd args} "return \[eval vtcanvas::\$cmd $w \$args\]"
  
  set wid(canvas) [set c [::canvas $w.c -highlightthickness 0]]
-  tk_frame $w.ff -bd 1 -relief sunken
+#  tk_frame $w.ff -bd 1 -relief sunken
+    ttk::separator $w.ff -orient vertical
 
  set wid(yaxis) [::canvas $w.yaxis -highlightthickness 0 -width 0 -bd 1]
  set wid(yscrollbar) [scrollbar $w.ysb \
@@ -262,7 +263,7 @@ proc vtcanvas::configure {w args} {
     }
     -yaxiswidth {
      if {$val == 0} {
-      $w.ff  configure -bd 0
+	 # $w.ff  configure -bd 0
       $w.yaxis configure -bd 0
      }
      $wid(yaxis) configure -width $val

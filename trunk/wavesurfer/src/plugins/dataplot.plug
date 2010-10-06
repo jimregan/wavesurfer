@@ -205,14 +205,14 @@ proc dataplot::importWizard w {
   timecolumn 0
  }
 
- radiobutton $z.r0 -text "Constant time step" -value implicit \
+ ttk::radiobutton $z.r0 -text "Constant time step" -value implicit \
    -variable [namespace current]::wiz(timedata) -anchor w
  entry $z.e0 -textvariable [namespace current]::wiz(timestep)
- radiobutton $z.r1 -text "Time data in column" -value column \
+ ttk::radiobutton $z.r1 -text "Time data in column" -value column \
    -variable [namespace current]::wiz(timedata) -anchor w
  entry $z.e1 -textvariable [namespace current]::wiz(timecolumn)
  
- button $z.ok -text OK -command [list destroy $z]
+ ttk::button $z.ok -text OK -command [list destroy $z]
  grid $z.r0 $z.e0 -sticky news
  grid $z.r1 $z.e1 -sticky news
  grid $z.ok -columnspan 2 -padx 20
@@ -750,7 +750,7 @@ proc dataplot::_redraw {w pane c xo yo} {
     set x [expr {$xo + [$pane getCanvasX $t] + [$pane getCanvasX $v(offset)]}]
     set y [expr {$yo + [$pane getCanvasY $val]}]
     $c create oval [expr {$x-1}] [expr {$y-1}] [expr {$x+1}] [expr {$y+1}]\
-       -outline $color -tags [list $g dataplot top o$i]
+       -fill $color -tags [list $g dataplot top o$i]
     incr i 2
    }
   }
@@ -988,7 +988,7 @@ proc dataplot::drawDataplotPage {w pane p} {
  entry $p.f2.e -textvar [namespace current]::${pane}::var(t,dataDir) -wi 16
  pack $p.f2.l $p.f2.e -side left -padx 3
  if {[info command tk_chooseDirectory] != ""} {
-  button $p.f2.b -text Choose... \
+     ttk::button $p.f2.b -text Choose... \
     -command [namespace code [list chooseDirectory $w $pane]]
   pack $p.f2.b -side left -padx 3
  }
@@ -998,25 +998,25 @@ proc dataplot::drawDataplotPage {w pane p} {
  
  pack [frame $p.f4] -anchor w -ipady 2
  ttk::label $p.f4.l -text "Column delimiter:" -width 26 -anchor w
- radiobutton $p.f4.b1 -text space \
+ ttk::radiobutton $p.f4.b1 -text space \
    -variable [namespace current]::${pane}::var(t,delimiter) -value " "
- radiobutton $p.f4.b2 -text tab \
+ ttk::radiobutton $p.f4.b2 -text tab \
    -variable [namespace current]::${pane}::var(t,delimiter) -value "\t"
- radiobutton $p.f4.b3 -text Comma \
+ ttk::radiobutton $p.f4.b3 -text Comma \
    -variable [namespace current]::${pane}::var(t,delimiter) -value ","
  pack $p.f4.l $p.f4.b1 $p.f4.b2  $p.f4.b3 -side left -padx 3
  
  if {[string match direct $v(invocation)]} {
   pack [frame $p.f5] -anchor w -ipady 2
   ttk::label $p.f5.l -text "Data spacing:" -anchor w
-  radiobutton $p.f5.b1 -text fixed(s) \
+  ttk::radiobutton $p.f5.b1 -text fixed(s) \
       -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "fixedtime"
   entry $p.f5.e1 -textvariable [namespace current]::${pane}::var(t,frameInterval) -width 4
 
-  radiobutton $p.f5.b2 -text fixed(Hz) \
+  ttk::radiobutton $p.f5.b2 -text fixed(Hz) \
       -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "fixedrate"
   entry $p.f5.e2 -textvariable [namespace current]::${pane}::var(t,frameRate) -width 3
-  radiobutton $p.f5.b3 -text "from col" \
+  ttk::radiobutton $p.f5.b3 -text "from col" \
       -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "variable"
   entry $p.f5.e3 -textvariable [namespace current]::${pane}::var(t,timeColumn) -width 2
   
@@ -1031,8 +1031,7 @@ proc dataplot::drawDataplotPage {w pane p} {
  
  pack [frame $p.f7] -anchor w -ipady 2
  ttk::label $p.f7.l -text "Backdrop type:" -width 26 -anchor w
- tk_optionMenu $p.f7.cm [namespace current]::${pane}::var(t,backdrop) \
-   None Spectrogram Waveform
+    ttk::combobox $p.f7.cm -textvariable [namespace current]::${pane}::var(t,backdrop) -values [list None Spectrogram Waveform] -state readonly
  pack $p.f7.l $p.f7.cm -side left
  
  set i 0
@@ -1047,10 +1046,9 @@ proc dataplot::drawDataplotPage {w pane p} {
   ttk::label $p.e$f.l2 -text "using" -anchor w
   entry $p.e$f.e2 -textvar [namespace current]::${pane}::var(t,color$i) -wi 10
    label $p.e$f.l3 -text "    " -bg $v(t,color$i)
-  button $p.e$f.b -text [::util::mc Choose...] \
+     ttk::button $p.e$f.b -text [::util::mc Choose...] \
     -command [list util::chooseColor [namespace current]::${pane}::var(t,color$i) $p.e$f.l3]
-  tk_optionMenu $p.e$f.cm [namespace current]::${pane}::var(t,style$i) \
-    Line Dots
+     ttk::combobox $p.e$f.cm -textvariable [namespace current]::${pane}::var(t,style$i) -values [list Line Dots] -state readonly
   pack $p.e$f.l1 $p.e$f.e $p.e$f.l2 $p.e$f.e2 $p.e$f.l3 $p.e$f.b $p.e$f.cm -side left
   incr i
   incr f
@@ -1150,9 +1148,9 @@ proc dataplot::statWin {w pane} {
     -variable [namespace current]::${pane}::var(ignoreZero)] -fill x -expand true
   
  pack [ frame $p.f3] -ipady 10 -fill x
- pack [ button $p.f3.b1 -text Compute -command [namespace code [list compute $w $pane $p]]] -side left -padx 20
- pack [ button $p.f3.b2 -text Copy -command [namespace code [list statCopy $w $pane $p]]] -side left -padx 20
- pack [ button $p.f3.b3 -text Close -command "destroy $p"] -side right -padx 20
+ pack [ ttk::button $p.f3.b1 -text Compute -command [namespace code [list compute $w $pane $p]]] -side left -padx 20
+ pack [ ttk::button $p.f3.b2 -text Copy -command [namespace code [list statCopy $w $pane $p]]] -side left -padx 20
+ pack [ ttk::button $p.f3.b3 -text Close -command "destroy $p"] -side right -padx 20
 
  # Compute statistics
 

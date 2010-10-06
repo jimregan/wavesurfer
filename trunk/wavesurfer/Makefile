@@ -1,10 +1,11 @@
-TCLSH   = tclsh8.4
-PREFIX	= /usr/local
-TMP     = /tmp/__wavesurfer_build
-ROOT          = $(shell pwd)
-RUNTIME_osx   = $(ROOT)/build/kit/tclkit-darwin-univ-aqua
-RUNTIME_win = $(ROOT)/build/kit/tclkit-8.5.8-win32.upx.exe
-RUNTIME_linux = $(ROOT)/build/kit/tclkit-linux-x86
+TCLSH          = tclsh8.4
+PREFIX	       = /usr/local
+TMP            = /tmp/__wavesurfer_build
+ROOT           = $(shell pwd)
+RUNTIME_osx    = $(ROOT)/build/kit/tclkit-darwin-univ-aqua
+RUNTIME_win    = $(ROOT)/build/kit/tclkit-8.5.8-win32.upx.exe
+RUNTIME_linux  = $(ROOT)/build/kit/tclkit-linux-x86
+WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon.app.tgz
 LOCAL_BINARIES = $(HOME)/Dropbox/wavesurfer
 # NOTE: GNU sharutils is needed - OSX default shar won't work!
 SHAR = shar
@@ -24,7 +25,6 @@ PKGFILES = \
 	src/wsurf/wavebar.tcl \
 	src/wsurf/messagebar.tcl \
 	src/wsurf/cmdline.tcl \
-	src/wsurf/combobox.tcl \
 	src/wsurf/tkcon.tcl \
 	src/wsurf/pkgIndex.tcl \
 	src/wsurf/htmllib.tcl
@@ -69,15 +69,15 @@ TOOLS = tools/*.tcl
 
 PODFILES = doc/plugin-api.pod doc/widget.pod doc/wsurf.pod
 
-READMEFILES = README.txt demos/README-Python.txt demos/README.txt msgs/README.txt src/plugins/README.txt 
+READMEFILES = README.txt demos/README-Python.txt demos/README.txt msgs/README.txt src/plugins/README.txt LICENSE.txt
 
 PACKAGEVER    = $(shell grep "package provide wsurf" src/wsurf.tcl | cut -f 4 -d " ")
 BUILD         = $(shell echo puts [clock format [clock seconds] -format %y%m%d%H%M] | $(TCLSH))
 BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd snd nsp raw mp3 ogg} </string><string>]</string>\'" | $(TCLSH))
 
-VER_A	= $(shell head -1 release.txt)
-VER_B 	= $(shell head -2 release.txt|tail -1)
-VER_C   = $(shell head -3 release.txt|tail -1)
+VER_A	= 1
+VER_B 	= 8
+VER_C   = 8
 
 MAJORVERSION  = $(VER_A).$(VER_B)
 RELEASE       = $(VER_A).$(VER_B).$(VER_C)
@@ -144,23 +144,23 @@ win-release:
 osx-release: macbundle
 	rm -rf $(TMP)/wavesurfer-$(RELEASE)
 	mkdir $(TMP)/wavesurfer-$(RELEASE)
-	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/mac-alias-to-Applications.tgz
+	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/osx-app-kit/mac-alias-to-Applications.tgz
 	cp -pr $(TMP)/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)
 	rm -f release/wavesurfer-$(RELEASE)-osx-i386.dmg
 	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) release/wavesurfer-$(RELEASE)-osx-i386.dmg
 
 macbundle: src-release
 	rm -rf $(TMP)/WaveSurfer.app
-	cd $(TMP); tar xfz $(ROOT)/build/Wish.app.tgz
+	cd $(TMP); tar xfz $(WISHAPP_osx)
 	mv $(TMP)/Wish.app $(TMP)/WaveSurfer.app
 	chmod -R a+w $(TMP)/WaveSurfer.app
 	mkdir $(TMP)/WaveSurfer.app/Contents/Resources/Scripts/ 
 	mkdir $(TMP)/WaveSurfer.app/Contents/Resources/icons
 	mkdir $(TMP)/WaveSurfer.app/Contents/lib
-	cp build/AppMain.tcl $(TMP)/WaveSurfer.app/Contents/Resources/Scripts/
+	cp build/osx-app-kit/AppMain.tcl $(TMP)/WaveSurfer.app/Contents/Resources/Scripts/
 	cp icons/ws10.icns icons/ws10h.gif $(TMP)/WaveSurfer.app/Contents/Resources/icons 
 	cd $(TMP)/WaveSurfer.app/Contents/Resources; ln -sf icons/ws10.icns Wish.icns
-	cat build/Info.plist.in | \
+	cat build/osx-app-kit/Info.plist.in | \
 		sed s/@BUNDLENAME@/WaveSurfer/g |\
 		sed s/@BUNDLEVERSION@/$(RELEASE)/g | \
 		sed s/@BUNDLEGETINFOSTRING@/"$(COPYRIGHT)"/g |\
@@ -184,7 +184,7 @@ _wrap: src-release
 	mkdir -p $(TMP)/wavesurfer.vfs/lib
 	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* $(TMP)/wavesurfer.vfs/lib
 	rm $(TMP)/wavesurfer-$(RELEASE)/src/plugins/example*.plug
-	cp build/main.tcl $(TMP)/wavesurfer.vfs
+	cp build/kit/main.tcl $(TMP)/wavesurfer.vfs
 	cp -f $(TCLKIT) $(TMP)/tclkit
 	cp -r build/binpkg/$(TARGET)/snack$(SNACKMAJORV) $(TMP)/wavesurfer.vfs/lib
 	cp -r build/binpkg/$(TARGET)/tkdnd* $(TMP)/wavesurfer.vfs/lib

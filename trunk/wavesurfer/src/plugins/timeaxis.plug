@@ -206,8 +206,7 @@ proc timeaxis::drawPage {w pane p} {
  pack [frame $p.f3] -anchor w
  label $p.f3.l -text [::util::mc "Time display format:"] -width 20 \
      -anchor w
- tk_optionMenu $p.f3.om [namespace current]::${pane}::var(t,timeFormat) \
-     time seconds "10ms frames" "PAL frames" "NTSC frames"
+    ttk::combobox $p.f3.om -textvariable [namespace current]::${pane}::var(t,timeFormat) -value [list time seconds "10ms frames" "PAL frames" "NTSC frames"] -state readonly
  pack $p.f3.l $p.f3.om -side left -padx 3
 
  stringPropItem $p.f4 "Start time offset:" 20 10 \

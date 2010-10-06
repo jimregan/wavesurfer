@@ -174,4 +174,7 @@
 ::msgcat::mcset se "Power plot" "Energikurva"
 ::msgcat::mcset se "Formants" "Formanter"
 
+::msgcat::mcset se "Default configuration:" "Standardkonfiguration:"
+::msgcat::mcset se "Make this the default configuration" "Gör detta till standardkonfiguration"
+
 ::msgcat::mcset se "" ""
