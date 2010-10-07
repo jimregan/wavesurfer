@@ -121,7 +121,7 @@ proc resizer::_divider {w} {
   if {![string match pack [winfo manager $w]]} {
    error "window \"$w\" is not managed by pack"
   }
-  tk_frame $h -cursor sb_v_double_arrow -relief raised -bd 1
+  frame $h -cursor sb_v_double_arrow -relief raised -bd 1
   eval configure $w
   pack $h -side top -fill x -after $w
   foreach event {ButtonPress B1-Motion ButtonRelease} {

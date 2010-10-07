@@ -73,7 +73,7 @@ proc vtcanvas::create {w args} {
  set d(selectionT1) 0.0
  set d(xTimeDown) 0.0
  set d(canvasWidth) 0
- set wid(frame) [tk_frame $w -relief raised -bd 0]
+ set wid(frame) [ttk::frame $w]
 
 
  set wid(top) $w.top
@@ -81,7 +81,6 @@ proc vtcanvas::create {w args} {
  proc ::$w {cmd args} "return \[eval vtcanvas::\$cmd $w \$args\]"
  
  set wid(canvas) [set c [::canvas $w.c -highlightthickness 0]]
-#  tk_frame $w.ff -bd 1 -relief sunken
     ttk::separator $w.ff -orient vertical
 
  set wid(yaxis) [::canvas $w.yaxis -highlightthickness 0 -width 0 -bd 1]

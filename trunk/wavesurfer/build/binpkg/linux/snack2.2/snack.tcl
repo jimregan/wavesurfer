@@ -171,7 +171,7 @@ namespace eval snack {
 	    set data(-initialdir) "."
 	}
         if {[string match Darwin $::tcl_platform(os)]} {
-	    # tk_getOpenFile on Darwin doesn't provide a file type selector,
+	    # tk_getOpenFile on Darwin doesn't provide a file type selector(?),
 	    # so we run it without file type filters to allow any file to be opened
 	    return [tk_getOpenFile -title $data(-title) \
 			-multiple $data(-multiple) \
@@ -1055,7 +1055,11 @@ namespace eval snack {
 	    unsupported1 style $w dBoxProc
 	}
 	
-	frame $w.bot
+	if {[info exists tile::version]} {
+	    ttk::frame $w.bot
+	} else {
+	    frame $w.bot
+	}
 	pack $w.bot -side bottom -fill both
 	if {[string compare $::tcl_platform(platform) "macintosh"]} {
 	    $w.bot configure -relief raised -bd 1
