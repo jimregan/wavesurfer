@@ -2129,7 +2129,7 @@ proc trans::drawPage1 {w pane path} {
   set v(t,$var) $v($var)
  }
 
- pack [frame $path.f1] -anchor w
+ pack [ttk::frame $path.f1] -anchor w
  ttk::label $path.f1.l -text "Label file format:" -width 25 -anchor w
  foreach {format loadProc saveProc testProc} $Info(formats) {
   lappend tmp $format
@@ -2137,7 +2137,7 @@ proc trans::drawPage1 {w pane path} {
  ttk::combobox $path.f1.om -textvariable [namespace current]::${pane}::var(t,format) -values $tmp -state readonly
  pack $path.f1.l $path.f1.om -side left -padx 3
 
- pack [frame $path.f2] -anchor w
+ pack [ttk::frame $path.f2] -anchor w
  ttk::label $path.f2.l -text "Label alignment:" -width 25 -anchor w
     ttk::combobox $path.f2.om -textvariable [namespace current]::${pane}::var(t,alignment) -values [list left center right] -state readonly
  $path.f2.om.menu entryconfigure 0 -value w
@@ -2148,9 +2148,9 @@ proc trans::drawPage1 {w pane path} {
  stringPropItem $path.f3 "Label filename extension:" 25 16 "" \
    [namespace current]::${pane}::var(t,labext)
 
- pack [frame $path.f4] -anchor w
+ pack [ttk::frame $path.f4] -anchor w
  ttk::label $path.f4.l -text "Label file path:" -width 25 -anchor w
- entry $path.f4.e -textvar [namespace current]::${pane}::var(t,labdir) -wi 16
+ ttk::entry $path.f4.e -textvar [namespace current]::${pane}::var(t,labdir) -wi 16
  pack $path.f4.l $path.f4.e -side left -padx 3
  if {[info command tk_chooseDirectory] != ""} {
   button $path.f4.b -text Choose... \
@@ -2202,11 +2202,11 @@ proc trans::confPage {w pane path} {
 
  for {set i 0} {$i < $v(t,menuNrows)} {incr i } {
   if {![winfo exists $path.fl$i]} {
-   pack [frame $path.fl$i] -anchor w
+   pack [ttk::frame $path.fl$i] -anchor w
   }
   for {set j 0} {$j < $v(t,menuNcols)} {incr j } {
    if {![winfo exists $path.fl$i.e$j]} {
-    pack [entry $path.fl$i.e$j -width 6 \
+    pack [ttk::entry $path.fl$i.e$j -width 6 \
       -textvar [namespace current]::${pane}::var(t,$i$j)] -side left
    }
    $path.fl$i.e$j configure -font $v(t,font)
@@ -2272,14 +2272,14 @@ proc trans::drawPage2 {w pane path} {
  stringPropItem $path.f4 "Label menu event:" 28 25 "" \
    [namespace current]::${pane}::var(t,labelMenuEvent)
 
- pack [frame $path.f5] -anchor w
+ pack [ttk::frame $path.f5] -anchor w
  pack [ttk::label $path.f5.l -text "Label menu pane:" -width 25 -anchor w] -padx 3
- pack [frame $path.f6] -anchor w
+ pack [ttk::frame $path.f6] -anchor w
  pack [ttk::label $path.f6.lc -text "Columns:" -anchor w] -side left -padx 3
- pack [entry $path.f6.ec -width 2 -textvar \
+ pack [ttk::entry $path.f6.ec -width 2 -textvar \
    [namespace current]::${pane}::var(t,menuNcols)] -side left
  pack [ttk::label $path.f6.lr -text "Rows:" -anchor w] -side left
- pack [entry $path.f6.er -width 2 -textvar \
+ pack [ttk::entry $path.f6.er -width 2 -textvar \
    [namespace current]::${pane}::var(t,menuNrows)] -side left
  pack [button $path.f6.b -text Update \
    -command [namespace code [list confPage $w $pane $path]]] -side left \
@@ -2288,9 +2288,9 @@ proc trans::drawPage2 {w pane path} {
  bind $path.f6.er <Key-Return> [namespace code [list confPage $w $pane $path]]
 
  for {set i 0} {$i < $v(t,menuNrows)} {incr i } {
-  pack [frame $path.fl$i] -anchor w
+  pack [ttk::frame $path.fl$i] -anchor w
   for {set j 0} {$j < $v(t,menuNcols)} {incr j } {
-   pack [entry $path.fl$i.e$j -font $v(t,font) \
+   pack [ttk::entry $path.fl$i.e$j -font $v(t,font) \
      -textvar [namespace current]::${pane}::var(t,$i$j) -wi 6] \
      -side left
   }
@@ -2535,14 +2535,14 @@ proc trans::browse {w pane} {
   set v(breakAtLen) 1.0
  }
  
- pack [ frame $p.f] -fill both -expand true
+ pack [ ttk::frame $p.f] -fill both -expand true
  pack [ text $p.f.t -yscrollcommand [list $p.f.sb set] -font {Courier 16} \
 	  -height 8] -side left -expand true -fill both
  pack [ scrollbar $p.f.sb -orient vert -command [list $p.f.t yview]] -side left -fill y
  
 
- pack [ frame $p.b] -fill both -expand true
- pack [ frame $p.b.f0]
+ pack [ ttk::frame $p.b] -fill both -expand true
+ pack [ ttk::frame $p.b.f0]
 
  pack [ ttk::radiobutton $p.b.f0.r1 -text [::util::mc "Select start"] -value start \
 	    -variable [namespace current]::${pane}::var(selectMode) \
@@ -2552,29 +2552,29 @@ proc trans::browse {w pane} {
 	    -command [namespace code [list listSelect $w $pane]]] \
      -padx 20 -side left
  pack [ ttk::label $p.b.f0.l1 -text "Insert line break at label:"] -side left
- pack [ entry $p.b.f0.e1 -width 15 \
+ pack [ ttk::entry $p.b.f0.e1 -width 15 \
 	    -textvar [namespace current]::${pane}::var(breakAtLab)] -side left
  pack [ ttk::label $p.b.f0.l2 -text "longer than"] -side left
- pack [ entry $p.b.f0.e2 -width 4 \
+ pack [ ttk::entry $p.b.f0.e2 -width 4 \
 	    -textvar [namespace current]::${pane}::var(breakAtLen)] -side left
  pack [ ttk::label $p.b.f0.l3 -text "s"] -side left
 
- pack [ frame $p.b.f1] -pady 20
- pack [ entry $p.b.f1.e -textvar [namespace current]::${pane}::var(pattern)] \
+ pack [ ttk::frame $p.b.f1] -pady 20
+ pack [ ttk::entry $p.b.f1.e -textvar [namespace current]::${pane}::var(pattern)] \
      -side left
  pack [ button $p.b.f1.l -text Find \
 	    -command [namespace code [list find $w $pane]]] -side left
-  pack [ tk_checkbutton $p.b.f1.cb -text "Match case" -anchor w \
+  pack [ ttk::checkbutton $p.b.f1.cb -text "Match case" \
 	     -variable [namespace current]::${pane}::var(matchCase)]
  pack [ ttk::label $p.b.l -text "Results:"]
- pack [ frame $p.b.f2] -fill both -expand true
+ pack [ ttk::frame $p.b.f2] -fill both -expand true
  pack [ scrollbar $p.b.f2.scroll -command "$p.b.f2.list yview"] -side right \
    -fill y
  listbox $p.b.f2.list -yscroll "$p.b.f2.scroll set" -setgrid 1 \
    -selectmode extended -height 6 -width 40
  pack $p.b.f2.list -side left -expand true -fill both
 
- pack [ frame $p.b.f3] -pady 10 -fill x -expand true
+ pack [ ttk::frame $p.b.f3] -pady 10 -fill x -expand true
  pack [ button $p.b.f3.b1 -image $::wsurf::Info(Img,play) \
 	    -command "$w play"] -side left
  pack [ button $p.b.f3.b2 -image $::wsurf::Info(Img,stop) -command "$w stop"] \
@@ -2658,7 +2658,7 @@ proc trans::convert {w pane} {
  pack [ ttk::label $p.l1 -text "Current transcription file format: $v(format)"]
 
  set v(t,format) $v(format)
- pack [frame $p.f1] -anchor w
+ pack [ttk::frame $p.f1] -anchor w
  ttk::label $p.f1.l -text "New transcription file format:" -anchor w
  foreach {format loadProc saveProc testProc} $Info(formats) {
   lappend fmtlist $format
@@ -2666,7 +2666,7 @@ proc trans::convert {w pane} {
     ttk::combobox $p.f1.om -textvariable [namespace current]::${pane}::var(t,format) -values $fmtlist -state readonly
  pack $p.f1.l $p.f1.om -side left -padx 3
 
- pack [frame $p.f]
+ pack [ttk::frame $p.f]
  pack [ ttk::button $p.f.b1 -text OK -command [namespace code [list doConvert $w $pane]]\n[list destroy $p]] -side left -padx 3
  pack [ ttk::button $p.f.b2 -text Close -command "destroy $p"] -side left -padx 3
 }

@@ -207,10 +207,10 @@ proc dataplot::importWizard w {
 
  ttk::radiobutton $z.r0 -text "Constant time step" -value implicit \
    -variable [namespace current]::wiz(timedata) -anchor w
- entry $z.e0 -textvariable [namespace current]::wiz(timestep)
+ ttk::entry $z.e0 -textvariable [namespace current]::wiz(timestep)
  ttk::radiobutton $z.r1 -text "Time data in column" -value column \
    -variable [namespace current]::wiz(timedata) -anchor w
- entry $z.e1 -textvariable [namespace current]::wiz(timecolumn)
+ ttk::entry $z.e1 -textvariable [namespace current]::wiz(timecolumn)
  
  ttk::button $z.ok -text OK -command [list destroy $z]
  grid $z.r0 $z.e0 -sticky news
@@ -983,9 +983,9 @@ proc dataplot::drawDataplotPage {w pane p} {
  stringPropItem $p.f1 "Data filename extension:" 26 10 "" \
    [namespace current]::${pane}::var(t,fileExt)
  
- pack [frame $p.f2] -anchor w -ipady 2
+ pack [ttk::frame $p.f2] -anchor w -ipady 2
  ttk::label $p.f2.l -text "Data file path:" -width 26 -anchor w
- entry $p.f2.e -textvar [namespace current]::${pane}::var(t,dataDir) -wi 16
+ ttk::entry $p.f2.e -textvar [namespace current]::${pane}::var(t,dataDir) -wi 16
  pack $p.f2.l $p.f2.e -side left -padx 3
  if {[info command tk_chooseDirectory] != ""} {
      ttk::button $p.f2.b -text Choose... \
@@ -996,7 +996,7 @@ proc dataplot::drawDataplotPage {w pane p} {
  stringPropItem $p.f3 "Number of header lines to skip:" 26 10 "" \
    [namespace current]::${pane}::var(t,skipLines)
  
- pack [frame $p.f4] -anchor w -ipady 2
+ pack [ttk::frame $p.f4] -anchor w -ipady 2
  ttk::label $p.f4.l -text "Column delimiter:" -width 26 -anchor w
  ttk::radiobutton $p.f4.b1 -text space \
    -variable [namespace current]::${pane}::var(t,delimiter) -value " "
@@ -1007,18 +1007,18 @@ proc dataplot::drawDataplotPage {w pane p} {
  pack $p.f4.l $p.f4.b1 $p.f4.b2  $p.f4.b3 -side left -padx 3
  
  if {[string match direct $v(invocation)]} {
-  pack [frame $p.f5] -anchor w -ipady 2
+  pack [ttk::frame $p.f5] -anchor w -ipady 2
   ttk::label $p.f5.l -text "Data spacing:" -anchor w
   ttk::radiobutton $p.f5.b1 -text fixed(s) \
       -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "fixedtime"
-  entry $p.f5.e1 -textvariable [namespace current]::${pane}::var(t,frameInterval) -width 4
+  ttk::entry $p.f5.e1 -textvariable [namespace current]::${pane}::var(t,frameInterval) -width 4
 
   ttk::radiobutton $p.f5.b2 -text fixed(Hz) \
       -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "fixedrate"
-  entry $p.f5.e2 -textvariable [namespace current]::${pane}::var(t,frameRate) -width 3
+  ttk::entry $p.f5.e2 -textvariable [namespace current]::${pane}::var(t,frameRate) -width 3
   ttk::radiobutton $p.f5.b3 -text "from col" \
       -variable [namespace current]::${pane}::var(t,dataSpacingMode) -value "variable"
-  entry $p.f5.e3 -textvariable [namespace current]::${pane}::var(t,timeColumn) -width 2
+  ttk::entry $p.f5.e3 -textvariable [namespace current]::${pane}::var(t,timeColumn) -width 2
   
   pack $p.f5.l $p.f5.b1 $p.f5.e1 $p.f5.b2 $p.f5.e2 $p.f5.b3 $p.f5.e3 -side left
  
@@ -1029,7 +1029,7 @@ proc dataplot::drawDataplotPage {w pane p} {
       [namespace current]::${pane}::var(t,unit)
  }
  
- pack [frame $p.f7] -anchor w -ipady 2
+ pack [ttk::frame $p.f7] -anchor w -ipady 2
  ttk::label $p.f7.l -text "Backdrop type:" -width 26 -anchor w
     ttk::combobox $p.f7.cm -textvariable [namespace current]::${pane}::var(t,backdrop) -values [list None Spectrogram Waveform] -state readonly
  pack $p.f7.l $p.f7.cm -side left
@@ -1040,11 +1040,11 @@ proc dataplot::drawDataplotPage {w pane p} {
   set v(t,column$i) $column
   set v(t,color$i) $color
   set v(t,style$i) $style
-  pack [frame $p.e$f] -anchor w
+  pack [ttk::frame $p.e$f] -anchor w
   ttk::label $p.e$f.l1 -text "Plot column:" -width 12 -anchor w
-  entry $p.e$f.e -textvar [namespace current]::${pane}::var(t,column$i) -wi 3
+  ttk::entry $p.e$f.e -textvar [namespace current]::${pane}::var(t,column$i) -wi 3
   ttk::label $p.e$f.l2 -text "using" -anchor w
-  entry $p.e$f.e2 -textvar [namespace current]::${pane}::var(t,color$i) -wi 10
+  ttk::entry $p.e$f.e2 -textvar [namespace current]::${pane}::var(t,color$i) -wi 10
    label $p.e$f.l3 -text "    " -bg $v(t,color$i)
      ttk::button $p.e$f.b -text [::util::mc Choose...] \
     -command [list util::chooseColor [namespace current]::${pane}::var(t,color$i) $p.e$f.l3]
@@ -1061,12 +1061,12 @@ proc dataplot::drawDataplotPage {w pane p} {
  booleanPropItem $p.f9 "Save only data values for current selection" "" \
    [namespace current]::${pane}::var(t,saveSelection)
 
- pack [frame $p.f10] -anchor w -ipady 2
+ pack [ttk::frame $p.f10] -anchor w -ipady 2
  ttk::label $p.f10.l -text "Plot value bounds:" -width 26 -anchor w
  ttk::label $p.f10.l2 -text "min" -anchor w
- entry $p.f10.e1 -textvar [namespace current]::${pane}::var(t,minVal) -wi 8
+ ttk::entry $p.f10.e1 -textvar [namespace current]::${pane}::var(t,minVal) -wi 8
  ttk::label $p.f10.l3 -text "max" -anchor w
- entry $p.f10.e2 -textvar [namespace current]::${pane}::var(t,maxVal) -wi 8
+ ttk::entry $p.f10.e2 -textvar [namespace current]::${pane}::var(t,maxVal) -wi 8
  pack $p.f10.l $p.f10.l2 $p.f10.e1 $p.f10.l3 $p.f10.e2 -side left
 
  stringPropItem $p.f11 "Start time offset:" 26 10 "" \
@@ -1137,17 +1137,17 @@ proc dataplot::statWin {w pane} {
   set v(ignoreZero) 1
  }
 
- pack [ frame $p.f2] -fill both -expand true
+ pack [ ttk::frame $p.f2] -fill both -expand true
  pack [ scrollbar $p.f2.scroll -command "$p.f2.list yview"] -side right \
    -fill y
  text $p.f2.text -yscroll "$p.f2.scroll set" -height 7 -width 65
  pack $p.f2.text -side left -expand true -fill both
 
-  pack [tk_checkbutton $p.cb \
-    -text "Ignore data points with value 0.0 when computing statistics" -anchor w \
+  pack [ttk::checkbutton $p.cb \
+    -text "Ignore data points with value 0.0 when computing statistics" \
     -variable [namespace current]::${pane}::var(ignoreZero)] -fill x -expand true
   
- pack [ frame $p.f3] -ipady 10 -fill x
+ pack [ ttk::frame $p.f3] -ipady 10 -fill x
  pack [ ttk::button $p.f3.b1 -text Compute -command [namespace code [list compute $w $pane $p]]] -side left -padx 20
  pack [ ttk::button $p.f3.b2 -text Copy -command [namespace code [list statCopy $w $pane $p]]] -side left -padx 20
  pack [ ttk::button $p.f3.b3 -text Close -command "destroy $p"] -side right -padx 20

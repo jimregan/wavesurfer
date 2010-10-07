@@ -55,8 +55,12 @@ namespace eval ::splash {
  wm withdraw $splash
  wm withdraw .
  wm overrideredirect $splash 1
-# set img [image create photo -data $logodata]
- set img [image create photo -file $dir/../../icons/ws10h.gif]
+ if [file exists $dir/../../icons/ws10h.gif] {
+     set img [image create photo -file $dir/../../icons/ws10h.gif]
+ } else {
+     set img [image create photo]
+ }  
+
  set pad 20
  set width [expr [image width $img]+2*$pad]
  set height [expr [image height $img]+2*$pad]
@@ -283,7 +287,7 @@ proc Chooser {} {
  # wm geometry .blowup +$v(blowupwinx)+$v(blowupwiny)
  wm title $e [::util::mc "Chooser"]
  
- pack [frame $e.frame] -side top -expand yes -fill both
+ pack [ttk::frame $e.frame] -side top -expand yes -fill both
  scrollbar $e.frame.scroll -command "$e.frame.list yview"
  listbox $e.frame.list -yscroll "$e.frame.scroll set" -setgrid 1 -selectmode single -exportselection false -height 16 -width 40
  pack $e.frame.scroll -side right -fill y
@@ -294,21 +298,21 @@ proc Chooser {} {
   $e.frame.list insert end $file
  }
 
- pack [frame $e.f2] -fill x
+ pack [ttk::frame $e.f2] -fill x
  pack [ttk::button $e.f2.b2 -width 12 -text [::util::mc "Add files..."] -command AddFilesToList] -side left -padx 5 -pady 5
  pack [ttk::button $e.f2.b1 -width 12 -text [::util::mc "Load file list..."] -command LoadFileList] -side left -padx 5 -pady 5
  pack [ttk::button $e.f2.b3 -width 12 -text [::util::mc "Clear list"] -command ClearFileList] -side left -padx 5 -pady 5
  pack [ttk::button $e.f2.b4 -width 12 -text [::util::mc "Sort"] -command SortFileList] -side left -padx 5 -pady 5
 
-# pack [frame $e.f3] -fill x
+# pack [ttk::frame $e.f3] -fill x
 # pack [label $e.f3.l1 -text [::util::mc "File path:"]] -side left
-# pack [entry $e.f3.e1 -textvariable Info(chooser,dir)] -side left
+# pack [ttk::entry $e.f3.e1 -textvariable Info(chooser,dir)] -side left
 # pack [ttk::button $e.f3.b1 -text [::util::mc "Browse..."] -command browseForDir] -side left
- pack [frame $e.f4] -fill x -ipadx 10 -ipady 10
+ pack [ttk::frame $e.f4] -fill x -ipadx 10 -ipady 10
 
- pack [checkbutton $e.f4.cb -text [::util::mc "Load new file into current sound"] -variable ::Info(chooser,replacecurrent)] -side left -padx 5 -pady 5
- pack [checkbutton $e.f4.cb2 -text [::util::mc "Auto play"] -variable ::Info(chooser,autoplay)] -side left -padx 5 -pady 5
- pack [checkbutton $e.f4.cb3 -text [::util::mc "Auto zoom out"] -variable ::Info(chooser,autozoom)] -side left -padx 5 -pady 5
+ pack [ttk::checkbutton $e.f4.cb -text [::util::mc "Load new file into current sound"] -variable ::Info(chooser,replacecurrent)] -side left -padx 5 -pady 5
+ pack [ttk::checkbutton $e.f4.cb2 -text [::util::mc "Auto play"] -variable ::Info(chooser,autoplay)] -side left -padx 5 -pady 5
+ pack [ttk::checkbutton $e.f4.cb3 -text [::util::mc "Auto zoom out"] -variable ::Info(chooser,autozoom)] -side left -padx 5 -pady 5
 }
 
 proc LoadFileList {} {
@@ -598,28 +602,45 @@ proc BreakIfInvalid {w} {
  }
  if {$w == "" || ([string match $w* [focus]] == 0 && \
 		      [string match .tkcon.text [focus]] == 0)} {
+
   return -code return
  }
 }
 
-proc Save {} {
- set w [::wsurf::GetCurrent]
- BreakIfInvalid $w
- if {[$w getInfo fileName] == ""} {
-  SaveAs
- } else {
-  $w saveFile [$w getInfo fileName]
- }
+proc Save {{w ""}} {
+    puts [info level 0]
+    if {$w==""} {
+	set w [::wsurf::GetCurrent]
+	BreakIfInvalid $w
+    }
+    set fn [$w getInfo fileName]
+    puts fn=$fn
+    if {$fn == ""} {
+	return [SaveAs $w]
+    } else {
+	$w saveFile $fn
+	return $fn
+    }
 }
 
-proc SaveAs {} {
- set w [::wsurf::GetCurrent]
- BreakIfInvalid $w
- set path [file dirname [$w getInfo fileName]]
- set fileName [snack::getSaveFile -initialdir $path \
-     -format $::surf(fileFormat)]
- if {$fileName == ""} return
- $w saveFile $fileName
+proc SaveAs {{w ""}} {
+    if {$w==""} {
+	set w [::wsurf::GetCurrent]
+	BreakIfInvalid $w
+    }
+    return [$w saveAs]
+}
+
+proc SaveAs:OLD {} {
+    puts [info level 0]
+    set w [::wsurf::GetCurrent]
+#    BreakIfInvalid $w
+    set path [file dirname [$w getInfo fileName]]
+    set fileName [snack::getSaveFile -initialdir $path \
+		      -format $::surf(fileFormat)]
+    if {$fileName == ""} return ""
+    $w saveFile $fileName
+    return $filename
 }
 
 proc SaveSelection {} {
@@ -705,7 +726,7 @@ proc KillWindow {w} {
 }
 set Info(showExitDialog) 1
 
-proc Exit {} {
+proc Exit:OLD {} {
  if {[::wsurf::NeedSave]} {
   if {$::Info(showExitDialog)} {
    set ::Info(showExitDialog) 0
@@ -744,43 +765,99 @@ proc Exit {} {
  exit
 }
 
-proc Exit-new {} {
- if {[::wsurf::NeedSave]} {
-  if {$::Info(showExitDialog)} {
-   set ::Info(showExitDialog) 0
-   set reply [tk_messageBox -message [list [::util::mc "Do you want to save the changes made to You have unsaved changes."] \n [::util::mc "Do you really want to exit?"]] -type yesnocancel -icon question] == "no"} {
-    set ::Info(showExitDialog) 1
-    return
-   }
-  } else {
-   return
-  }
+# rename the exit command so we can catch it
 
+rename exit _exit
 
-# Remember geometry
+proc exit {} {Exit}
 
- if {[winfo exists .x]} {
-  if {[catch {open $::Info(geometryFile) w} out]} {
-  } else {
-   regexp {([\d]+)[x][\d]+[+]([\d]+)[+]([\d]+)} [wm geometry .x] dummy w x y
-   if {[info exists w]} {
-    puts $out "set Info(Prefs,wsWidth) $w"
-    puts $out "set Info(Prefs,wsLeft)  $x"
-    puts $out "set Info(Prefs,wsTop)   $y"
-   }
-   close $out
-  }
- }
+proc Exit {} {
 
- foreach f $::surf(tmpfiles) {
-  file delete -force $::surf(tmpfiles)
- }
- CleanUp
- if {[info exists ::wrap] && [info commands winico] != ""} {
-#   winico taskbar delete $::surf(board)
- }
+    foreach w [wsurf::GetUnsavedWidgets] {
+	
+	# try to close widget. this will pop up an ask-for-save dialog
+	# if happily closed, it returns true. else (user cancelled),
+	# it returns false
 
- exit
+	if {![$w closeWidget]} {
+	    return
+	}
+    }
+
+    # if we got here, it's really time to exit.
+    # Remember geometry
+    
+    if {[winfo exists .x]} {
+	if {[catch {open $::Info(geometryFile) w} out]} {
+	} else {
+	    regexp {([\d]+)[x][\d]+[+]([\d]+)[+]([\d]+)} [wm geometry .x] dummy w x y
+	    if {[info exists w]} {
+		puts $out "set Info(Prefs,wsWidth) $w"
+		puts $out "set Info(Prefs,wsLeft)  $x"
+		puts $out "set Info(Prefs,wsTop)   $y"
+	    }
+	    close $out
+	}
+    }
+    
+    foreach f $::surf(tmpfiles) {
+	file delete -force $::surf(tmpfiles)
+    }
+    CleanUp
+    if {[info exists ::wrap] && [info commands winico] != ""} {
+	#   winico taskbar delete $::surf(board)
+    }
+
+    _exit
+}
+
+proc Exit:not {} {
+    foreach w [wsurf::GetUnsavedWidgets] {
+	set qst [::util::mc "Do you want to save the changes made to"]
+	append qst " " \"[$w cget -title]\" "?"
+	set reply [tk_messageBox -message $qst -type yesnocancel]
+	switch $reply {
+	    yes {
+		if {[Save $w]==""} {
+		    # the save operation was cancelled, don't exit
+		    return
+		}
+	    }
+	    no {
+		# do nothing, really.
+	    }
+	    cancel {
+		
+		return
+	    }
+	}
+    }
+
+    # if we got here, it's really time to exit.
+    # Remember geometry
+    
+    if {[winfo exists .x]} {
+	if {[catch {open $::Info(geometryFile) w} out]} {
+	} else {
+	    regexp {([\d]+)[x][\d]+[+]([\d]+)[+]([\d]+)} [wm geometry .x] dummy w x y
+	    if {[info exists w]} {
+		puts $out "set Info(Prefs,wsWidth) $w"
+		puts $out "set Info(Prefs,wsLeft)  $x"
+		puts $out "set Info(Prefs,wsTop)   $y"
+	    }
+	    close $out
+	}
+    }
+    
+    foreach f $::surf(tmpfiles) {
+	file delete -force $::surf(tmpfiles)
+    }
+    CleanUp
+    if {[info exists ::wrap] && [info commands winico] != ""} {
+	#   winico taskbar delete $::surf(board)
+    }
+
+    _exit
 }
 
 proc newWidget {conf {state collapsed}} {
@@ -792,32 +869,33 @@ proc newWidget {conf {state collapsed}} {
 }
 
 proc New {} {
-  if {$::wsurf::Info(Prefs,defaultConfig) == ""} {
-    set conf [::wsurf::ChooseConfigurationDialog]
-  } else {
-   #    set w [::wsurf::GetCurrent]
-   #    if {$w != ""} {
-   #      set conf [$w cget -configuration]
-   #      if {$conf == ""} {
-   #        set conf "standard"
-   #      }
-   #    } else {
-   #      set conf "standard"
-   #    }
-   set l [::wsurf::GetConfigurations]
-   set ind [lsearch -regexp $l ".*$::wsurf::Info(Prefs,defaultConfig)\[\\w\\s\]*.conf"]
-   if {$ind != -1} {
-    set conf [lindex $l $ind]
-   } else {
-    set conf ""
-   }
-  }
-  if {$conf == ""} return
-  if {$conf == "standard"} {
-    set conf ""
-  }
-  newWidget $conf expanded
-  SetMasterWidget
+    if {$::wsurf::Info(Prefs,defaultConfig) == ""} {
+	set makedefault 0
+	set conf [::wsurf::ChooseConfigurationDialog makedefault]
+	if {$conf == ""} {
+	    destroy $w
+	    return
+	}
+	puts makedefault=$makedefault
+	if $makedefault {
+	    wsurf::SetPreference defaultConfig [file root [file tail $conf]]
+	    ::SavePreferences
+	}
+    } else {
+	set l [::wsurf::GetConfigurations]
+	set ind [lsearch -regexp $l ".*$::wsurf::Info(Prefs,defaultConfig)\[\\w\\s\]*.conf"]
+	if {$ind != -1} {
+	    set conf [lindex $l $ind]
+	} else {
+	    set conf ""
+	}
+    }
+    if {$conf == ""} return
+    if {$conf == "standard"} {
+	set conf ""
+    }
+    newWidget $conf expanded
+    SetMasterWidget
 }
 
 proc deleteWidget {} {
@@ -1087,25 +1165,25 @@ proc MixPaste {} {
  toplevel $tl
  wm title $tl [::util::mc "Mix Paste"]
 
- pack [ label $tl.l1 -text [::util::mc "Scale paste sound by:"] -anchor w] \
+ pack [ ttk::label $tl.l1 -text [::util::mc "Scale paste sound by:"]] \
      -fill x
- pack [ frame $tl.f1] -fill both -expand true
-  pack [ tk_scale $tl.f1.s1 -command "" -orient horizontal \
-	     -showvalue 0 -variable mixpaste(mixscale) -from 0.0 -to 100.0] -side left
+ pack [ttk::frame $tl.f1] -fill both -expand true
+  pack [ttk::scale $tl.f1.s1 -command "" -orient horizontal \
+	     -variable mixpaste(mixscale) -from 0.0 -to 100.0] -side left
   $tl.f1.s1 set $mixpaste(mixscale)
 
- pack [entry $tl.f1.e -textvariable mixpaste(mixscale) -width 5] -side left
- pack [label $tl.f1.l -text % -width 1] -side left
+ pack [ttk::entry $tl.f1.e -textvariable mixpaste(mixscale) -width 5] -side left
+ pack [ttk::label $tl.f1.l -text % -width 1] -side left
 
- pack [ label $tl.l2 -text [::util::mc "Scale original sound by:"] -anchor w] \
+ pack [ttk::label $tl.l2 -text [::util::mc "Scale original sound by:"]] \
      -fill x
- pack [ frame $tl.f2] -fill both -expand true
-  pack [ tk_scale $tl.f2.s1 -command "" -orient horizontal \
-	     -showvalue 0 -variable mixpaste(prescale) -from 0.0 -to 100.0] -side left
+ pack [ ttk::frame $tl.f2] -fill both -expand true
+  pack [ttk::scale $tl.f2.s1 -command "" -orient horizontal \
+	     -variable mixpaste(prescale) -from 0.0 -to 100.0] -side left
   $tl.f2.s1 set $mixpaste(prescale)
 
- pack [entry $tl.f2.e -textvariable mixpaste(prescale) -width 5] -side left
- pack [label $tl.f2.l -text % -width 1] -side left
+ pack [ttk::entry $tl.f2.e -textvariable mixpaste(prescale) -width 5] -side left
+ pack [ttk::label $tl.f2.l -text % -width 1] -side left
 
  insertOKCancelButtons $tl.f3 "DoMixPaste $w;destroy $tl" "destroy $tl"
 }
@@ -1348,15 +1426,15 @@ proc InsertSilence {w} {
  toplevel $tl
  wm title $tl [::util::mc "Insert Silence"]
 
- pack [ frame $tl.f] -fill both -expand true
- pack [ label $tl.f.l -text [::util::mc "Silence length:"]] -side left
- pack [ entry $tl.f.e -textvariable silence(l) -width 5] -side left
- pack [ label $tl.f.l2 -text seconds] -side left
+ pack [ ttk::frame $tl.f] -fill both -expand true
+ pack [ ttk::label $tl.f.l -text [::util::mc "Silence length:"]] -side left
+ pack [ ttk::entry $tl.f.e -textvariable silence(l) -width 5] -side left
+ pack [ ttk::label $tl.f.l2 -text seconds] -side left
  insertOKCancelButtons $tl.f3 "DoInsertSilence $w;destroy $tl" "destroy $tl"
 }
 
 proc insertOKCancelButtons {w okcmd cancelcmd} {
- pack [ frame $w] -expand true -fill both -ipadx 10 -ipady 10
+ pack [ ttk::frame $w] -expand true -fill both -ipadx 10 -ipady 10
  pack [ ttk::button $w.b1 -text [::util::mc OK]  \
 	 -command $okcmd] -side $::ocdir -padx 3 \
 	 -expand true
@@ -1365,7 +1443,7 @@ proc insertOKCancelButtons {w okcmd cancelcmd} {
 }
 
 proc insertOKCancelButtons2 {w okcmd cancelcmd} {
- set f [ frame $w]
+ set f [ ttk::frame $w]
  ttk::button $f.b1 -text [::util::mc OK] -command $okcmd
  ttk::button $f.b2 -text [::util::mc Cancel] -command $cancelcmd 
  
@@ -1460,15 +1538,15 @@ proc Convert {} {
  wm title $tl [::util::mc Convert]
  wm resizable $tl 0 0
 
- frame $tl.q
+ ttk::frame $tl.q
  pack $tl.q -expand 1 -fill both -side top
- pack [frame $tl.q.f1] -side left -anchor nw -padx 3m -pady 2m
- pack [frame $tl.q.f2] -side left -anchor nw -padx 3m -pady 2m
- pack [frame $tl.q.f3] -side left -anchor nw -padx 3m -pady 2m
- pack [frame $tl.q.f4] -side left -anchor nw -padx 3m -pady 2m
+ pack [ttk::frame $tl.q.f1] -side left -anchor nw -padx 3m -pady 2m
+ pack [ttk::frame $tl.q.f2] -side left -anchor nw -padx 3m -pady 2m
+ pack [ttk::frame $tl.q.f3] -side left -anchor nw -padx 3m -pady 2m
+ pack [ttk::frame $tl.q.f4] -side left -anchor nw -padx 3m -pady 2m
  pack [ttk::label $tl.q.f1.l -text [::util::mc "Sample Rate"]]
 
-  combobox $tl.q.f1.cb \
+    ttk::combobox $tl.q.f1.cb \
    -textvariable [namespace current]::convert(rate) \
    -width 7 -values [snack::audio rates]
  
@@ -1486,7 +1564,7 @@ proc Convert {} {
 	 -variable [namespace current]::convert(channels)] -anchor w
  pack [ttk::radiobutton $tl.q.f3.4 -text 4 -value 4 \
 	 -variable [namespace current]::convert(channels)] -anchor w
- pack [entry $tl.q.f3.e -textvariable [namespace current]::convert(channels) \
+ pack [ttk::entry $tl.q.f3.e -textvariable [namespace current]::convert(channels) \
 	 -width 3] -anchor w
 
  insertOKCancelButtons $tl.f3 "DoConvert $w;destroy $tl" "destroy $tl"
@@ -1556,13 +1634,13 @@ proc Amplify {} {
  wm resizable $tl 0 0
 
  pack [ttk::label $tl.l -text [::util::mc "Amplify by:"] -anchor w] -fill x
- pack [ frame $tl.f] -fill both -expand true
-  pack [ tk_scale $tl.f.s1 -command "" -orient horizontal \
-	     -showvalue 0 -variable amplify(v)] -side left
- pack [entry $tl.f.e -textvariable amplify(v) -width 5] -side left
+ pack [ ttk::frame $tl.f] -fill both -expand true
+  pack [ttk::scale $tl.f.s1 -command "" -orient horizontal \
+	     -variable amplify(v)] -side left
+ pack [ttk::entry $tl.f.e -textvariable amplify(v) -width 5] -side left
  pack [ttk::label $tl.f.l -text xx -width 2] -side left
-  pack [tk_checkbutton $tl.cb -text [::util::mc "Decibels"] -variable amplify(db) \
-	    -command [list ConfAmplify 1] -anchor c] -fill both -expand true
+  pack [ttk::checkbutton $tl.cb -text [::util::mc "Decibels"] -variable amplify(db) \
+	    -command [list ConfAmplify 1]] -fill both -expand true
 
  insertOKCancelButtons $tl.f3 "DoAmplify $w;destroy $tl" "destroy $tl"
 
@@ -1633,7 +1711,7 @@ proc Fade {} {
  wm title $tl [::util::mc Fade]
 
  pack [ ttk::label $tl.l -text [::util::mc "Fade direction:"] -anchor c] -fill x
- pack [ frame $tl.f] -fill both -expand true
+ pack [ ttk::frame $tl.f] -fill both -expand true
  foreach e [list In Out] {
   pack [ttk::radiobutton $tl.f.r$e -text $e -value $e \
 	    -variable [namespace current]::fade(dir) \
@@ -1641,7 +1719,7 @@ proc Fade {} {
  }
  
  pack [ ttk::label $tl.l2 -text [::util::mc "Fade type:"] -anchor c] -fill x
- pack [ frame $tl.f2] -fill both -expand true
+ pack [ ttk::frame $tl.f2] -fill both -expand true
  foreach e [list Linear Logarithmic Exponential] {
   pack [ttk::radiobutton $tl.f2.r$e -text $e -value $e \
 	    -variable [namespace current]::fade(type) \
@@ -1652,16 +1730,16 @@ proc Fade {} {
  $tl.c create line 0 0 0 0 0 0 -smooth on -tags fade
  ShowFadeType $tl.c
 
- pack [ frame $tl.f3] -fill x
+ pack [ ttk::frame $tl.f3] -fill x
  pack [ ttk::label $tl.f3.l -text [::util::mc "Fade floor:"]] -fill x
- pack [ frame $tl.f3.f] -fill both -expand true
+ pack [ ttk::frame $tl.f3.f] -fill both -expand true
 
 
-  pack [ tk_scale $tl.f3.f.s1 -command "" -orient horizontal \
-	 -showvalue 0 -variable fade(floor) -from 0.0 -to 100.0] -side left
+  pack [ttk::scale $tl.f3.f.s1 -command "" -orient horizontal \
+	 -variable fade(floor) -from 0.0 -to 100.0] -side left
   $tl.f3.f.s1 set $fade(floor)
 
- pack [entry $tl.f3.f.e -textvariable fade(floor) -width 5] -side left
+ pack [ttk::entry $tl.f3.f.e -textvariable fade(floor) -width 5] -side left
  pack [ttk::label $tl.f3.f.l -text % -width 1] -side left
 
 
@@ -1767,18 +1845,18 @@ proc Normalize {} {
  wm title $tl [::util::mc Normalize]
 
     ttk::label $tl.l -text [::util::mc "Normalize to:"]
- frame $tl.f
+ ttk::frame $tl.f
 
-  pack [tk_scale $tl.f.s1 -command "" -orient horizontal \
+  pack [ttk::scale $tl.f.s1 -command "" -orient horizontal \
 	    -variable normalize(v) -from 0.0 -to 100.0] -side left
   $tl.f.s1 set $normalize(v)
 
- pack [entry $tl.f.e -textvariable normalize(v) -width 5] -side left
+ pack [ttk::entry $tl.f.e -textvariable normalize(v) -width 5] -side left
  pack [ttk::label $tl.f.l -text xx -width 2] -side left
-  tk_checkbutton $tl.cb1 -text [::util::mc "Decibels"] \
+  ttk::checkbutton $tl.cb1 -text [::util::mc "Decibels"] \
       -variable normalize(db) \
       -command [list ConfNormalize 1]
-  tk_checkbutton $tl.cb2 \
+  ttk::checkbutton $tl.cb2 \
       -text [::util::mc "Normalize all channels equally"] \
       -variable normalize(allEqual)
 
@@ -1817,18 +1895,18 @@ proc Normalize {} {
  wm title $tl [::util::mc Normalize]
 
  pack [ttk::label $tl.l -text [::util::mc "Normalize to:"]] -fill x
- pack [frame $tl.f] -fill both -expand true
+ pack [ttk::frame $tl.f] -fill both -expand true
 
-  pack [tk_scale $tl.f.s1 -command "" -orient horizontal \
+  pack [ttk::scale $tl.f.s1 -command "" -orient horizontal \
 	    -variable normalize(v) -from 0.0 -to 100.0] -side left
   $tl.f.s1 set $normalize(v)
 
- pack [entry $tl.f.e -textvariable normalize(v) -width 5] -side left
+ pack [ttk::entry $tl.f.e -textvariable normalize(v) -width 5] -side left
  pack [ttk::label $tl.f.l -text xx -width 2] -side left
-  pack [tk_checkbutton $tl.cb1 -text [::util::mc "Decibels"] \
+  pack [ttk::checkbutton $tl.cb1 -text [::util::mc "Decibels"] \
       -variable normalize(db) \
 	    -command [list ConfNormalize 1]] -fill both -expand true
-  pack [tk_checkbutton $tl.cb2 \
+  pack [ttk::checkbutton $tl.cb2 \
       -text [::util::mc "Normalize all channels equally"] \
       -variable normalize(allEqual)] -fill both -expand true
 
@@ -1917,42 +1995,42 @@ proc AddEcho {} {
 }
 
 proc AddEchoW {n} {
- global echo
-
- set tl .proc
- set f [expr {$n + 2}]
-  pack [tk_frame $tl.f.f$f -relief raised -bd 1] -side left \
-      -before $tl.f.hidden
- if {![info exists echo(delay$n)]} {
-     set echo(delay$n) 30.0
-     set echo(delayI$n) 30.0
- }
- pack [ttk::label $tl.f.f$f.l -text [::util::mc "Echo $n"] -anchor c] -side top \
-     -fill x
- pack [frame $tl.f.f$f.f1] -side left
-  pack [tk_scale $tl.f.f$f.f1.s -from 10.0 -to 250.0 -orient vertical \
-	    -variable echo(delayI$n) -showvalue 0 -command "FlipScaleValue ::echo(delayI$n) ::echo(delay$n) 260.0;ConfEcho"]
-
-  $tl.f.f$f.f1.s set $echo(delay$n)
- pack [frame $tl.f.f$f.f1.f]
- pack [entry $tl.f.f$f.f1.f.e -textvariable echo(delay$n) -width 3] \
-	 -side left
- pack [ttk::label $tl.f.f$f.f1.f.l -text ms] -side left
- 
- if {![info exists echo(decay$n)]} {
-     set echo(decay$n) 40
-     set echo(decayI$n) 40
- }
- pack [frame $tl.f.f$f.f2] -side left
-  pack [tk_scale $tl.f.f$f.f2.s -from 0 -to 100 -orient vertical \
-	    -variable echo(decayI$n) -showvalue 0 -command "FlipScaleValue ::echo(decayI$n) ::echo(decay$n) 100.0;ConfEcho"]
-
-  $tl.f.f$f.f2.s set $echo(decay$n)
-
- pack [frame $tl.f.f$f.f2.f]
- pack [entry $tl.f.f$f.f2.f.e -textvariable echo(decay$n) -width 3] \
-	 -side left
- pack [ttk::label $tl.f.f$f.f2.f.l -text %] -side left
+    global echo
+    
+    set tl .proc
+    set f [expr {$n + 2}]
+    ttk::separator $tl.f.f$f -orient vertical
+    pack $tl.f.f$f -side left -before $tl.f.hidden
+    if {![info exists echo(delay$n)]} {
+	set echo(delay$n) 30.0
+	set echo(delayI$n) 30.0
+    }
+    pack [ttk::label $tl.f.f$f.l -text [::util::mc "Echo $n"] -anchor c] -side top \
+	-fill x
+    pack [ttk::frame $tl.f.f$f.f1] -side left
+    pack [ttk::scale $tl.f.f$f.f1.s -from 10.0 -to 250.0 -orient vertical \
+	      -variable echo(delayI$n) -command "FlipScaleValue ::echo(delayI$n) ::echo(delay$n) 260.0;ConfEcho"]
+    
+    $tl.f.f$f.f1.s set $echo(delay$n)
+    pack [ttk::frame $tl.f.f$f.f1.f]
+    pack [ttk::entry $tl.f.f$f.f1.f.e -textvariable echo(delay$n) -width 3] \
+	-side left
+    pack [ttk::label $tl.f.f$f.f1.f.l -text ms] -side left
+    
+    if {![info exists echo(decay$n)]} {
+	set echo(decay$n) 40
+	set echo(decayI$n) 40
+    }
+    pack [ttk::frame $tl.f.f$f.f2] -side left
+    pack [ttk::scale $tl.f.f$f.f2.s -from 0 -to 100 -orient vertical \
+	      -variable echo(decayI$n) -command "FlipScaleValue ::echo(decayI$n) ::echo(decay$n) 100.0;ConfEcho"]
+    
+    $tl.f.f$f.f2.s set $echo(decay$n)
+    
+    pack [ttk::frame $tl.f.f$f.f2.f]
+    pack [ttk::entry $tl.f.f$f.f2.f.e -textvariable echo(decay$n) -width 3] \
+	-side left
+    pack [ttk::label $tl.f.f$f.f2.f.l -text %] -side left
 }
 
 proc RemEcho {} {
@@ -1991,44 +2069,44 @@ proc Echo {} {
  toplevel $tl
  wm title $tl [::util::mc Echo]
 
- pack [frame $tl.f] -expand true -fill both
+ pack [ttk::frame $tl.f] -expand true -fill both
  
- pack [frame $tl.f.f1] -side left
+ pack [ttk::frame $tl.f.f1] -side left
  pack [ttk::label $tl.f.f1.l -text [::util::mc In]]
-  pack [tk_scale $tl.f.f1.s -from 0 -to 100 -orient vertical \
-	    -variable echo(iGainI) -showvalue 0 -command "FlipScaleValue ::echo(iGainI) ::echo(iGain) 100.0;ConfEcho"]
+  pack [ttk::scale $tl.f.f1.s -from 0 -to 100 -orient vertical \
+	    -variable echo(iGainI) -command "FlipScaleValue ::echo(iGainI) ::echo(iGain) 100.0;ConfEcho"]
   $tl.f.f1.s set $echo(iGain)
 
- pack [frame $tl.f.f1.f]
- pack [entry $tl.f.f1.f.e -textvariable echo(iGain) -width 3] -side left
+ pack [ttk::frame $tl.f.f1.f]
+ pack [ttk::entry $tl.f.f1.f.e -textvariable echo(iGain) -width 3] -side left
  pack [ttk::label $tl.f.f1.f.l -text %] -side left
 
- pack [frame $tl.f.f2] -side left
+ pack [ttk::frame $tl.f.f2] -side left
  pack [ttk::label $tl.f.f2.l -text [::util::mc Out]]
-  pack [tk_scale $tl.f.f2.s -from 0 -to 100 -orient vertical \
-	    -variable echo(oGainI) -showvalue 0 -command  "FlipScaleValue ::echo(oGainI) ::echo(oGain) 100.0;ConfEcho"]
+  pack [ttk::scale $tl.f.f2.s -from 0 -to 100 -orient vertical \
+	    -variable echo(oGainI) -command  "FlipScaleValue ::echo(oGainI) ::echo(oGain) 100.0;ConfEcho"]
 
   $tl.f.f2.s set $echo(oGain)
 
- pack [frame $tl.f.f2.f]
- pack [entry $tl.f.f2.f.e -textvariable echo(oGain) -width 3] -side left
+ pack [ttk::frame $tl.f.f2.f]
+ pack [ttk::entry $tl.f.f2.f.e -textvariable echo(oGain) -width 3] -side left
  pack [ttk::label $tl.f.f2.f.l -text %] -side left
 
- pack [frame $tl.f.fe] -side left
+ pack [ttk::frame $tl.f.fe] -side left
   pack [ttk::button $tl.f.fe.1 -text + -command AddEcho] -padx 3
   pack [ttk::button $tl.f.fe.2 -text - -command RemEcho -state disabled] -padx 3
 
- pack [frame $tl.f.hidden] -side left
+ pack [ttk::frame $tl.f.hidden] -side left
  for {set i 1} {$i <= $echo(n)} {incr i} {
      AddEchoW $i
  }
-  pack [tk_checkbutton $tl.cb -text [::util::mc "Drain beyond selection"] \
+  pack [ttk::checkbutton $tl.cb -text [::util::mc "Drain beyond selection"] \
 	    -variable echo(drain)] -anchor w -fill x
  
- pack [ frame $tl.f3] -pady 0 -expand true -fill both
- pack [ ttk::button $tl.f3.b1 -image $::wsurf::Info(Img,play) -command "PlayEcho $w"] \
+ pack [ ttk::frame $tl.f3] -pady 0 -expand true -fill both
+ pack [ ttk::button $tl.f3.b1 -style Toolbutton -image $::wsurf::Info(Img,play) -command "PlayEcho $w"] \
 	 -side left -padx 3 
- pack [ ttk::button $tl.f3.b2 -image $::wsurf::Info(Img,stop) -command "$w stop"] -side left \
+ pack [ ttk::button $tl.f3.b2 -style Toolbutton -image $::wsurf::Info(Img,stop) -command "$w stop"] -side left \
      -padx 3
 
  insertOKCancelButtons $tl.f4 "DoEcho $w;destroy $tl" "destroy $tl"
@@ -2104,7 +2182,7 @@ proc MixChan {} {
  toplevel $tl
  wm title $tl [::util::mc "Mix Channels"]
  
- pack [frame $tl.f] -expand true -fill both
+ pack [ttk::frame $tl.f] -expand true -fill both
  
  ttk::label $tl.f.l -text [::util::mc "New channel"]
  grid $tl.f.l
@@ -2135,26 +2213,26 @@ proc MixChan {} {
      ttk::label $tl.f.lx$i -text [::util::mc "Channel $label"]
   grid $tl.f.lx$i -row 0 -column [expr {$i + 1}]
   for {set j 0} {$j < $n} {incr j} {
-    tk_frame $tl.f.f$i-f$j -relief raised -bd 1
-   grid $tl.f.f$i-f$j -row [expr {$i + 1}] -column [expr {$j + 1}]
-    pack [tk_scale $tl.f.f$i-f$j.s -command "" -orient horizontal \
-	      -from -100 -to 100 -showvalue 0 -command "ConfMix $w" \
+      ttk::frame $tl.f.f$i-f$j
+   grid $tl.f.f$i-f$j -row [expr {$i + 1}] -column [expr {$j + 1}] -padx 5
+    pack [ttk::scale $tl.f.f$i-f$j.s -orient horizontal \
+	      -from -100 -to 100 -command "ConfMix $w" \
 	      -variable mix($i,$j)]
 
     $tl.f.f$i-f$j.s set $mix($i,$j)
 
-   pack [frame $tl.f.f$i-f$j.f]	  
-   pack [entry $tl.f.f$i-f$j.f.e -textvariable mix($i,$j) -width 4] \
+   pack [ttk::frame $tl.f.f$i-f$j.f]	  
+   pack [ttk::entry $tl.f.f$i-f$j.f.e -textvariable mix($i,$j) -width 4] \
      -side left
    pack [ttk::label $tl.f.f$i-f$j.f.l -text %] -side left
   }
  }
  
- pack [ frame $tl.f3] -expand true -fill both
- pack [ ttk::button $tl.f3.b1 -image $::wsurf::Info(Img,play) -command "PlayMix $w"] \
-   -side left -padx 3
- pack [ ttk::button $tl.f3.b2 -image $::wsurf::Info(Img,stop) -command "$w stop"] \
-   -side left -padx 3
+ pack [ttk::frame $tl.f3] -expand true -fill both
+ pack [ ttk::button $tl.f3.b1 -style Toolbutton -image $::wsurf::Info(Img,play) -command "PlayMix $w"] \
+   -side left -padx 3 -anchor c
+ pack [ ttk::button $tl.f3.b2 -style Toolbutton -image $::wsurf::Info(Img,stop) -command "$w stop"] \
+   -side left -padx 3 -anchor c
 
  insertOKCancelButtons $tl.f4 "DoMix $w;destroy $tl" "destroy $tl"
 }
@@ -2189,7 +2267,7 @@ proc PreferencesDialog {} {
    lappend procs $pageProc
   }
  }
-    notebook $notebook -padding 6
+    ttk::notebook $notebook -padding 6
 
  pack $notebook -fill both -expand yes
  if {[string match macintosh $::tcl_platform(platform)] || \
@@ -2198,7 +2276,7 @@ proc PreferencesDialog {} {
  }
  foreach page $pages proc $procs {
    set lowpage [string tolower $page]
-   $notebook add [frame $notebook.$lowpage] -text $page
+   $notebook add [ttk::frame $notebook.$lowpage] -text $page
    $proc $notebook.$lowpage
  }
   $notebook select 2
@@ -2330,41 +2408,6 @@ proc KeyBindingsPage {p} {
     $t configure -state disabled
 }
 
-proc KeyBindingsPage-old {p} {
- variable Info
-
- foreach f [winfo children $p] {
-  destroy $f	
- }
-
- foreach {prefKey script text} $::Prefs(Table) {
-  set Info(Prefs,t,$prefKey) $Info(Prefs,$prefKey)
- }
-
-	 tk_frame $p.f -highlightthickness 0 -borderwidth 0
-     set t $p.f.text
-# set font [[label $p.l] cget -font]
-     text $t -yscrollcommand "$p.scroll set" -setgrid true -width 50 \
-	 -height 10 -wrap word -highlightthickness 0 -borderwidth 0 \
-	 -tabs {5c left}
-     pack $t -expand  yes -fill both
-     scrollbar $p.scroll -command "$t yview"
-     pack $p.scroll -side right -fill y
-     pack $p.f -expand yes -fill both
-     
-     foreach {prefKey script text} $::Prefs(Table) {
-	 entry $t.w$prefKey -width 15 -textvar Info(Prefs,t,$prefKey)
-	 if {$script == ""} {
-		 $t insert end "\n    [::util::mc ${text}]"
-	     } else {
-		 $t insert end [::util::mc ${text}]:\t
-		 $t window create end -window $t.w$prefKey
-	     }
-	     $t insert end \n
-     }
-     $t configure -state disabled
-}
-
 # GetCTTRegVars
 # - check if CTT-Toolbox is installed. 
 #   If it is, modify auto_path to include Toolbox directories
@@ -2491,10 +2534,10 @@ proc RegTypesDialog {} {
   set ::_RegTypesDialog($ext,default) 0
   set ::_RegTypesDialog($ext,dde) 1
   ttk::label $w.l$i -text $ext
-  checkbutton $w.a$i -variable _RegTypesDialog($ext,assoc) -command [list \
+  ttk::checkbutton $w.a$i -variable _RegTypesDialog($ext,assoc) -command [list \
     if \$_RegTypesDialog($ext,assoc) [list $w.b$i configure -state normal]\n[list $w.c$i configure -state normal] else [list $w.b$i configure -state disabled]\n[list $w.c$i configure -state disabled]]
-  checkbutton $w.b$i -variable _RegTypesDialog($ext,default)
-  checkbutton $w.c$i -variable _RegTypesDialog($ext,dde)
+  ttk::checkbutton $w.b$i -variable _RegTypesDialog($ext,default)
+  ttk::checkbutton $w.c$i -variable _RegTypesDialog($ext,dde)
   grid $w.l$i $w.a$i $w.b$i $w.c$i -row $i -sticky nswe
   incr i
  }
@@ -3028,7 +3071,7 @@ proc CreateToolbar {p} {
     set opt "-style"
     set val "Toolbutton"
     
-    pack [ frame $p.tb -relief raised -borderwidth 1] -side top -fill x
+    pack [ ttk::frame $p.tb -relief raised -borderwidth 1] -side top -fill x
     eval pack [ ttk::button $p.tb.new  -image $::Info(Img,new) -command New \
 		    $opt $val] -side left
     eval pack [ ttk::button $p.tb.open -image $::Info(Img,open) -command Open \
@@ -3036,14 +3079,14 @@ proc CreateToolbar {p} {
     eval pack [ ttk::button $p.tb.save -image $::Info(Img,save) -command Save \
 		    $opt $val] -side left
     
-    pack [ frame $p.tb.sep1 -borderwidth 1 -relief sunken -width 2] \
+    pack [ ttk::frame $p.tb.sep1 -borderwidth 1 -relief sunken -width 2] \
 	-side left -fill y -padx 4 -anchor w -pady 2
     eval pack [ ttk::button $p.tb.print -image $::Info(Img,print) -command Print \
 		    $opt $val] -side left
     eval pack [ ttk::button $p.tb.mixer -image snackGain -command snack::mixerDialog \
 		    $opt $val] -side left
     #pack [ttk::button $p.tb.prefs -image $::Info(Img,preferences) -command PreferencesDialog -relief flat] -side left
-    pack [ frame $p.tb.sep2 -borderwidth 1 -relief sunken -width 2] -side left \
+    pack [ ttk::frame $p.tb.sep2 -borderwidth 1 -relief sunken -width 2] -side left \
 	-fill y -padx 4 -anchor w -pady 2
     eval pack [ ttk::button $p.tb.cut   -image $::Info(Img,cut) -command Cut $opt $val] \
 	-side left
@@ -3053,7 +3096,7 @@ proc CreateToolbar {p} {
 		    $opt $val] -side left
     eval pack [ ttk::button $p.tb.undo -image $::Info(Img,undo) -command Undo \
 		    $opt $val] -side left
-    pack [ frame $p.tb.sep3 -borderwidth 1 -relief sunken -width 2] -side left \
+    pack [ ttk::frame $p.tb.sep3 -borderwidth 1 -relief sunken -width 2] -side left \
 	-fill y -padx 4 -anchor w -pady 2
     eval pack [ ttk::button $p.tb.zoomin  -image snackZoomIn -command ZoomIn \
 		    $opt $val] -side left
@@ -3063,7 +3106,7 @@ proc CreateToolbar {p} {
 		    $opt $val] -side left
     eval pack [ ttk::button $p.tb.zoomsel -image $::Info(Img,zoomsel) -command ZoomSel \
 		    $opt $val] -side left
-    pack [ frame $p.tb.sep4 -borderwidth 1 -relief sunken -width 2] -side left \
+    pack [ ttk::frame $p.tb.sep4 -borderwidth 1 -relief sunken -width 2] -side left \
 	-fill y -padx 4 -anchor w -pady 2
     pack [ ttk::label $p.tb.time -text 00.000 -relief flat] \
 	-side left
@@ -3072,7 +3115,7 @@ proc CreateToolbar {p} {
 
 
 proc CreateMessagebar {p} {
- pack [ frame $p.bf] -side bottom -fill x
+ pack [ ttk::frame $p.bf] -side bottom -fill x
  messagebar::create $p.bf.lab -text "" -progress 0.0 -command Interrupt \
    -width $::Info(Prefs,wsWidth)
  pack $p.bf.lab -side left -expand yes -fill x
@@ -3406,36 +3449,6 @@ if {[string match macintosh $::tcl_platform(platform)]} {
 if {$newVersion} {
   tk_messageBox -message [::util::mc "This is the first time you run WaveSurfer $Info(Version). You might have old configuration files and plug-ins in $lastVersion that need to be moved to $newHome."]
 }
-#update
-#.x.s1.titlebar.recordbutton invoke
-#after 500 {.x.s1.titlebar.stopbutton invoke}
-#PreferencesDialog
-#after 100 Normalize
 
 
-proc initDnDbindings {w type} {
-    puts [info level 0]
-    dnd bindtarget $w $type <Drop> [list handleDnDEvent $w drop:files %D]
-}
 
-#    bind .x.tb <Expose> [list initDnDbindings .x.tb DND_Files]
- 
-if 0 {
-   set type *
-    toplevel .target -bg green
-    wm title .target "drop here"
-    
-    dnd bindtarget .target $type <Drop> [list tk_messageBox -message "somebody dropped %D on me!"]
-
-    set p .x
-    set target $p.tb.target
-    puts "registering drop target $target"
-    dnd bindtarget $target * <Drop> [list handleDnDEvent $target drop:files %D]
-    dnd bindtarget $p $type <Drop> [list tk_messageBox -message "somebody dropped %D on me!"]
-    #	tkdnd::drop_target register $target *
-    #	bind $target <<DropEnter>> [list handleDnDEvent $target enter %d]
-    #	bind $target <<DropPosition>> [list handleDnDEvent $target position %D]
-    #	bind $target <<Drop>> [list handleDnDEvent $target drop:files %D]
-     
-
-}

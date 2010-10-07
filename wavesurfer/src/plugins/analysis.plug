@@ -1079,13 +1079,13 @@ proc analysis::drawWaveformPage {w pane p} {
  } else {
   set max 32768
  }
- pack [frame $p.f3] -anchor w -ipady 2
+ pack [ttk::frame $p.f3] -anchor w -ipady 2
     ttk::checkbutton $p.f3.r -text "Auto-scale waveform" -onvalue -1 \
       -offvalue $max \
       -variable [namespace current]::${pane}::var(t,limit)
     ttk::label $p.f3.l -text "Value at top:"
 
- entry $p.f3.e -textvar [namespace current]::${pane}::var(t,limit) \
+ ttk::entry $p.f3.e -textvar [namespace current]::${pane}::var(t,limit) \
    -width 8
  ttk::button $p.f3.b -text Control... \
 	 -command [namespace code [list waControls $w $pane]]
@@ -1122,17 +1122,17 @@ proc analysis::drawSpectrogramPage {w pane p} {
  stringPropItem $p.f1 "FFT window length:" 21 6 \
      "points" [namespace current]::${pane}::var(t,fftlen)
 
- pack [frame $p.f2] -anchor w -ipady 2
+ pack [ttk::frame $p.f2] -anchor w -ipady 2
     ttk::label $p.f2.l -text "Analysis window type:" -width 21 -anchor w
     ttk::combobox $p.f2.cm -textvariable [namespace current]::${pane}::var(t,wintype) -values [list Hamming Hanning Bartlett Blackman Rectangle] -state readonly
  pack $p.f2.l $p.f2.cm -side left -padx 3
 
- pack [frame $p.f3] -anchor w -ipady 2
+ pack [ttk::frame $p.f3] -anchor w -ipady 2
  ttk::label $p.f3.l -text "Analysis bandwidth:" -width 21 -anchor w
- entry $p.f3.e -textvar [namespace current]::${pane}::var(t,anabw) -wi 6
+ ttk::entry $p.f3.e -textvar [namespace current]::${pane}::var(t,anabw) -wi 6
  ttk::label $p.f3.l2 -text "Hz" -anchor w
  ttk::label $p.f3.l3 -text " Window:" -anchor w
- entry $p.f3.e2 -textvar [namespace current]::${pane}::var(t,winlen) -wi 6
+ ttk::entry $p.f3.e2 -textvar [namespace current]::${pane}::var(t,winlen) -wi 6
  ttk::label $p.f3.l4 -text "points" -anchor w
  pack $p.f3.l $p.f3.e $p.f3.l2 $p.f3.l3 $p.f3.e2 $p.f3.l4 -side left -padx 3
  bind $p.f3.e  <Any-KeyRelease> [namespace code [list bw2pts $w $pane]]
@@ -1146,11 +1146,11 @@ proc analysis::drawSpectrogramPage {w pane p} {
  stringPropItem $p.f5 "Cut spectrogram at:" 21 6 \
      "Hz" [namespace current]::${pane}::var(t,topfr)
 
- pack [frame $p.f6] -anchor w -ipady 2
+ pack [ttk::frame $p.f6] -anchor w -ipady 2
  pack [ttk::label $p.f6.l -text "Brightness:" -width 21 -anchor w] -sid left -padx 3
- pack [entry $p.f6.e -textvar [namespace current]::${pane}::var(t,brightness)\
+ pack [ttk::entry $p.f6.e -textvar [namespace current]::${pane}::var(t,brightness)\
 	 -wi 6] -side left -padx 3
- pack [scale $p.f6.s \
+ pack [ttk::scale $p.f6.s \
 	 -variable [namespace current]::${pane}::var(t,brightness) \
 	 -orient horiz -from -100 -to 100] -side left
   $p.f6.s set $v(t,brightness)
@@ -1158,11 +1158,11 @@ proc analysis::drawSpectrogramPage {w pane p} {
  pack [ttk::button $p.f6.b -text Controls... \
 	 -command [namespace code [list bcControls $w $pane]]] -side left
 
- pack [frame $p.f7] -anchor w -ipady 2
+ pack [ttk::frame $p.f7] -anchor w -ipady 2
  pack [ttk::label $p.f7.l -text "Contrast:" -width 21 -anchor w] -side left -padx 3
- pack [entry $p.f7.e -textvar [namespace current]::${pane}::var(t,contrast) \
+ pack [ttk::entry $p.f7.e -textvar [namespace current]::${pane}::var(t,contrast) \
 	 -wi 6] -side left -padx 3
- pack [scale $p.f7.s -variable [namespace current]::${pane}::var(t,contrast) \
+ pack [ttk::scale $p.f7.s -variable [namespace current]::${pane}::var(t,contrast) \
 	    -orient horiz -from -100 -to 100]
   $p.f7.s set $v(t,contrast)
 
@@ -1175,7 +1175,7 @@ proc analysis::drawSpectrogramPage {w pane p} {
  colorPropItem $p.f10 "Grid color:" 21 \
      [namespace current]::${pane}::var(t,gridColor)
 
- pack [frame $p.f11] -anchor w -ipady 2
+ pack [ttk::frame $p.f11] -anchor w -ipady 2
  ttk::label $p.f11.l -text "Spectrogram color:" -width 21 -anchor w
     ttk::combobox $p.f11.cm -textvariable [namespace current]::${pane}::var(t,cmap) -values [list grey color color2] -state readonly
  pack $p.f11.l $p.f11.cm -side left -padx 3
@@ -1186,8 +1186,8 @@ proc analysis::drawSpectrogramPage {w pane p} {
  stringPropItem $p.f13 "Show channel:" 21 6 \
      "(0,1,2,...,left,right,all)" [namespace current]::${pane}::var(t,channel)
 
- pack [frame $p.f14] -anchor w -ipady 2
- checkbutton $p.f14.r -text "Draw stippled selection" -onvalue top \
+ pack [ttk::frame $p.f14] -anchor w -ipady 2
+ ttk::checkbutton $p.f14.r -text "Draw stippled selection" -onvalue top \
      -offvalue bottom -variable [namespace current]::${pane}::var(t,layer)
  pack $p.f14.r -side left -padx 3
 
@@ -1207,7 +1207,7 @@ proc analysis::drawPitchPage {w pane p} {
   set v(t,$key) $v($key)
  }
 
- pack [frame $p.f1] -anchor w -ipady 2
+ pack [ttk::frame $p.f1] -anchor w -ipady 2
     ttk::label $p.f1.l -text "Pitch method:" -width 21
     ttk::combobox $p.f1.cm -textvariable [namespace current]::${pane}::var(t,method) -values [list ESPS AMDF] -state readonly
  pack $p.f1.l $p.f1.cm -side left -padx 3
@@ -1224,13 +1224,13 @@ proc analysis::drawPitchPage {w pane p} {
  stringPropItem $p.f32 "Frame interval:" 23 6 \
      "s" [namespace current]::${pane}::var(t,frameInterval)
 
- pack [frame $p.f4] -anchor w -ipady 2
+ pack [ttk::frame $p.f4] -anchor w -ipady 2
 
     ttk::checkbutton $p.f4.r -text "Show background note scale" \
      -variable [namespace current]::${pane}::var(t,showScale)
 
  ttk::label $p.f4.l -text "Tuning (C1):" -anchor w
- entry $p.f4.e -textvar [namespace current]::${pane}::var(t,scaleBase) -wi 7
+ ttk::entry $p.f4.e -textvar [namespace current]::${pane}::var(t,scaleBase) -wi 7
  ttk::label $p.f4.l2 -text "Hz" -anchor w
  pack $p.f4.r $p.f4.l $p.f4.e $p.f4.l2 -side left -padx 3
 
@@ -1262,7 +1262,7 @@ proc analysis::drawPowerPage {w pane p} {
  stringPropItem $p.f3 "Analysis window length:" 23 6 \
      "points" [namespace current]::${pane}::var(t,ewinlen)
 
- pack [frame $p.f4] -anchor w -ipady 2
+ pack [ttk::frame $p.f4] -anchor w -ipady 2
  ttk::label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
     ttk::combobox $p.f4.cm -textvariable [namespace current]::${pane}::var(t,ewintype) -values [list Hamming Hanning Bartlett Blackman Rectangle] -state readonly
  pack $p.f4.l $p.f4.cm -side left -padx 3
@@ -1304,7 +1304,7 @@ proc analysis::drawFormantsPage {w pane p} {
  stringPropItem $p.f3 "Analysis window length:" 23 6 \
      "s" [namespace current]::${pane}::var(t,fwinlen)
  
- pack [frame $p.f4] -anchor w -ipady 2
+ pack [ttk::frame $p.f4] -anchor w -ipady 2
  ttk::label $p.f4.l -text "Analysis window type:" -width 23 -anchor w
     ttk::combobox $p.f4.cm -textvariable [namespace current]::${pane}::var(t,fwintype) -values [list Rectangular Hamming Cos^4 Hanning] -state readonly
  pack $p.f4.l $p.f4.cm -side left -padx 3
@@ -1581,7 +1581,7 @@ proc analysis::bcControls {w pane} {
 
  set c [$pane canvas]
 
- pack [frame $p.f] -fill both -expand true
+ pack [ttk::frame $p.f] -fill both -expand true
  pack [ttk::label $p.f.lc -text Contrast] -side left
  pack [canvas $p.f.c -width 100 -height 100 -bd 1 -relief raised]
  pack [ttk::label $p.f.lb -text Brightness]
@@ -1605,7 +1605,7 @@ proc analysis::bcControls {w pane} {
  bind $p.f.c <B1-Motion> [namespace code [list Drag $w $pane $p.f.c %x %y]]
 
  pack [ttk::label $p.f.l -text "Analysis window length:"] -expand true -fill x
- pack [scale $p.f.s -orient horiz \
+ pack [ttk::scale $p.f.s -orient horiz \
 	   -variable [namespace current]::${pane}::var(t,winlen) \
 	   -from 32 -to $v(t,fftlen) \
 	   -command [namespace code [list setAnaWinLen $pane $c]]] -expand true -fill x
@@ -1638,13 +1638,13 @@ proc analysis::waControls {w pane} {
    set v(t,limit) $max
  }
 
- pack [scale $p.s -variable [namespace current]::${pane}::var(t,limit) \
+ pack [ttk::scale $p.s -variable [namespace current]::${pane}::var(t,limit) \
      -from 1 -to $max -length 150 -orient horizontal \
      -command [namespace code [list waZoom $w $pane]]] -expand 1 -fill x
   $p.s set $v(t,limit)
 
  focus $p.s
- pack [entry $p.e -textvariable [namespace current]::${pane}::var(t,limit) \
+ pack [ttk::entry $p.e -textvariable [namespace current]::${pane}::var(t,limit) \
      -width 8]
  bind $p.e <Any-Key> [namespace code [list waZoom $w $pane]]
 }
@@ -1766,12 +1766,12 @@ proc analysis::openSectWindow {w pane} {
  foreach {left right} [$w cget -selection] break
  if {$left == $right} { set v(sall) 0 } else { set v(sall) 1 }
 
- pack [frame $e.f] -side bottom -fill x
+ pack [ttk::frame $e.f] -side bottom -fill x
  label $e.f.lab -width 1 -relief sunken -bd 1
  pack $e.f.lab -side left -expand yes -fill x
 # pack [button $e.f.exitB -text Close -command [list destroy $e]] -side left
 
- pack [frame $e.f1] -fill x
+ pack [ttk::frame $e.f1] -fill x
 
  ttk::label $e.f1.l1 -text "Analysis:"
     ttk::combobox $e.f1.m1 -textvariable [namespace current]::${pane}::var(satype) -values [list FFT LPC] -state readonly
@@ -1783,21 +1783,21 @@ proc analysis::openSectWindow {w pane} {
 # }
 
  ttk::label $e.f1.l2 -text "Order:"
- entry $e.f1.e -width 3 \
+ ttk::entry $e.f1.e -width 3 \
      -textvariable [namespace current]::${pane}::var(slpcorder)
   set v(slpcorder2) $v(slpcorder)
-  tk_scale $e.f1.s -variable [namespace current]::${pane}::var(slpcorder2) \
-      -from 1 -to 40 -orient horiz -length 80 -show no \
+    ttk::scale $e.f1.s -variable [namespace current]::${pane}::var(slpcorder2) \
+      -from 1 -to 40 -orient horiz -length 80 \
       -command [namespace code [list setVar $w $pane slpcorder slpcorder2]]
   $e.f1.s set $v(slpcorder)
 
  bind $e.f1.s <Button1-Motion> [namespace code [list drawSect $w $pane]]
  pack $e.f1.l1 $e.f1.m1 -side left
-    pack [separator $e.f1.s1 -orient vertical] -side left -fill y -padx 10
+    pack [ttk::separator $e.f1.s1 -orient vertical] -side left -fill y -padx 10
  
  pack $e.f1.l2 $e.f1.e $e.f1.s -side left
 
- pack [frame $e.f2] -anchor w -fill x
+ pack [ttk::frame $e.f2] -anchor w -fill x
 
  ttk::label $e.f2.l1 -text "Window:"
     ttk::combobox $e.f2.m1 -textvariable [namespace current]::${pane}::var(swintype) -values [list Hamming Hanning Bartlett Blackman Rectangle] -state readonly
@@ -1816,33 +1816,33 @@ proc analysis::openSectWindow {w pane} {
 # }
 
  pack $e.f2.l1 $e.f2.m1 -side left
-  pack [separator $e.f2.s1 -orient vertical] -side left -fill y -padx 10
+  pack [ttk::separator $e.f2.s1 -orient vertical] -side left -fill y -padx 10
  pack $e.f2.l2 $e.f2.m2 -side left
 
- pack [frame $e.f3] -fill x
+ pack [ttk::frame $e.f3] -fill x
  pack [ttk::label $e.f3.l1 -text "Reference:" -anchor w] -side left
- pack [entry $e.f3.e1 -textvar [namespace current]::${pane}::var(sref) \
+ pack [ttk::entry $e.f3.e1 -textvar [namespace current]::${pane}::var(sref) \
 	 -wi 6] -side left
  pack [ttk::label $e.f3.u1 -text "dB" -anchor w] -side left
- pack [separator $e.f3.s1 -orient vertical] -side left -fill y -padx 10
+ pack [ttk::separator $e.f3.s1 -orient vertical] -side left -fill y -padx 10
  pack [ttk::label $e.f3.l2 -text "Range:" -anchor w] -side left
- pack [entry $e.f3.e2 -textvar [namespace current]::${pane}::var(srange) \
+ pack [ttk::entry $e.f3.e2 -textvar [namespace current]::${pane}::var(srange) \
 	 -wi 5] -side left
  pack [ttk::label $e.f3.u2 -text "dBfs" -anchor w] -side left
 
- pack [separator $e.f3.s2 -orient vertical] -side left -fill y -padx 10
+ pack [ttk::separator $e.f3.s2 -orient vertical] -side left -fill y -padx 10
  pack [ttk::label $e.f3.l3 -text "Pre-emphasis:" -anchor w] -side left
- pack [entry $e.f3.e3 -textvar [namespace current]::${pane}::var(spreemph) \
+ pack [ttk::entry $e.f3.e3 -textvar [namespace current]::${pane}::var(spreemph) \
 	 -wi 6] -side left
  
 
- pack [frame $e.f4] -fill x
- pack [checkbutton $e.f4.cb -text "Average of selection" \
+ pack [ttk::frame $e.f4] -fill x
+ pack [ttk::checkbutton $e.f4.cb -text "Average of selection" \
      -variable [namespace current]::${pane}::var(sall) \
      -command [namespace code [list drawSect $w $pane]]] -side left
  # pack [button $e.f4.lockB -text Lock -command [namespace code [list lockSection $w $pane]]] -side left
 
- pack [separator $e.f4.s1 -orient vertical] -side left -fill y -padx 10
+ pack [ttk::separator $e.f4.s1 -orient vertical] -side left -fill y -padx 10
 
     ttk::menubutton $e.f4.mb -text "Snapshot" -menu $e.f4.mb.m
 
@@ -1865,11 +1865,11 @@ proc analysis::openSectWindow {w pane} {
  }
  pack $e.f4.mb -side left
 
- pack [separator $e.f4.s2 -orient vertical] -side left -fill y -padx 10
+ pack [ttk::separator $e.f4.s2 -orient vertical] -side left -fill y -padx 10
 
- pack [checkbutton $e.f4.cb2 -text "Add file header" \
+ pack [ttk::checkbutton $e.f4.cb2 -text "Add file header" \
      -variable [namespace current]::${pane}::var(sexphead)] -side left
- pack [separator $e.f4.s3 -orient vertical] -side left -fill y -padx 10
+ pack [ttk::separator $e.f4.s3 -orient vertical] -side left -fill y -padx 10
  pack [ttk::button $e.f4.exportB -text Export... -command [namespace code [list exportSpectrum $w $pane]]] -side left
 
  pack [canvas $e.c -closeenough 5 -cursor draft_small -height 20] -fill both \
@@ -1915,9 +1915,9 @@ proc analysis::openBlowUpWindow {w pane} {
 
  pack [canvas $e.c -height 100] -expand 1 -fill both
 
- pack [frame $e.f] -anchor w -fill x
+ pack [ttk::frame $e.f] -anchor w -fill x
  ttk::label $e.f.l -text [::util::mc "Time window:"] -anchor w
- entry $e.f.e \
+ ttk::entry $e.f.e \
      -textvar [namespace current]::${pane}::var(blowuptimewin) -wi 10
  ttk::label $e.f.l2 -text "s" -anchor w
  pack $e.f.l $e.f.e $e.f.l2 -side left -fill x -expand true
