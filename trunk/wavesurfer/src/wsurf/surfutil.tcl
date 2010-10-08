@@ -257,6 +257,15 @@ proc util::RGBintensity {col f} {
 
 # -----------------------------------------------------------------------------
 
+proc util::guesslinuxsession {} {
+    if [string match *gnome-session* [exec ps -e]] {
+	return gnome
+    }
+    return unknown
+}
+
+# -----------------------------------------------------------------------------
+
 proc util::showURL url {
  webBrowser $url
  return
