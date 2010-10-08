@@ -261,30 +261,38 @@ proc util::guesslinuxsession {} {
     if [string match *gnome-session* [exec ps -e]] {
 	return gnome
     }
+    if [string match *ksm-server* [exec ps -e]] {
+	return kde
+    }
     return unknown
 }
 
 # -----------------------------------------------------------------------------
 
 proc util::showURL url {
- webBrowser $url
- return
- switch $::tcl_platform(platform) {
-  unix {
-    exec sh -c "netscape -remote 'openURL($url)' " &
-  }
-  windows {
-   if {[string match $::tcl_platform(os) "Windows NT"]} {
-    exec $::env(COMSPEC) /c start $url &
-   } else {
-    exec start $url &
-   }
-  }
-  macintosh {
-   tk_messageBox -message "See web-page at $url"
-  }
- }
+
+    # open url in preferred browser...
+    
+    switch -glob $::tcl_platform(platform)-$::tcl_platform(os) {
+	unix-Linux {
+	    switch [guesslinuxsession] {
+		gnome {exec gnome-open $url}
+		kde {exec kde-open $url}
+		default {exec xdg-open $url}
+	    }
+	}
+	unix-Darwin {
+	    exec open $url
+	} 
+	windows-* {	
+	    exec $::env(COMSPEC) /c start $url &
+	}
+	default {
+	    webBrowser $url
+	}
+    }
 }
+    
 
 proc util::webBrowser {url} {
  catch {destroy .htmlbrowser}

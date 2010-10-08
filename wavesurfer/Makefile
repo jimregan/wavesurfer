@@ -78,6 +78,7 @@ BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd
 VER_A	= 1
 VER_B 	= 8
 VER_C   = 8
+PATCHLEVEL = p1
 
 MAJORVERSION  = $(VER_A).$(VER_B)
 RELEASE       = $(VER_A).$(VER_B).$(VER_C)
@@ -92,15 +93,16 @@ STYLESHEET    = /wavesurfer/wsstyle.css
 
 COPYRIGHT     = Copyright © 2000-2010 Jonas Beskow and Kare Sjolander
 
-ABOUTWAVESURFER = WaveSurfer $(RELEASE)-$(BUILD)\\\n$(COPYRIGHT)
+ABOUTWAVESURFER = WaveSurfer $(RELEASE)$(PATCHLEVEL)-$(BUILD)\\\n$(COPYRIGHT)
+
+release: src-release win-release linux-release osx-release
 
 upload:
-	rm -rf $(TMP)/$(RELEASE)
-	mkdir -p $(TMP)/$(RELEASE)
-	cp  release/$(RELEASE).txt release/wavesurfer-$(RELEASE)*.* $(TMP)/$(RELEASE)
-	scp -r $(TMP)/$(RELEASE) $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/
+	rm -rf $(TMP)/$(RELEASE)$(PATCHLEVEL)
+	mkdir -p $(TMP)/$(RELEASE)$(PATCHLEVEL)
+	cp  release/$(RELEASE).txt release/wavesurfer-$(RELEASE)*.* $(TMP)/$(RELEASE)$(PATCHLEVEL)
+	scp -r $(TMP)/$(RELEASE)$(PATCHLEVEL) $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/
 
-release: src-release osx-release win-release linux-release
 
 src-release: pkgIndex
 	rm -rf $(TMP)

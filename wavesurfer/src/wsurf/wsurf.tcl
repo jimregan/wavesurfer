@@ -3262,19 +3262,6 @@ proc wsurf::_rawFiles {p} {
  grid columnconfigure $p 0 -weight 1
 }
 
-proc wsurf::_iconButton {b name} {
- variable Info
-
- set index [lsearch $Info(Prefs,t,icons) $name] 
- if {$index == -1} {
-  $b configure -relief sunken
-  lappend Info(Prefs,t,icons) $name
- } else {
-  $b configure -relief raised
-  set Info(Prefs,t,icons) [lreplace $Info(Prefs,t,icons) $index $index]
- }
-}
-
 proc wsurf::_selectOutDevice {dummy dev} {
  variable Info
  # snack::audio selectOutput $dev
@@ -3344,12 +3331,10 @@ proc wsurf::pluginsDialog {} {
  pack $p.f.f3.t -side right -expand 1 -fill both
  grid [ttk::frame $p.f.f4] -sticky we                            ;#row 3
  pack [ttk::label $p.f.f4.l -text [::util::mc "URL:"]] -side left
- pack [ttk::button $p.f.f4.b -text "" -relief flat -anchor w \
-   -font "helvetica 10 underline"] -side left -expand 1 -fill x
+ pack [ttk::button $p.f.f4.b -text "" -style Toolbutton] -side left -expand 1 -fill x
  grid [ttk::frame $p.f.f5] -sticky we                            ;#row 3
  pack [ttk::label $p.f.f5.l1 -text [::util::mc "Location:"]] -side left
- pack [ttk::label $p.f.f5.l2 -text "" -relief flat -anchor w \
-   -font "helvetica 10"] -side left -expand 1 -fill x
+ pack [ttk::label $p.f.f5.l2 -text ""] -side left -expand 1 -fill x
 
  foreach plugin [lsort $Info(Plugins)] {
   $p.f.f1.lb insert end $plugin
@@ -3469,14 +3454,14 @@ proc wsurf::_pluginSelect {p lb} {
  }
  if {[info exists Info(PluginData,$plug,location)]} {
   set loc $Info(PluginData,$plug,location)
-  set font [$p.f.f5.l2 cget -font]
-  set wid [winfo width $p.f.f5.l2]
-  if {[font measure $font $loc] > $wid} {
-   set loc ...$loc
-   while {[font measure $font $loc] > $wid} {
-    set loc [string replace $loc 3 3]
-   }
-  }
+#  set font [$p.f.f5.l2 cget -font]
+#  set wid [winfo width $p.f.f5.l2]
+#  if {[font measure $font $loc] > $wid} {
+#   set loc ...$loc
+#   while {[font measure $font $loc] > $wid} {
+#    set loc [string replace $loc 3 3]
+#   }
+#  }
   $p.f.f5.l2 configure -text $loc
   if {1 && $Info(PluginData,$plug,URL)!=""} {
    $p.f.f4.b configure -command [list util::showURL $Info(PluginData,$plug,URL)]
