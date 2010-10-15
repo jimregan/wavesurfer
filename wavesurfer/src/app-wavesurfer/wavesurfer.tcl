@@ -2707,7 +2707,8 @@ proc CreateMenus {p} {
  $m.file add command -label [::util::mc "Print..."] -command Print
  $m.file add separator
  $m.file add command -label [::util::mc "Preferences..."] \
-   -command PreferencesDialog
+		     -command PreferencesDialog
+
  if {$::tcl_platform(platform) == "unix"} {
   $m.file add command -label [::util::mc "Mixer..."] \
       -command snack::mixerDialog
@@ -2827,13 +2828,32 @@ proc CreateMenus {p} {
 
  #<< "manurl:$manurl"
 
+
  menu $m.help -tearoff 0
  $m add cascade -label [::util::mc Help] -menu $m.help -underline 0
  $m2 add cascade -label [::util::mc Help]
  # $m.help add command -label [::util::mc "About WaveSurfer"] \
   \#   -command [list util::showURL http://www.speech.kth.se/wavesurfer/index.html]
- $m.help add command -label [::util::mc "Manual"] \
-   -command [list util::showURL $manurl]
+if {[tk windowingsystem] eq "aqua"} {
+
+    proc ::tk::mac::ShowHelp {} {
+	set manurl http://www.speech.kth.se/wavesurfer/man$::version_major$::version_minor.html
+	eval util::showURL $manurl
+    }
+    proc tkAboutDialog {} {
+	About
+    }
+
+    proc ::tk::mac::ShowPreferences {} {
+	PreferencesDialog
+    }
+}
+
+   if {[tk windowingsystem] ne "aqua"} {
+    $m.help add command -label [::util::mc "Manual"] \
+	-command [list util::showURL $manurl]
+}
+
  $m.help add command -label [::util::mc "FAQ"] \
    -command [list util::showURL http://www.speech.kth.se/wavesurfer/faq.html]
  $m.help add command -label [::util::mc "Forum"] \
