@@ -3133,11 +3133,10 @@ proc CreateToolbar {p} {
     
 }
 
-
 proc CreateMessagebar {p} {
  pack [ ttk::frame $p.bf] -side bottom -fill x
- messagebar::create $p.bf.lab -text "" -progress 0.0 -command Interrupt \
-   -width $::Info(Prefs,wsWidth)
+ messagebar::create $p.bf.lab -text "" -progress 0.0 -command Interrupt -width $::Info(Prefs,wsWidth)
+
  pack $p.bf.lab -side left -expand yes -fill x
 }
 

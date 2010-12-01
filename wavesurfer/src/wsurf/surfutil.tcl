@@ -100,7 +100,8 @@ proc util::canvasbind {w tag seq script} {
 }
 
 proc util::_rebind {tag seq} {
- bind $tag $seq [namespace code [list bind $tag $seq [_getbind $tag $seq]]]
+#    puts [info level 0]
+    bind $tag $seq [namespace code [list bind $tag $seq [_getbind $tag $seq]]]
 }
 
 proc util::_getbind {tag seq} {
@@ -475,6 +476,8 @@ proc util::foreachSubWindow {root script} {
 # 
 # RCS: @(#) $Id$
 # $Id$
+
+package require Tk
 
 namespace eval ::tk::dialog::error {
     namespace import -force ::tk::msgcat::*
