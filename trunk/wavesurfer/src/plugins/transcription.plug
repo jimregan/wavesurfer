@@ -96,6 +96,7 @@ namespace eval trans {
 # -----------------------------------------------------------------------------
 
 proc trans::addMenuEntries {w pane m hook x y} {
+#    puts [info level 0]
  if {[string match query $hook]} {
   upvar [namespace current]::${pane}::var v
   if {[info exists v(drawTranscription)]} {
@@ -416,8 +417,8 @@ proc trans::addTranscription {w pane args} {
    [namespace code [list MoveBoundary $w $pane %x]]
  util::canvasbind $c bound <ButtonPress-1> ""
 
- bind $c <ButtonPress-2> \
-     [namespace code [list handleEvents PlayLabel %x %y]]
+# bind $c <ButtonPress-2> \
+#     [namespace code [list handleEvents PlayLabel %x %y]]
 
  $c bind bound <Enter> [list $c configure \
    -cursor sb_h_double_arrow]
@@ -433,6 +434,8 @@ proc trans::addTranscription {w pane args} {
 
  util::canvasbind $c bg <ButtonPress-1> [namespace code \
    [list boxClick $w $pane %W %x %y]]
+    
+#    bind $c <Button-1> [namespace code [list InsertLabel $w $pane %x %y]]
  bind $c <Any-Key>   [namespace code [list handleAnyKey $w $pane %W %x %y %A]]
  bind $c <BackSpace> [namespace code [list handleBackspace $w $pane %W]]
  bind $c <Return> {
@@ -597,6 +600,7 @@ proc trans::labelsMenu {w pane X Y x y} {
 }
 
 proc trans::textClick {w pane W x y} {
+#    puts [info level 0]
  upvar [namespace current]::${pane}::var v
  set ::trpane $pane
  set ::trw $w
@@ -627,6 +631,7 @@ proc trans::textB1Move {w pane W x y} {
 }
 
 proc trans::boxClick {w pane W x y} {
+#    puts [info level 0]
  upvar [namespace current]::${pane}::var v
  set ::trpane $pane
  set ::trw $w
@@ -641,31 +646,33 @@ proc trans::boxClick {w pane W x y} {
 }
 
 proc trans::handleAnyKey {w pane W x y A} {
- upvar [namespace current]::${pane}::var v
- if {[string length $A] == 0} return
- if {[string is print $A] == 0} return
- set c [$pane canvas]
- if {[$W focus] != $v(hidden)} {
-  set tag [$W focus]
-  catch {$W dchars $tag sel.first sel.last}
-  $W insert $tag insert $A
-  SetLabelText $w $pane [lindex [$c gettags $tag] 0] \
-    [$c itemcget $tag -text]
- } else {
-  if {$v(quickenter) == 0} return
-  set dx [expr {abs($v(lastPos) - $x)}]
-  if {$v(quicktol) > $dx && $v(clicked) == 0} {
-   set tagno $v(lastTag)
-   append v(t1,$tagno,label) $A
-   $c itemconf lab$v(lastTag) -text $v(t1,$tagno,label)
-  } else {
-   set v(lastTag) [InsertLabel $w $pane $x $y $A]
-   if {$v(lastTag) == ""} return
-   set v(lastPos) $x
-   set v(clicked) 0
-  }
- }
- changed $w $pane
+#    puts [info level 0]
+    upvar [namespace current]::${pane}::var v
+    if {[string length $A] == 0} return
+    if {[string is print $A] == 0} return
+    set c [$pane canvas]
+    if {[$W focus] != $v(hidden)} {
+	
+	set tag [$W focus]
+	catch {$W dchars $tag sel.first sel.last}
+	$W insert $tag insert $A
+	SetLabelText $w $pane [lindex [$c gettags $tag] 0] \
+	    [$c itemcget $tag -text]
+    } else {
+	if {$v(quickenter) == 0} return
+	set dx [expr {abs($v(lastPos) - $x)}]
+	if {$v(quicktol) > $dx && $v(clicked) == 0} {
+	    set tagno $v(lastTag)
+	    append v(t1,$tagno,label) $A
+	    $c itemconf lab$v(lastTag) -text $v(t1,$tagno,label)
+	} else {
+	    set v(lastTag) [InsertLabel $w $pane $x $y $A]
+	    if {$v(lastTag) == ""} return
+	    set v(lastPos) $x
+	    set v(clicked) 0
+	}
+    }
+    changed $w $pane
 }
 
 proc trans::handleDelete {w pane W} {
@@ -1452,6 +1459,7 @@ proc trans::MoveBoundary {w pane x} {
 }
 
 proc trans::SetLabelText {w pane tagno label} {
+#    puts [info level 0]
  upvar [namespace current]::${pane}::var v
 
  $w messageProc [format "Transcription - %s" $label]
@@ -1459,6 +1467,7 @@ proc trans::SetLabelText {w pane tagno label} {
 }
 
 proc trans::InsertLabel {w pane x y {label ""}} {
+#    puts [info level 0]
  upvar [namespace current]::${pane}::var v
  
  set s [$w cget -sound]
@@ -1677,6 +1686,7 @@ proc trans::DeleteLabelFromTags {w pane tags} {
 }
 
 proc trans::AdjustLabel {w pane x y boundary} {
+#    puts [info level 0]
  upvar [namespace current]::${pane}::var v
  
  set c [$pane canvas]
@@ -2139,10 +2149,8 @@ proc trans::drawPage1 {w pane path} {
 
  pack [ttk::frame $path.f2] -anchor w
  ttk::label $path.f2.l -text "Label alignment:" -width 25 -anchor w
-    ttk::combobox $path.f2.om -textvariable [namespace current]::${pane}::var(t,alignment) -values [list left center right] -state readonly
- $path.f2.om.menu entryconfigure 0 -value w
- $path.f2.om.menu entryconfigure 1 -value c
- $path.f2.om.menu entryconfigure 2 -value e
+    ttk::combobox $path.f2.om -textvariable [namespace current]::${pane}::var(t,alignment) -values [list e c w] -state readonly
+
  pack $path.f2.l $path.f2.om -side left -padx 3
 
  stringPropItem $path.f3 "Label filename extension:" 25 16 "" \
