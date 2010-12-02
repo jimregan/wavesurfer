@@ -3135,9 +3135,14 @@ proc CreateToolbar {p} {
 
 proc CreateMessagebar {p} {
  pack [ ttk::frame $p.bf] -side bottom -fill x
- messagebar::create $p.bf.lab -text "" -progress 0.0 -command Interrupt -width $::Info(Prefs,wsWidth)
 
- pack $p.bf.lab -side left -expand yes -fill x
+    if {![string is int $::Info(Prefs,wsWidth)] || $::Info(Prefs,wsWidth)<1} {
+	set ::Info(Prefs,wsWidth) 600
+    }
+
+    messagebar::create $p.bf.lab -text "" -progress 0.0 -command Interrupt -width $::Info(Prefs,wsWidth)
+    
+    pack $p.bf.lab -side left -expand yes -fill x
 }
 
 proc dropFileCallback {droppedfiles} {
