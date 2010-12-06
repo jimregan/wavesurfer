@@ -133,7 +133,7 @@ src-release: pkgIndex
 	cp $(TMP)/wavesurfer-$(RELEASE)/doc/*.html $(ROOT)/release/
 
 linux-release:
-	$(MAKE) _wrap TARGET=linux
+	$(MAKE) _wrap TARGET=linux SNACKMAJORV=2.2-alsa
 	chmod a+x $(TMP)/wavesurfer
 
 	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)-linux-i386.tgz wavesurfer
