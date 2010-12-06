@@ -101,7 +101,8 @@ release: src-release win-release linux-release osx-release
 upload:
 	rm -rf $(TMP)/$(RELEASE)$(PATCHLEVEL)
 	mkdir -p $(TMP)/$(RELEASE)$(PATCHLEVEL)
-	cp  release/$(RELEASE).txt release/wavesurfer-$(RELEASE)*.* $(TMP)/$(RELEASE)$(PATCHLEVEL)
+	cp  release/$(RELEASE).txt $(TMP)/$(RELEASE)$(PATCHLEVEL)/README.txt
+	cp  release/wavesurfer-$(RELEASE)*.* $(TMP)/$(RELEASE)$(PATCHLEVEL)
 	scp -r $(TMP)/$(RELEASE)$(PATCHLEVEL) $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/
 
 
