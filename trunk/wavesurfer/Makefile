@@ -87,6 +87,7 @@ MANVERSION    = $(VER_A)$(VER_B)
 RELEASETAG    = release_$(VER_A)_$(VER_B)_$(VER_C)
 
 SNACKMAJORV   = 2.2
+SNACKARCH     =
 WSURF         = wsurf$(PACKAGEVER)
 INSTDIR       = $(PREFIX)/lib/$(WSURF)
 STYLESHEET    = /wavesurfer/wsstyle.css
@@ -133,7 +134,7 @@ src-release: pkgIndex
 	cp $(TMP)/wavesurfer-$(RELEASE)/doc/*.html $(ROOT)/release/
 
 linux-release:
-	$(MAKE) _wrap TARGET=linux SNACKMAJORV=2.2-alsa
+	$(MAKE) _wrap TARGET=linux SNACKMAJORV=2.2 SNACKARCH=-alsa
 	chmod a+x $(TMP)/wavesurfer
 
 	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)-linux-i386.tgz wavesurfer
@@ -192,8 +193,8 @@ _wrap: src-release
 	rm $(TMP)/wavesurfer-$(RELEASE)/src/plugins/example*.plug
 	cp build/kit/main.tcl $(TMP)/wavesurfer.vfs
 	cp -f $(TCLKIT) $(TMP)/tclkit
-	cp build/snack-fix/*.tcl build/binpkg/$(TARGET)/snack$(SNACKMAJORV)
-	cp -r build/binpkg/$(TARGET)/snack$(SNACKMAJORV) $(TMP)/wavesurfer.vfs/lib
+	cp build/snack-fix/*.tcl build/binpkg/$(TARGET)/snack$(SNACKMAJORV)$(SNACKARCH)
+	cp -r build/binpkg/$(TARGET)/snack$(SNACKMAJORV)$(SNACKARCH) $(TMP)/wavesurfer.vfs/lib/snack$(SNACKMAJORV)
 	cp -r build/binpkg/$(TARGET)/tkdnd* $(TMP)/wavesurfer.vfs/lib
 	mkdir -p $(TMP)/wavesurfer.vfs/icons
 	cp icons/ws10h.gif $(TMP)/wavesurfer.vfs/icons 
