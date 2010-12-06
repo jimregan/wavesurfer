@@ -78,7 +78,7 @@ BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd
 VER_A	= 1
 VER_B 	= 8
 VER_C   = 8
-PATCHLEVEL = p1
+PATCHLEVEL = p2
 
 MAJORVERSION  = $(VER_A).$(VER_B)
 RELEASE       = $(VER_A).$(VER_B).$(VER_C)
@@ -91,7 +91,7 @@ WSURF         = wsurf$(PACKAGEVER)
 INSTDIR       = $(PREFIX)/lib/$(WSURF)
 STYLESHEET    = /wavesurfer/wsstyle.css
 
-COPYRIGHT     = Copyright © 2000-2010 Jonas Beskow and Kare Sjolander
+COPYRIGHT     = Copyright (c) 2000-2010 Jonas Beskow and Kare Sjolander
 
 ABOUTWAVESURFER = WaveSurfer $(RELEASE)$(PATCHLEVEL)-$(BUILD)\\\n$(COPYRIGHT)
 
@@ -181,6 +181,7 @@ macbundle: src-release
 	install_name_tool -id @executable_path/../Frameworks/libportaudio.dylib	\
 		$(TMP)/WaveSurfer.app/Contents/Frameworks/libportaudio.dylib
 	install_name_tool -change /usr/local/lib/libportaudio.2.dylib @executable_path/../Frameworks/libportaudio.2.dylib $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsnack.dylib
+	rm -rf $(LOCAL_BINARIES)/WaveSurfer-osx-i386.app
 	cp -r $(TMP)/WaveSurfer.app $(LOCAL_BINARIES)/WaveSurfer-osx-i386.app
 
 _wrap: src-release
