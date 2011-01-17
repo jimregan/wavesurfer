@@ -537,6 +537,7 @@ proc CreateToplevel {} {
   wm protocol .x$surf(count) WM_DELETE_WINDOW [list KillWindow .x$surf(count)]
   wm minsize .x$surf(count) 200 1
   wm resizable .x$surf(count) 1 0
+
   lappend ::Info(widgets,.x$surf(count)) $w
  } else {
   set w [wsurf [lindex $::Info(toplevels) 0].s[incr surf(count)] \
@@ -2650,7 +2651,8 @@ set Info(toplevels) .x
 wm withdraw .x
 wm title .x "WaveSurfer @RELEASE@"
 wm minsize .x 200 1
-wm resizable .x 1 0
+#wm resizable .x 1 0
+bind .x <Visibility> [list wm resizable .x 1 0]
 wm protocol .x WM_DELETE_WINDOW [list KillWindow .x]
 wm geometry .x +$Info(Prefs,wsLeft)+$Info(Prefs,wsTop)
 

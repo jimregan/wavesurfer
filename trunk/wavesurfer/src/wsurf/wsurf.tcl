@@ -256,9 +256,15 @@ proc wsurf::Initialize {args} {
 
     set Info(Prefs,outDev) [lindex [snack::audio outputDevices] 0]
     set Info(Prefs,inDev)  [lindex [snack::audio inputDevices] 0]
+
     if {[string match unix $::tcl_platform(platform)]} {
-	set Info(Prefs,PrintCmd) {lpr $FILE}
-	set Info(Prefs,PrintPVCmd) {ghostview $FILE}
+     if {[string match Darwin $::tcl_platform(os)]} {
+	 set Info(Prefs,t,PrintCmd) {lpr $FILE}
+	 set Info(Prefs,t,PrintPVCmd) {open -a Preview $FILE}
+      } else {
+	 set Info(Prefs,t,PrintCmd) {lpr $FILE}
+	 set Info(Prefs,t,PrintPVCmd) {ghostview $FILE}
+     }
     } elseif {[string match windows $::tcl_platform(platform)]} {
 	set Info(Prefs,PrintCmd) {"C:/Program Files/PrintFile/prfile32.exe" /q $FILE}
 	#  set Info(Prefs,PrintPVCmd) {"C:/Program Files/Ghostgum/gsview/gsview32" $FILE}
@@ -413,8 +419,7 @@ proc wsurf::SetDefaultPrefs:OBSOLETE {} {
  set Info(Prefs,t,outDev) [lindex [snack::audio outputDevices] 0]
  set Info(Prefs,t,inDev)  [lindex [snack::audio inputDevices] 0]
  if {[string match unix $::tcl_platform(platform)]} {
-  set Info(Prefs,t,PrintCmd) {lpr $FILE}
-  set Info(Prefs,t,PrintPVCmd) {ghostview $FILE}
+
  } elseif {[string match windows $::tcl_platform(platform)]} {
   set Info(Prefs,t,PrintCmd) {"C:/Program Files/PrintFile/prfile32.exe" /q $FILE}
   set Info(Prefs,t,PrintPVCmd) {"C:/Program Files/Ghostgum/gsview/gsview32" $FILE}
@@ -1355,8 +1360,6 @@ proc wsurf::create {w args} {
  MakeCurrent $w
 
 
-    pack [ttk::separator $wid(workspace).hsep -orient horiz] -side top -expand 0 -fill x
-
  # create wavebar
 
  set wid(wavebar) $wid(workspace).wavebar
@@ -1374,6 +1377,9 @@ proc wsurf::create {w args} {
 
  resizer::addResizer $wid(wavebar) -type divider -height 4 \
    -minheight 10 -maxheight 300
+
+
+    pack [ttk::separator $wid(workspace).hsep -orient horiz] -side top -before $wid(wavebar) -expand 0 -fill x
 
  bind $wid(wavebar).c0 <<PopupEvent>> \
 	 [namespace code [list popupMenu $w %X %Y %x %y $wid(wavebar)]]
@@ -3979,30 +3985,32 @@ proc wsurf::needSave {w} {
 
 proc wsurf::closeWidget {w} {
 
-    set qst [::util::mc "Do you want to save the changes made to"]
-    append qst " " \"[$w cget -title]\" "?"
-    set reply [tk_messageBox -message $qst -type yesnocancel -icon question]
-    switch $reply {
-	yes {
-	    set filename [$w getInfo fileName]
-	    if {$filename!=""} {
-		if {[$w saveFile $filename]==""} {
-		    # the save operation was cancelled, don't close the widget
-		    return 0
-		}
-	    } else {
-		if {[$w saveAs]==""} {
-		    # the save operation was cancelled, don't close the widget
-		    return 0
+    if [$w needSave] {
+	set qst [::util::mc "Do you want to save the changes made to"]
+	append qst " " \"[$w cget -title]\" "?"
+	set reply [tk_messageBox -message $qst -type yesnocancel -icon question]
+	switch $reply {
+	    yes {
+		set filename [$w getInfo fileName]
+		if {$filename!=""} {
+		    if {[$w saveFile $filename]==""} {
+			# the save operation was cancelled, don't close the widget
+			return 0
+		    }
+		} else {
+		    if {[$w saveAs]==""} {
+			# the save operation was cancelled, don't close the widget
+			return 0
+		    }
 		}
 	    }
-	}
-	no {
-	    # do nothing, really.
-	}
-	cancel {
-	    # user changed its mind, don't close the widget
-	    return 0
+	    no {
+		# do nothing, really.
+	    }
+	    cancel {
+		# user changed its mind, don't close the widget
+		return 0
+	    }
 	}
     }
     destroy $w

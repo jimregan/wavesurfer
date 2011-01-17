@@ -2784,12 +2784,24 @@ proc trans::changed {w pane} {
 
 
 proc trans::SplitSoundFile {w pane} {
- upvar [namespace current]::${pane}::var v
- set s [$w cget -sound]
+    upvar [namespace current]::${pane}::var v
+    set s [$w cget -sound]
+    
+    set start 0
 
- foreach ind $v(map) {
-  set start [expr {int([GetStartByIndex $w $pane $ind] * [$s cget -rate])}]
-  set end   [expr {int($v(t1,$ind,end) * [$s cget -rate])}]
-  $s write $v(t1,$ind,label).wav -start $start -end $end
- }
+    set basefn [$w getInfo fileName]
+    if {$basefn!=""} {
+	set dir $basefn.split
+	file mkdir $dir
+    } else {
+	set dir $::env(HOME)
+    } 
+
+    set ii 0
+    foreach ind $v(map) {
+	set end   [expr {int($v(t1,$ind,end) * [$s cget -rate])}]
+	$s write $dir/[util::zpad $ii 6]$v(t1,$ind,label).wav -start $start -end $end
+	set start $end
+	incr ii
+    }
 }
