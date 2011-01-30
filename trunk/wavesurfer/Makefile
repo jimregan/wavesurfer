@@ -78,13 +78,13 @@ BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd
 VER_A	= 1
 VER_B 	= 8
 VER_C   = 8
-PATCHLEVEL = p2
+PATCHLEVEL = p3
 
 MAJORVERSION  = $(VER_A).$(VER_B)
 RELEASE       = $(VER_A).$(VER_B).$(VER_C)
 WINRELEASE    = $(VER_A)$(VER_B)$(VER_C)
 MANVERSION    = $(VER_A)$(VER_B)
-RELEASETAG    = release_$(VER_A)_$(VER_B)_$(VER_C)
+RELEASETAG    = release_$(VER_A)_$(VER_B)_$(VER_C)_$(PATCHLEVEL)
 
 SNACKMAJORV   = 2.2
 SNACKARCH     =
@@ -92,7 +92,7 @@ WSURF         = wsurf$(PACKAGEVER)
 INSTDIR       = $(PREFIX)/lib/$(WSURF)
 STYLESHEET    = /wavesurfer/wsstyle.css
 
-COPYRIGHT     = Copyright (c) 2000-2010 Jonas Beskow and Kare Sjolander
+COPYRIGHT     = Copyright (c) 2000-2011 Jonas Beskow and Kare Sjolander
 
 ABOUTWAVESURFER = WaveSurfer $(RELEASE)$(PATCHLEVEL)-$(BUILD)\\\n$(COPYRIGHT)
 
@@ -102,7 +102,7 @@ upload:
 	rm -rf $(TMP)/$(RELEASE)$(PATCHLEVEL)
 	mkdir -p $(TMP)/$(RELEASE)$(PATCHLEVEL)
 	cp  release/$(RELEASE).txt $(TMP)/$(RELEASE)$(PATCHLEVEL)/README.txt
-	cp  release/wavesurfer-$(RELEASE)*.* $(TMP)/$(RELEASE)$(PATCHLEVEL)
+	cp  release/wavesurfer-$(RELEASE)$(PATCHLEVEL)*.* $(TMP)/$(RELEASE)$(PATCHLEVEL)
 	scp -r $(TMP)/$(RELEASE)$(PATCHLEVEL) $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/
 
 
@@ -114,46 +114,46 @@ src-release: pkgIndex
 	sed -e s/@ABOUTWAVESURFER@/"$(ABOUTWAVESURFER)"/g |\
 	sed -e s/@MAJORVERSION@/$(MAJORVERSION)/g |\
 	sed -e s/@SNACKMAJORV@/$(SNACKMAJORV)/g |\
-	sed -e s/@RELEASE@/$(RELEASE)/g |\
+	sed -e s/@RELEASE@/$(RELEASE)$(PATCHLEVEL)/g |\
 	sed -e s/@COPYRIGHT@/"$(COPYRIGHT)"/g \
 	> $(TMP)/ws-src-dist.shar
 
-	rm -rf $(TMP)/wavesurfer-$(RELEASE)
-	mkdir $(TMP)/wavesurfer-$(RELEASE)
-	cd $(TMP)/wavesurfer-$(RELEASE); sh ../ws-src-dist.shar
+	rm -rf $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
+	mkdir $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
+	cd $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL); sh ../ws-src-dist.shar
 
-	mkdir $(TMP)/wavesurfer-$(RELEASE)/icons; cp -r $(ICONS) $(TMP)/wavesurfer-$(RELEASE)/icons
+	mkdir $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/icons; cp -r $(ICONS) $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/icons
 
-	mkdir $(TMP)//wavesurfer-$(RELEASE)/doc
+	mkdir $(TMP)//wavesurfer-$(RELEASE)$(PATCHLEVEL)/doc
 	for podfile in $(PODFILES); do \
 		base=`basename $${podfile} .pod`; \
-		echo $${podfile},$(TMP)/wavesurfer-$(RELEASE)/doc/$${base}.html;\
-		pod2html $${podfile} > $(TMP)/wavesurfer-$(RELEASE)/doc/$${base}.html;\
+		echo $${podfile},$(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/doc/$${base}.html;\
+		pod2html $${podfile} > $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/doc/$${base}.html;\
 	done
 
-	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)-src.tgz wavesurfer-$(RELEASE)
-	cp $(TMP)/wavesurfer-$(RELEASE)/doc/*.html $(ROOT)/release/
+	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-src.tgz wavesurfer-$(RELEASE)$(PATCHLEVEL)
+	cp $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/doc/*.html $(ROOT)/release/
 
 linux-release:
 	$(MAKE) _wrap TARGET=linux SNACKMAJORV=2.2 SNACKARCH=-alsa
 	chmod a+x $(TMP)/wavesurfer
 
-	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)-linux-i386.tgz wavesurfer
+	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-linux-i386.tgz wavesurfer
 	cp $(TMP)/wavesurfer $(LOCAL_BINARIES)/wavesurfer-linux-i386 
 
 win-release:
 	$(MAKE) _wrap TARGET=win
 
-	cd $(TMP); mv wavesurfer wavesurfer.exe; zip $(ROOT)/release/wavesurfer-$(RELEASE)-win-i386.zip wavesurfer.exe
+	cd $(TMP); mv wavesurfer wavesurfer.exe; zip $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-win-i386.zip wavesurfer.exe
 	cp $(TMP)/wavesurfer.exe $(LOCAL_BINARIES)/wavesurfer-win-i386.exe
 
 osx-release: macbundle
-	rm -rf $(TMP)/wavesurfer-$(RELEASE)
-	mkdir $(TMP)/wavesurfer-$(RELEASE)
-	cd $(TMP)/wavesurfer-$(RELEASE); tar xfz $(ROOT)/build/osx-app-kit/mac-alias-to-Applications.tgz
-	cp -pr $(TMP)/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)
-	rm -f release/wavesurfer-$(RELEASE)-osx-i386.dmg
-	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE) release/wavesurfer-$(RELEASE)-osx-i386.dmg
+	rm -rf $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
+	mkdir $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
+	cd $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL); tar xfz $(ROOT)/build/osx-app-kit/mac-alias-to-Applications.tgz
+	cp -pr $(TMP)/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
+	rm -f release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-osx-i386.dmg
+	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL) release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-osx-i386.dmg
 
 macbundle: src-release
 	rm -rf $(TMP)/WaveSurfer.app
@@ -168,12 +168,12 @@ macbundle: src-release
 	cd $(TMP)/WaveSurfer.app/Contents/Resources; ln -sf icons/ws10.icns Wish.icns
 	cat build/osx-app-kit/Info.plist.in | \
 		sed s/@BUNDLENAME@/WaveSurfer/g |\
-		sed s/@BUNDLEVERSION@/$(RELEASE)/g | \
+		sed s/@BUNDLEVERSION@/$(RELEASE)$(PATCHLEVEL)/g | \
 		sed s/@BUNDLEGETINFOSTRING@/"$(COPYRIGHT)"/g |\
 		sed s%@BUNDLETYPEEXTENSIONS@%$(BUNDLEEXTENSIONS)%g |\
 		sed s/@BUNDLEIDENTIFIER@/se.kth.speech.wavesurfer/g \
 		> $(TMP)/WaveSurfer.app/Contents/Info.plist
-	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* $(TMP)/WaveSurfer.app/Contents/Resources/Scripts/
+	cp -r $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/* $(TMP)/WaveSurfer.app/Contents/Resources/Scripts/
 	cp build/snack-fix/*.tcl build/binpkg/osx/snack$(SNACKMAJORV)
 	cp -r build/binpkg/osx/snack$(SNACKMAJORV) $(TMP)/WaveSurfer.app/Contents/lib
 	rm $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsound.dylib
@@ -183,15 +183,16 @@ macbundle: src-release
 	install_name_tool -id @executable_path/../Frameworks/libportaudio.dylib	\
 		$(TMP)/WaveSurfer.app/Contents/Frameworks/libportaudio.dylib
 	install_name_tool -change /usr/local/lib/libportaudio.2.dylib @executable_path/../Frameworks/libportaudio.2.dylib $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsnack.dylib
+	touch $(TMP)/WaveSurfer.app
 	rm -rf $(LOCAL_BINARIES)/WaveSurfer-osx-i386.app
 	cp -r $(TMP)/WaveSurfer.app $(LOCAL_BINARIES)/WaveSurfer-osx-i386.app
 
 _wrap: src-release
-	cd $(TMP); tar xvfz  $(ROOT)/release/wavesurfer-$(RELEASE)-src.tgz
+	cd $(TMP); tar xvfz  $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-src.tgz
 	rm -rf $(TMP)/wavesurfer.vfs
 	mkdir -p $(TMP)/wavesurfer.vfs/lib
-	cp -r $(TMP)/wavesurfer-$(RELEASE)/src/* $(TMP)/wavesurfer.vfs/lib
-	rm $(TMP)/wavesurfer-$(RELEASE)/src/plugins/example*.plug
+	cp -r $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/* $(TMP)/wavesurfer.vfs/lib
+	rm $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/plugins/example*.plug
 	cp build/kit/main.tcl $(TMP)/wavesurfer.vfs
 	cp -f $(TCLKIT) $(TMP)/tclkit
 	cp build/snack-fix/*.tcl build/binpkg/$(TARGET)/snack$(SNACKMAJORV)$(SNACKARCH)

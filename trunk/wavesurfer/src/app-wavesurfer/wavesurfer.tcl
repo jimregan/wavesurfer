@@ -2651,8 +2651,11 @@ set Info(toplevels) .x
 wm withdraw .x
 wm title .x "WaveSurfer @RELEASE@"
 wm minsize .x 200 1
-#wm resizable .x 1 0
-bind .x <Visibility> [list wm resizable .x 1 0]
+if {$::tcl_platform(os) == "Darwin"} {
+    bind .x <Visibility> [list wm resizable .x 1 0]
+} else {
+    wm resizable .x 1 0
+}
 wm protocol .x WM_DELETE_WINDOW [list KillWindow .x]
 wm geometry .x +$Info(Prefs,wsLeft)+$Info(Prefs,wsTop)
 
