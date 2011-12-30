@@ -616,6 +616,12 @@ proc analysis::redraw {w pane} {
     $yc create text 0 [$pane cget -height] -text $v(min) \
 	-font [$pane cget -yaxisfont] -anchor sw -tags [list axis min] \
 	-fill [$pane cget -yaxiscolor]
+
+      if $v(limit)>1 {
+	  $yc itemconfigure max -text $v(limit)
+	  $yc itemconfigure min -text [expr -1*$v(limit)]
+      }
+ 
   }
   if {$v(drawSpectrogram)} {
     set sh [expr {int([$pane getCanvasY 0]-[$pane getCanvasY $v(topfr2)])}]
@@ -762,6 +768,7 @@ proc analysis::cursorMoved {w pane time value} {
   set end [expr {$start+int([$s cget -rate]/[$w cget -pixelspersecond])}]
   if {$start >= [$s length]} return
   if {$end >= [$s length]} return
+  if {$start < 0} { set start 0 }
   set maxamp [$s max -start $start -end $end -channel $v(channel)]
   set minamp [$s min -start $start -end $end -channel $v(channel)]
   $w messageProc [format "Waveform - %s \[%s %s\]" $timestr $maxamp $minamp] \
@@ -1655,6 +1662,12 @@ proc analysis::waZoom {w pane args} {
  set c [$pane canvas]
  set $v(t,limit) [expr int($v(t,limit))]
  $c itemconfigure waveform -limit $v(t,limit)
+
+    set yc [$pane yaxis]
+    $yc itemconfigure max -text $v(t,limit)
+    $yc itemconfigure min -text [expr -1*$v(t,limit)]
+    
+    
  if {[winfo exists .blowup]} {
    .blowup.c itemconfigure waveform -limit $v(t,limit)
  }

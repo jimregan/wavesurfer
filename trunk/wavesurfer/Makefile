@@ -78,7 +78,7 @@ BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd
 VER_A	= 1
 VER_B 	= 8
 VER_C   = 8
-PATCHLEVEL = p3
+PATCHLEVEL = p4
 
 MAJORVERSION  = $(VER_A).$(VER_B)
 RELEASE       = $(VER_A).$(VER_B).$(VER_C)
@@ -192,6 +192,7 @@ _wrap: src-release
 	rm -rf $(TMP)/wavesurfer.vfs
 	mkdir -p $(TMP)/wavesurfer.vfs/lib
 	cp -r $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/* $(TMP)/wavesurfer.vfs/lib
+	cp -r tclxml3.3 $(TMP)/wavesurfer.vfs/lib
 	rm $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/plugins/example*.plug
 	cp build/kit/main.tcl $(TMP)/wavesurfer.vfs
 	cp -f $(TCLKIT) $(TMP)/tclkit
