@@ -1754,6 +1754,7 @@ proc wsurf::popupMenu {w X Y x y {pane ""}} {
  upvar [namespace current]::${w}::widgets wid
  upvar [namespace current]::${w}::data d
 
+    focus -force $w
  MakeCurrent $w
  set m $w.popup
  if {[winfo exists $m]} {destroy $m}
@@ -1800,12 +1801,12 @@ _callback $w addMenuEntriesProc $cp $m create $x $y
  }
 
  # post the menu
+    # we catch the error that occurs when the user right-clicks an un-focused window
+    # (wrapped-osx)
 
- if {[string match macintosh $::tcl_platform(platform)]} {
-  tk_popup $w.popup $X $Y 0
- } else {
-  tk_popup $w.popup $X $Y
- }
+    catch {
+	tk_popup $w.popup $X $Y
+    }
 }
 
 proc wsurf::_applyConfiguration {w} {

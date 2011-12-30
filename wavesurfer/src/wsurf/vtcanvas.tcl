@@ -587,6 +587,11 @@ proc vtcanvas::selectionEvent {w event item x y t} {
 }
 
 proc vtcanvas::motionEvent {w x y} {
+ upvar [namespace current]::${w}::data d
+
+    set d(curX) $x
+    set d(curY) $y
+
  set c [$w canvas]
  set cx [$c canvasx $x]
  set cy [$c canvasy $y]
@@ -638,6 +643,16 @@ proc vtcanvas::getCanvasY {w value} {
      $d(bottomMargin)+$canvLower + ($canvUpper-$canvLower)*\
 	 (double($value)-$d(minVal))/double($d(maxVal)-$d(minVal))
  }
+}
+
+proc vtcanvas::getCurX {w} {
+    upvar [namespace current]::${w}::data d
+    return $d(curX)
+}
+
+proc vtcanvas::getCurY {w} {
+    upvar [namespace current]::${w}::data d
+    return $d(curY)
 }
 
 proc vtcanvas::yaxis {w} {

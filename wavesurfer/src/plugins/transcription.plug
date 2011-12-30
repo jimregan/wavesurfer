@@ -650,9 +650,15 @@ proc trans::handleAnyKey {w pane W x y A} {
     upvar [namespace current]::${pane}::var v
     if {[string length $A] == 0} return
     if {[string is print $A] == 0} return
+
+    # retrieve x & y from vtcanvas since x,y event fields for keypress
+    # (on tclkit 8.5.9 for OSX) are garbage...
+    set x [$pane getCurX]
+    set y [$pane getCurY]
+
     set c [$pane canvas]
+#    puts focus=[$W focus],hidden=$v(hidden)
     if {[$W focus] != $v(hidden)} {
-	
 	set tag [$W focus]
 	catch {$W dchars $tag sel.first sel.last}
 	$W insert $tag insert $A
@@ -2012,6 +2018,8 @@ proc trans::cursorMoved {w pane time value} {
  upvar [namespace current]::${pane}::var v
 
  if {$v(drawTranscription)} {
+     set v(currentX) [$pane getCanvasX $time]
+     set v(currentY) [$pane getCanvasY $value]
   $w messageProc \
     [format "%s: %s | $v(labelMenuEvent): Label menu" $v(fileName) [$w formatTime $time]]
  }
@@ -2773,7 +2781,7 @@ proc trans::changed {w pane} {
  upvar [namespace current]::${pane}::var v
  set v(changed) 1
  foreach key [array names Info Callback,*,transChangedProc] {
-  puts "invoking callback $key"
+#  puts "invoking callback $key"
   $Info($key) $w $pane
  }
 }

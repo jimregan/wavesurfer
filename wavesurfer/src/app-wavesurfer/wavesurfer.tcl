@@ -874,7 +874,7 @@ proc New {} {
 	set makedefault 0
 	set conf [::wsurf::ChooseConfigurationDialog makedefault]
 	if {$conf == ""} {
-	    destroy $w
+		# deleteWidget
 	    return
 	}
 	puts makedefault=$makedefault
