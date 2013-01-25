@@ -2,13 +2,25 @@ TCLSH          = tclsh8.4
 PREFIX	       = /usr/local
 TMP            = /tmp/__wavesurfer_build
 ROOT           = $(shell pwd)
-RUNTIME_osx    = $(ROOT)/build/kit/tclkit-darwin-univ-aqua
 RUNTIME_win    = $(ROOT)/build/kit/tclkit-8.5.8-win32.upx.exe
 RUNTIME_linux  = $(ROOT)/build/kit/tclkit-linux-x86
-WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon.app.tgz
+RUNTIME_linux64  = $(ROOT)/build/kit/tclkit-8.5b1-linux-x86_64
+
+# for 32-bit OSX builds, uncomment these
+
+#OSXBIN	       = osx-i386
+#WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon.app.tgz
+#WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.6b2.app.tgz
+
+# for 64-bit OSX builds, uncomment these
+
+OSXBIN	       = osx-x86_64
+WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon-x86_64.app.tgz
+
 LOCAL_BINARIES = $(HOME)/Dropbox/wavesurfer
-# NOTE: GNU sharutils is needed - OSX default shar won't work!
-SHAR = shar
+
+# NOTE: On mountain lion built-in sed gives an error, so let's use own-built GNU sed instead:
+SED = /usr/local/bin/sed
 
 ifeq ($(shell uname),Darwin)
 	TCLKIT = build/kit/tclkit-darwin-x86-aqua
@@ -27,7 +39,8 @@ PKGFILES = \
 	src/wsurf/cmdline.tcl \
 	src/wsurf/tkcon.tcl \
 	src/wsurf/pkgIndex.tcl \
-	src/wsurf/htmllib.tcl
+	src/wsurf/htmllib.tcl \
+	src/wsurf/wibble.tcl
 
 APPWSFILES = \
 	src/app-wavesurfer/pkgIndex.tcl \
@@ -78,7 +91,7 @@ BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd
 VER_A	= 1
 VER_B 	= 8
 VER_C   = 8
-PATCHLEVEL = p4
+PATCHLEVEL = p5
 
 MAJORVERSION  = $(VER_A).$(VER_B)
 RELEASE       = $(VER_A).$(VER_B).$(VER_C)
@@ -92,7 +105,7 @@ WSURF         = wsurf$(PACKAGEVER)
 INSTDIR       = $(PREFIX)/lib/$(WSURF)
 STYLESHEET    = /wavesurfer/wsstyle.css
 
-COPYRIGHT     = Copyright (c) 2000-2011 Jonas Beskow and Kare Sjolander
+COPYRIGHT     = Copyright (c) 2000-2013 Jonas Beskow and Kare Sjolander
 
 ABOUTWAVESURFER = WaveSurfer $(RELEASE)$(PATCHLEVEL)-$(BUILD)\\\n$(COPYRIGHT)
 
@@ -109,18 +122,17 @@ upload:
 src-release: pkgIndex
 	rm -rf $(TMP)
 	mkdir -p $(TMP)
-	$(SHAR) --text-files --no-character-count --no-md5-digest $(PKGFILES) $(APPWSFILES) $(PLUGINFILES) $(CONFIGURATIONS) $(DEMOS) $(MSGS) $(TOOLS) $(READMEFILES) > $(TMP)/ws-src-dist.shar.in
-	cat $(TMP)/ws-src-dist.shar.in |\
-	sed -e s/@ABOUTWAVESURFER@/"$(ABOUTWAVESURFER)"/g |\
-	sed -e s/@MAJORVERSION@/$(MAJORVERSION)/g |\
-	sed -e s/@SNACKMAJORV@/$(SNACKMAJORV)/g |\
-	sed -e s/@RELEASE@/$(RELEASE)$(PATCHLEVEL)/g |\
-	sed -e s/@COPYRIGHT@/"$(COPYRIGHT)"/g \
-	> $(TMP)/ws-src-dist.shar
-
-	rm -rf $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
 	mkdir $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
-	cd $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL); sh ../ws-src-dist.shar
+
+	tar cvfz $(TMP)/1.tgz $(PKGFILES) $(APPWSFILES) $(PLUGINFILES) $(CONFIGURATIONS) $(DEMOS) $(MSGS) $(TOOLS) $(READMEFILES)
+	cd $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL);tar xvfz ../1.tgz
+	echo s/@ABOUTWAVESURFER@/"$(ABOUTWAVESURFER)"/g > $(TMP)/replacements.sed
+	echo s/@MAJORVERSION@/$(MAJORVERSION)/g >> $(TMP)/replacements.sed
+	echo s/@SNACKMAJORV@/$(SNACKMAJORV)/g >> $(TMP)/replacements.sed
+	echo s/@RELEASE@/$(RELEASE)$(PATCHLEVEL)/g >> $(TMP)/replacements.sed
+	echo s/@COPYRIGHT@/"$(COPYRIGHT)"/g >> $(TMP)/replacements.sed
+
+	find $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL) -type f -exec $(SED) -i -f $(TMP)/replacements.sed {} \;
 
 	mkdir $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/icons; cp -r $(ICONS) $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/icons
 
@@ -134,12 +146,20 @@ src-release: pkgIndex
 	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-src.tgz wavesurfer-$(RELEASE)$(PATCHLEVEL)
 	cp $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/doc/*.html $(ROOT)/release/
 
+
 linux-release:
 	$(MAKE) _wrap TARGET=linux SNACKMAJORV=2.2 SNACKARCH=-alsa
 	chmod a+x $(TMP)/wavesurfer
 
 	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-linux-i386.tgz wavesurfer
 	cp $(TMP)/wavesurfer $(LOCAL_BINARIES)/wavesurfer-linux-i386 
+
+linux64-release:
+	$(MAKE) _wrap TARGET=linux64 SNACKMAJORV=2.2 SNACKARCH=-alsa
+	chmod a+x $(TMP)/wavesurfer
+
+	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-linux-i386.tgz wavesurfer
+	cp $(TMP)/wavesurfer $(LOCAL_BINARIES)/wavesurfer-linux-64
 
 win-release:
 	$(MAKE) _wrap TARGET=win
@@ -152,8 +172,8 @@ osx-release: macbundle
 	mkdir $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
 	cd $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL); tar xfz $(ROOT)/build/osx-app-kit/mac-alias-to-Applications.tgz
 	cp -pr $(TMP)/WaveSurfer.app $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
-	rm -f release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-osx-i386.dmg
-	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL) release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-osx-i386.dmg
+	rm -f release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-$(OSXBIN).dmg
+	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL) release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-$(OSXBIN).dmg
 
 macbundle: src-release
 	rm -rf $(TMP)/WaveSurfer.app
@@ -174,18 +194,20 @@ macbundle: src-release
 		sed s/@BUNDLEIDENTIFIER@/se.kth.speech.wavesurfer/g \
 		> $(TMP)/WaveSurfer.app/Contents/Info.plist
 	cp -r $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/* $(TMP)/WaveSurfer.app/Contents/Resources/Scripts/
-	cp build/snack-fix/*.tcl build/binpkg/osx/snack$(SNACKMAJORV)
-	cp -r build/binpkg/osx/snack$(SNACKMAJORV) $(TMP)/WaveSurfer.app/Contents/lib
+	cp build/snack-fix/*.tcl build/binpkg/$(OSXBIN)/snack$(SNACKMAJORV)
+	cp -r build/binpkg/$(OSXBIN)/snack$(SNACKMAJORV) $(TMP)/WaveSurfer.app/Contents/lib
 	rm $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsound.dylib
 	cp -a build/binpkg/osx/libportaudio*.dylib $(TMP)/WaveSurfer.app/Contents/Frameworks
-	cp -r build/binpkg/osx/tkdnd2.2 $(TMP)/WaveSurfer.app/Contents/lib
+	cd $(TMP)/WaveSurfer.app/Contents/Frameworks; ln -s libportaudio.2.0.0.dylib libportaudio.2.dylib
+	cd $(TMP)/WaveSurfer.app/Contents/Frameworks; ln -s libportaudio.2.0.0.dylib libportaudio.dylib
+	cp -r build/binpkg/$(OSXBIN)/tkdnd2.2 $(TMP)/WaveSurfer.app/Contents/lib
 
 	install_name_tool -id @executable_path/../Frameworks/libportaudio.dylib	\
 		$(TMP)/WaveSurfer.app/Contents/Frameworks/libportaudio.dylib
 	install_name_tool -change /usr/local/lib/libportaudio.2.dylib @executable_path/../Frameworks/libportaudio.2.dylib $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsnack.dylib
 	touch $(TMP)/WaveSurfer.app
-	rm -rf $(LOCAL_BINARIES)/WaveSurfer-osx-i386.app
-	cp -r $(TMP)/WaveSurfer.app $(LOCAL_BINARIES)/WaveSurfer-osx-i386.app
+	rm -rf $(LOCAL_BINARIES)/WaveSurfer-$(OSXBIN).app
+	cp -r $(TMP)/WaveSurfer.app $(LOCAL_BINARIES)/WaveSurfer-$(OSXBIN).app
 
 _wrap: src-release
 	cd $(TMP); tar xvfz  $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-src.tgz
@@ -198,7 +220,7 @@ _wrap: src-release
 	cp -f $(TCLKIT) $(TMP)/tclkit
 	cp build/snack-fix/*.tcl build/binpkg/$(TARGET)/snack$(SNACKMAJORV)$(SNACKARCH)
 	cp -r build/binpkg/$(TARGET)/snack$(SNACKMAJORV)$(SNACKARCH) $(TMP)/wavesurfer.vfs/lib/snack$(SNACKMAJORV)
-	cp -r build/binpkg/$(TARGET)/tkdnd* $(TMP)/wavesurfer.vfs/lib
+	-cp -r build/binpkg/$(TARGET)/tkdnd* $(TMP)/wavesurfer.vfs/lib
 	mkdir -p $(TMP)/wavesurfer.vfs/icons
 	cp icons/ws10h.gif $(TMP)/wavesurfer.vfs/icons 
 	cp icons/ws10-tkformat.ico $(TMP)/wavesurfer.vfs/tclkit.ico

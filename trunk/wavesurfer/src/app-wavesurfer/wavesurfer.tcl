@@ -391,8 +391,9 @@ proc ChooseEntry {index} {
   } else {
    OpenFile $::filemap($name)
   }
+
+  if 0 {
   # 070910, for playing back float-files
-  if 1 {
    set ::convert(encoding) Lin16 
    set ::convert(rate)     44100
    set ::convert(channels) 1
@@ -401,6 +402,7 @@ proc ChooseEntry {index} {
    $w configure -selection [list 0.0 $length]
    DoNormalize $w
   }
+
   if {$::Info(chooser,autoplay)} {
    [wsurf::GetCurrent] play
   }

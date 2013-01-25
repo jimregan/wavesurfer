@@ -143,6 +143,7 @@ proc wsurf::Initialize {args} {
     set Info(Img,record) [image create photo -data R0lGODlhFQAVAKEAANnZ2f8AAP///////yH+FUNyZWF0ZWQgd2l0aCBUaGUgR0lNUAAh+QQBCgAAACwAAAAAFQAVAAACJoSPqcvtDyMINMhZM8zcuq41ICeOVWl6S0p95pNu4BVe9o3n+lIAADs=]
 
     set Info(ValidPluginOptions) {
+	-version                version
 	-description                description
 	-url                        URL
 	-dependencies               dependencies
@@ -1024,10 +1025,11 @@ proc wsurf::ZoomCallback {canvas amt x y} {
     upvar [namespace current]::${w}::widgets wid
     upvar [namespace current]::${w}::data d
     set pane [lindex [_getPanes $w] 0]
-    set c [$pane canvas]
-    set relx [expr {1.0*$x/[winfo width $c]}]
-    
-    $wid(wavebar) zoom [expr 1.0*$amt/$Info(scrollwheelstep)] $relx
+    if {$pane!=""} {
+	set c [$pane canvas]
+	set relx [expr {1.0*$x/[winfo width $c]}]
+        $wid(wavebar) zoom [expr 1.0*$amt/$Info(scrollwheelstep)] $relx
+    }
 }
 
 
@@ -1921,7 +1923,7 @@ proc wsurf::configure {w args} {
     set d(externalSoundObj) 1
     $wid(wavebar) configure -sound $val
     $val configure -changecommand [namespace code [list _soundChanged $w]]
-    _soundChanged $w New
+       _soundChanged $w New
    }
    default {
     error "unknown option \"$opt\""
