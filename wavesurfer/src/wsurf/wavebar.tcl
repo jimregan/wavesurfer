@@ -174,7 +174,7 @@ proc wavebar::_msgHelp {w msg} {
  upvar [namespace current]::${w}::data d
 
  if {[info exists d(messageproc)]} {
-  $d(messageproc) $msg help
+     eval $d(messageproc) [list $msg] help
  }
 }
 
@@ -184,7 +184,7 @@ proc wavebar::_msgTime {w} {
  if {[info exists d(messageproc)]} {
   set msg [format "WaveBar - \[%s %s\] %.2fmm/s" [eval $d(formattimecommand) $d(time1)] [eval $d(formattimecommand) $d(time2)] \
 	       [expr $d(pixelspersecond) / [winfo fpixels $w 1m]]]
-  $d(messageproc) $msg
+     eval $d(messageproc) [list $msg]
  }
 }
 
