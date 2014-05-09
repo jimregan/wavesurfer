@@ -197,7 +197,7 @@ macbundle: src-release
 	cp build/snack-fix/*.tcl build/binpkg/$(OSXBIN)/snack$(SNACKMAJORV)
 	cp -r build/binpkg/$(OSXBIN)/snack$(SNACKMAJORV) $(TMP)/WaveSurfer.app/Contents/lib
 	rm $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsound.dylib
-	cp -a build/binpkg/osx/libportaudio*.dylib $(TMP)/WaveSurfer.app/Contents/Frameworks
+	cp -a build/binpkg/osx/libportaudio.2.0.0.dylib $(TMP)/WaveSurfer.app/Contents/Frameworks
 	cd $(TMP)/WaveSurfer.app/Contents/Frameworks; ln -s libportaudio.2.0.0.dylib libportaudio.2.dylib
 	cd $(TMP)/WaveSurfer.app/Contents/Frameworks; ln -s libportaudio.2.0.0.dylib libportaudio.dylib
 	cp -r build/binpkg/$(OSXBIN)/tkdnd2.2 $(TMP)/WaveSurfer.app/Contents/lib

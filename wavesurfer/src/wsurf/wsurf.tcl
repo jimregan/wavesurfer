@@ -260,11 +260,11 @@ proc wsurf::Initialize {args} {
 
     if {[string match unix $::tcl_platform(platform)]} {
      if {[string match Darwin $::tcl_platform(os)]} {
-	 set Info(Prefs,t,PrintCmd) {lpr $FILE}
-	 set Info(Prefs,t,PrintPVCmd) {open -a Preview $FILE}
+	 set Info(Prefs,PrintCmd) {lpr $FILE}
+	 set Info(Prefs,PrintPVCmd) {open -a Preview $FILE}
       } else {
-	 set Info(Prefs,t,PrintCmd) {lpr $FILE}
-	 set Info(Prefs,t,PrintPVCmd) {ghostview $FILE}
+	 set Info(Prefs,PrintCmd) {lpr $FILE}
+	 set Info(Prefs,PrintPVCmd) {ghostview $FILE}
      }
     } elseif {[string match windows $::tcl_platform(platform)]} {
 	set Info(Prefs,PrintCmd) {"C:/Program Files/PrintFile/prfile32.exe" /q $FILE}
