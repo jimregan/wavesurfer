@@ -94,7 +94,7 @@ BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd
 VER_A	= 1
 VER_B 	= 8
 VER_C   = 8
-PATCHLEVEL = p6
+PATCHLEVEL = p5
 
 MAJORVERSION  = $(VER_A).$(VER_B)
 RELEASE       = $(VER_A).$(VER_B).$(VER_C)
