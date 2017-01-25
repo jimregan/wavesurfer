@@ -3,30 +3,34 @@ PREFIX	       = /usr/local
 TMP            = /tmp/__wavesurfer_build
 ROOT           = $(shell pwd)
 RUNTIME_win    = $(ROOT)/build/kit/tclkit-8.5.8-win32.upx.exe
-RUNTIME_linux  = $(ROOT)/build/kit/tclkit-linux-x86
-RUNTIME_linux64  = $(ROOT)/build/kit/tclkit-8.5b1-linux-x86_64
+RUNTIME_linux  = $(ROOT)/build/kit/tclkit-8.6.6-linux-i386-xcompile
+# RUNTIME_linux  = $(ROOT)/build/kit/tclkit-linux-x86
+RUNTIME_linux64  = $(ROOT)/build/kit/Linux64_kbsvq8.6-dyn
 
 # for 32-bit OSX builds, uncomment these
 
-#OSXBIN	       = osx-i386
+OSXBIN	       = osx-i386
+WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.6.6.app.tgz
 #WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon.app.tgz
 #WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.6b2.app.tgz
 
 # for 64-bit OSX builds, uncomment these
 
-OSXBIN	       = osx-x86_64
-WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon-x86_64.app.tgz
+#OSXBIN	       = osx-x86_64
+#WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon-x86_64.app.tgz
 
 LOCAL_BINARIES = $(HOME)/Dropbox/wavesurfer
 
-# NOTE: On mountain lion built-in sed gives an error, so let's use own-built GNU sed instead:
-SED = /usr/local/bin/sed
+# NOTE: On mountain lion built-in sed gives an error, 
+# so let's use own-built GNU sed instead (brew install gnu-sed)
+SED = gsed
 
 ifeq ($(shell uname),Darwin)
 	TCLKIT = build/kit/tclkit-darwin-x86-aqua
 endif
 ifeq ($(shell uname),Linux)
-	TCLKIT = build/kit/tclkit-linux-x86
+#	TCLKIT = build/kit/tclkit-linux-x86
+	TCLKIT = build/kit/tclkit-8.5b1linux-x86
 endif
 
 PKGFILES = \
@@ -39,8 +43,7 @@ PKGFILES = \
 	src/wsurf/cmdline.tcl \
 	src/wsurf/tkcon.tcl \
 	src/wsurf/pkgIndex.tcl \
-	src/wsurf/htmllib.tcl \
-	src/wsurf/wibble.tcl
+	src/wsurf/htmllib.tcl
 
 APPWSFILES = \
 	src/app-wavesurfer/pkgIndex.tcl \
@@ -91,7 +94,7 @@ BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd
 VER_A	= 1
 VER_B 	= 8
 VER_C   = 8
-PATCHLEVEL = p5
+PATCHLEVEL = p6
 
 MAJORVERSION  = $(VER_A).$(VER_B)
 RELEASE       = $(VER_A).$(VER_B).$(VER_C)
@@ -105,7 +108,7 @@ WSURF         = wsurf$(PACKAGEVER)
 INSTDIR       = $(PREFIX)/lib/$(WSURF)
 STYLESHEET    = /wavesurfer/wsstyle.css
 
-COPYRIGHT     = Copyright (c) 2000-2013 Jonas Beskow and Kare Sjolander
+COPYRIGHT     = Copyright (c) 2000-2017 Jonas Beskow and Kare Sjolander
 
 ABOUTWAVESURFER = WaveSurfer $(RELEASE)$(PATCHLEVEL)-$(BUILD)\\\n$(COPYRIGHT)
 
@@ -158,7 +161,7 @@ linux64-release:
 	$(MAKE) _wrap TARGET=linux64 SNACKMAJORV=2.2 SNACKARCH=-alsa
 	chmod a+x $(TMP)/wavesurfer
 
-	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-linux-i386.tgz wavesurfer
+	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-linux-x86_64.tgz wavesurfer
 	cp $(TMP)/wavesurfer $(LOCAL_BINARIES)/wavesurfer-linux-64
 
 win-release:
@@ -214,7 +217,7 @@ _wrap: src-release
 	rm -rf $(TMP)/wavesurfer.vfs
 	mkdir -p $(TMP)/wavesurfer.vfs/lib
 	cp -r $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/* $(TMP)/wavesurfer.vfs/lib
-	cp -r tclxml3.3 $(TMP)/wavesurfer.vfs/lib
+	# cp -r tclxml3.3 $(TMP)/wavesurfer.vfs/lib
 	rm $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/plugins/example*.plug
 	cp build/kit/main.tcl $(TMP)/wavesurfer.vfs
 	cp -f $(TCLKIT) $(TMP)/tclkit

@@ -1526,7 +1526,7 @@ proc wsurf::_callback {w proc args} {
    if {[info exists Info(Callback,$plug,$proc)]} {
     #<< "invoking callback: plugin=$plug\tproc=$proc"
     set cb $Info(Callback,$plug,$proc)
-    lappend result [eval [list $cb] [list $w] $args]
+    lappend result [eval $cb [list $w] $args]
    }
   }
  }
@@ -2386,7 +2386,7 @@ proc wsurf::_drawPropertyPages {w pane} {
     foreach page $pages pproc $procs {
 	set lowpage [string tolower $page]
 	$notebook add [ttk::frame $notebook.$lowpage] -text $page
-	$pproc $w $pane $notebook.$lowpage
+	eval $pproc [list $w $pane $notebook.$lowpage]
     }
     $notebook select $d($pane,lastPropertyPage)
 }

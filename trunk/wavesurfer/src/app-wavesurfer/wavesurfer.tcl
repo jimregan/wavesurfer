@@ -1,6 +1,6 @@
 #!/bin/sh
 # the next line restarts using wish \
-exec wish8.5 "$0" "$@"
+exec wish "$0" "$@"
 
 set RELEASE @RELEASE@
 set BUILD @BUILD@
@@ -2280,7 +2280,7 @@ proc PreferencesDialog {} {
  foreach page $pages proc $procs {
    set lowpage [string tolower $page]
    $notebook add [ttk::frame $notebook.$lowpage] -text $page
-   $proc $notebook.$lowpage
+   eval $proc [list $notebook.$lowpage]
  }
   $notebook select 2
 }

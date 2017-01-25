@@ -1,120 +1,34 @@
-WaveSurfer
 
-@COPYRIGHT@
+WaveSurfer 1.8.8 - October 2010
+-------------------------------
 
-This file only contains information on how to install and run WaveSurfer from
-the source distrubution.
-Please refer to the WaveSurfer web site, http://www.speech.kth.se/wavesurfer/,
-for more information on the package itself.
-Questions, feature requests and bug reports should be directed to the 
-WaveSurfer user forum at the same web site.
+changes since last version:
 
-
-Packages needed
--------------------------------------------------------------------
-In order to use this release of WaveSurfer you will need to have the following
-packages installed
-
-Tcl and Tk version 8.4 or later, download at http://tcl.activestate.com/
-
-Snack version @SNACKMAJORV@ or later, download at http://www.speech.kth.se/snack/
-
-If the Tile package (http://tktable.sourceforge.net/tile/) is available
-WaveSurfer will use it to provide an improved GUI, this package is contained
-in the WaveSurfer binaries and is also part of the ActiveState distributions and
-the Mac distribution.
-
-The binary versions of WaveSurfer currently use Tcl/Tk8.4.4 on Windows/Linux 
-and Tcl/Tk8.4.9 on the Mac.
++ drag-and-drop support! (osx and windows)
++ scroll wheel support re-added and improved (mysteriously missing in 1.8.7)
++ mac osx 10.5 crash (bug 3078589) fixed
++ mac osx yellow-spectrograms bug fixed (new snack binary)
++ re-added license info file (LICENSE.txt) (bug 3079342)
++ new startup option --show-console (useful for tracking startup problems in wrapped apps)
++ default configuration can now be set from within the choose-configuration dialogue
++ GUI tidying-up - more tile widgets, removed several hard-wired color specifications
++ modified snack::getOpenFile to allow for raw files on all platforms (fixing bug 3082068)
 
 
-Running WaveSurfer
--------------------------------------------------------------------
-Once you have installed both of the above and made sure they work, change
-directory to wavesurfer-@RELEASE@/ and type
 
-./wavesurfer.tcl
+patchlevel 2 (2010-12-06):
++ applied Mac OSX menu-patch (3087446)
++ fixed Windows 7 bug (3111969)
++ fixed osx transcription bug (3115693)
 
+patchlevel 3 (2011-01-30):
++ fixed bug 3136110 (close dialogue for empty sound)
++ fixed window resize-issue on OSX
 
-Problems
--------------------------------------------------------------------
-If you get a complaint about Tcl not finding the Snack package, you probably 
-did not install it in a place where Tcl can find it. See the Snack
-installation instructions on how to set the TCLLIBPATH environment variable.
+patchlevel 4 (2011-12-30):
++ fixed bugs 3297829 (waveform scaling),3181986 (config dialog error)
++ applied patch 3466895 (selection edit error)
 
-Unix only: WaveSurfer uses Tcl/Tk version 8.4 as default. If you have another
-version, modify "exec wish8.4" at the top of the file wavesurfer.tcl.
+patchlevel 5 (2016-11-23):
++ fixed Mac OS X 10.12 (Sierra) compatibility issue.
 
-
-System wide installation
--------------------------------------------------------------------
-Simply copy the directory wsurf1.8 and its contents to the location where
-Tcl looks for packages.
-
-If you don't know where to put it, start tclsh and type
-
-puts $auto_path
-
-to get a list of possible installation directories (e.g. /usr/local/lib/).
-
-If you have configurations or plug-ins that are to be used by many users,
-you can put these in a common directory and use the environment variables
-WSCONFIGDIR abd WSPLUGINDIR to point to these.
-
-
-Localization support
--------------------------------------------------------------------
-See the msgs/ directory for more information.
-
-
-Example code
--------------------------------------------------------------------
-Examples on WaveSurfer plug-ins can be found in plugins/
-Example applications that use wsurf widgets can be found in demos/
-Also included is a Python package which allows Python applications to
-use wsurf widgets.
-
-
-Debugging WaveSurfer
--------------------------------------------------------------------
-Rename the file _proctrace.tcl to proctrace.tcl. This will add an
-additional Debug-menu to WaveSurfer useful for procedure tracing.
-See the file _proctrace.tcl for further instructions.
-
-
-Acknowledgements
--------------------------------------------------------------------
-The following people have contributed code, suggestions, and/or other help.
-
-Francesco Cutugno
-Massimo Petrillo 
-Alastair Burt
-Petur Helgason
-Stefan Breuer
-Marjorie Chan
-Martyn Clark
-Vitaly Repin
-Alex Acero
-Mark D. Anderson
-Uwe Koloska
-Toshio Hirai
-Kazuaki Maeda
-Giampiero Salvi
-Johan Sundberg
-Erhard Rank
-Alain Bertrand
-Kevin Ernste
-Santiago Fernandez
-Geoff Williams
-Valery Petrushin
-Khaldoun Shobaki
-Peter Yue
-Johan Wouters
-Mattias Heldner
-Erik Pihl
-Daniel Elenius
-Johan Dahl
-Vincent Pagel
-Geoffrey Wilfart
-Tiago Tresoldi
-Preben Wik
