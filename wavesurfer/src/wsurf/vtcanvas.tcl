@@ -471,7 +471,7 @@ proc vtcanvas::redraw {w} {
   $c coords leftbar $x0 0 $x0 $height
   $c coords rightbar $x1 0 $x1 $height
   $c raise top
-  $c lower top topmost
+     #  $c lower top topmost
   $c raise selbg
   $c raise sellen
   $c lower bottom
