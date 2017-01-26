@@ -29,6 +29,7 @@ patchlevel 4 (2011-12-30):
 + fixed bugs 3297829 (waveform scaling),3181986 (config dialog error)
 + applied patch 3466895 (selection edit error)
 
-patchlevel 5 (2016-11-23):
-+ fixed Mac OS X 10.12 (Sierra) compatibility issue.
-
+patchlevel 5 (2016-11-23, +update 2017-01-25):
++ fixed Mac OS X 10.12 (Sierra) compatibility issue + new Tcl 8.6.6 runtime)
++ fixed "namespace inscope"-bug for properties and preferences dialogs
++ new Linux Tcl 8.6.6 runtime (better compatibility with new Ubuntu releases)

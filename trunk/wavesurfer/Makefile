@@ -153,8 +153,8 @@ src-release: pkgIndex
 linux-release:
 	$(MAKE) _wrap TARGET=linux SNACKMAJORV=2.2 SNACKARCH=-alsa
 	chmod a+x $(TMP)/wavesurfer
-
-	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-linux-i386.tgz wavesurfer
+	cp -R build/binpkg/linux/libXft* $(TMP)
+	cd $(TMP); tar cfz $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-linux-i386.tgz wavesurfer libXft*
 	cp $(TMP)/wavesurfer $(LOCAL_BINARIES)/wavesurfer-linux-i386 
 
 linux64-release:
