@@ -1215,13 +1215,16 @@ proc wsurf::create {w args} {
      -encoding $Info(Prefs,defEncoding) -channels $Info(Prefs,defChannels) \
      -file [file join $Info(Prefs,tmpDir) \
      $w.[pid].wav] -debug $Info(snackDebug) \
-     -changecommand [namespace code [list _soundChanged $w]]]
+		     -changecommand [list ::wsurf::_soundChanged-$w]]
+#		     -changecommand [list ::wsurf::_soundChanged $w]]
   } else {
    set d(sound) [snack::sound -rate $Info(Prefs,defRate) \
      -encoding $Info(Prefs,defEncoding) -channels $Info(Prefs,defChannels) \
      -debug $Info(snackDebug) \
-     -changecommand [namespace code [list _soundChanged $w]]]
+		     -changecommand [list ::wsurf::_soundChanged-$w]]
+#     -changecommand [namespace code [list _soundChanged $w]]]
   }
+     proc ::wsurf::_soundChanged-$w {args} [list _soundChanged $w \$args]
   set d(externalSoundObj) 0
  } else {
   set d(sound) $a(-sound)
@@ -1917,17 +1920,17 @@ proc wsurf::configure {w args} {
      }
     }
    }
-   -sound {
-    $d(sound) destroy
-    set d(sound) $val
-    set d(externalSoundObj) 1
-    $wid(wavebar) configure -sound $val
-    $val configure -changecommand [namespace code [list _soundChanged $w]]
-       _soundChanged $w New
-   }
-   default {
-    error "unknown option \"$opt\""
-   }
+      -sound {
+	  $d(sound) destroy
+	  set d(sound) $val
+	  set d(externalSoundObj) 1
+	  $wid(wavebar) configure -sound $val
+	  $val configure -changecommand [list ::wsurf::_soundChanged-$w]
+	  _soundChanged $w New
+      }
+      default {
+	  error "unknown option \"$opt\""
+      }
   }
  }
 }
