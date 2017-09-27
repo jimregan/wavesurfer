@@ -1448,6 +1448,7 @@ proc wsurf::_delete {w} {
  if {$w == $Info(current)} {
   set Info(current) ""
  }
+
  while {[llength $d(panes)] != 0} {
   _callback $w paneDeletedProc [lindex $d(panes) 0]
   set d(panes) [lreplace $d(panes) 0 0]
