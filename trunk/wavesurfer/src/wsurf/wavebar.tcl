@@ -747,6 +747,11 @@ proc wavebar::soundChanged {w} {
 
 proc wavebar::_update {w {width -1} {height -1}} {
  upvar [namespace current]::${w}::data d
+
+    if {![winfo exists $w]} {
+	return
+    }
+
  if {$width>0} {set d(c0width) $width}
  if {$height>0} {set d(c0height) $height}
  if {$d(c0width)<=0} return

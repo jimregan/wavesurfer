@@ -4,8 +4,7 @@ TMP            = /tmp/__wavesurfer_build
 ROOT           = $(shell pwd)
 RUNTIME_win    = $(ROOT)/build/kit/tclkit-8.5.8-win32.upx.exe
 RUNTIME_linux  = $(ROOT)/build/kit/tclkit-8.6.6-linux-i386-xcompile
-# RUNTIME_linux  = $(ROOT)/build/kit/tclkit-linux-x86
-RUNTIME_linux64  = $(ROOT)/build/kit/Linux64_kbsvq8.6-dyn
+RUNTIME_linux64  = $(ROOT)/build/kit/tclkit-8.6.6-linux-amd64
 
 # for 32-bit OSX builds, uncomment these
 
@@ -112,7 +111,7 @@ COPYRIGHT     = Copyright (c) 2000-2017 Jonas Beskow and Kare Sjolander
 
 ABOUTWAVESURFER = WaveSurfer $(RELEASE)$(PATCHLEVEL)-$(BUILD)\\\n$(COPYRIGHT)
 
-release: src-release win-release linux-release osx-release
+release: src-release win-release linux-release linux-64-release osx-release
 
 upload:
 	rm -rf $(TMP)/$(RELEASE)$(PATCHLEVEL)
