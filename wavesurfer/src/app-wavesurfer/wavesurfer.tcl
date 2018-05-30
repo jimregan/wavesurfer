@@ -500,12 +500,12 @@ proc OpenFile {args} {
 	set conf [lindex $args 1]
     }
     $w configure -configuration $conf
-    
+   
     SetMasterWidget
     # Remember this file format type for next time
     set surf(fileFormat) [lindex [[$w cget -sound] info] 6]
     RecentFile $fileName
-    if {$surf(play)} {
+   if {$surf(play)} {
 	$w play
     }
     # set mb [GetTopLevel $w].bf.lab
@@ -2558,7 +2558,7 @@ proc RegTypesDialog {} {
 }
 
 proc About {} {
- tk_messageBox -title "About WaveSurfer" -message "@ABOUTWAVESURFER@\n"
+ tk_messageBox -title "About WaveSurfer" -message "@ABOUTWAVESURFER@\nTcl/Tk version:[info patchlevel]"
 }
 
 if {![string match macintosh $::tcl_platform(platform)]} {

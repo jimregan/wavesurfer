@@ -1816,6 +1816,7 @@ _callback $w addMenuEntriesProc $cp $m create $x $y
 }
 
 proc wsurf::_applyConfiguration {w} {
+
  set conf [wsurf::ChooseConfigurationDialog]
  if {$conf == ""} return
  if {$conf == "standard"} {
@@ -2301,6 +2302,7 @@ proc wsurf::applyConfiguration {w conf} {
  upvar [namespace current]::${w}::widgets wid
  upvar [namespace current]::${w}::data d
 
+
  if {[info exists d]} {
   foreach pane [_getPanes $w] {
    deletePane $w $pane
@@ -2317,6 +2319,7 @@ proc wsurf::applyConfiguration {w conf} {
   }
   $wid(title) config -text "$d(title)$cfgtxt"
  }
+
 }
 
 # -----------------------------------------------------------------------------

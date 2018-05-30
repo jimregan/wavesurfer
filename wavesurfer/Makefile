@@ -1,4 +1,4 @@
-TCLSH          = tclsh8.4
+TCLSH          = tclsh
 PREFIX	       = /usr/local
 TMP            = /tmp/__wavesurfer_build
 ROOT           = $(shell pwd)
@@ -9,7 +9,7 @@ RUNTIME_linux64  = $(ROOT)/build/kit/tclkit-8.6.6-linux-amd64
 # for 32-bit OSX builds, uncomment these
 
 OSXBIN	       = osx-i386
-WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.6.6.app.tgz
+WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.6.8.app.tgz
 #WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon.app.tgz
 #WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.6b2.app.tgz
 
@@ -107,9 +107,9 @@ WSURF         = wsurf$(PACKAGEVER)
 INSTDIR       = $(PREFIX)/lib/$(WSURF)
 STYLESHEET    = /wavesurfer/wsstyle.css
 
-COPYRIGHT     = Copyright (c) 2000-2017 Jonas Beskow and Kare Sjolander
+COPYRIGHT     = Copyright (c): 2000-2018 Jonas Beskow and Kare Sjolander
 
-ABOUTWAVESURFER = WaveSurfer $(RELEASE)$(PATCHLEVEL)-$(BUILD)\\\n$(COPYRIGHT)
+ABOUTWAVESURFER = WaveSurfer $(RELEASE)$(PATCHLEVEL)\\\nBuild:$(BUILD)\\\n$(COPYRIGHT)
 
 release: src-release win-release linux-release linux-64-release osx-release
 
