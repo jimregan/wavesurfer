@@ -59,8 +59,14 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   for (int i = 0; i < Pa_GetDeviceCount(); i++) {
     PaDeviceInfo* dev =  Pa_GetDeviceInfo(i);
     if (strncmp(dev->name,device,strlen(device)) == 0) {
-      params.device = i;
-      break;
+      if (mode == PLAY && dev->maxOutputChannels >= nchannels) {
+	params.device = i;
+	break;
+      }
+      if (mode != PLAY && dev->maxInputChannels >= nchannels) {
+	params.device = i;
+	break;
+      }
     }
   }
  
@@ -102,8 +108,8 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   
   const PaDeviceInfo *devinfo = Pa_GetDeviceInfo(params.device);
 
-  // {char tmp[1000]; sprintf(tmp,"  mode = %d\ndevice = %d\n  channelCount = %d\n  latency = %d\n  sampleFormat = %d\n",mode, params.device,params.channelCount,params.suggestedLatency,params.sampleFormat); Snack_WriteLog(tmp);}
-  // {char tmp[1000];sprintf(tmp,"  deviceinfo - name = %s, maxInputChannels = %d, maxOutputChannels = %d\n",devinfo->name,devinfo->maxInputChannels,devinfo->maxOutputChannels); Snack_WriteLog(tmp);}
+  //{char tmp[1000]; sprintf(tmp,"  mode = %d\ndevice = %d\n  channelCount = %d\n  latency = %d\n  sampleFormat = %d\n",mode, params.device,params.channelCount,params.suggestedLatency,params.sampleFormat); Snack_WriteLog(tmp);}
+  //{char tmp[1000];sprintf(tmp,"  deviceinfo - name = %s, maxInputChannels = %d, maxOutputChannels = %d\n",devinfo->name,devinfo->maxInputChannels,devinfo->maxOutputChannels); Snack_WriteLog(tmp);}
 
   A->nChannels = nchannels;
   A->mode = mode;
