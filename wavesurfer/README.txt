@@ -38,3 +38,10 @@ patchlevel 5 (2016-11-23, +update 2017-01-25, +update 2017-09-27):
 
 2018-05-30: fixed Mac OS X 10.13 (High Sierra) issue, new Tcl 8.6.8
 runtime (in wavesurfer-1.8.8p5-osx-i386.dmg)
+
+patchlevel 6 (2019-10-15):
++ MacOS 10.15 (Catalina) compatibility:
+  	64-bit binary, Tcl 8.6.9, spectrogram color issue fix
++ added Snack (2.2.10) source code to project, with improved PortAudio backend
+  	(used for MacOS) + MacOS build script
++ added TclTk (8.6.9) MacOS download + build scripts

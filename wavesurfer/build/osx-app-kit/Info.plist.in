@@ -35,7 +35,7 @@
 		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
-	<string>Wish</string>
+	<string>WaveSurfer</string>
 	<key>CFBundleGetInfoString</key>
 	<string>@BUNDLEGETINFOSTRING@</string>
 	<key>CFBundleIconFile</key>

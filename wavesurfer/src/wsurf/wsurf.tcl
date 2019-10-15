@@ -376,7 +376,7 @@ proc wsurf::FindParentWidget {subwin} {
 }
 
 proc wsurf::handleDnDEvent {w event data type} {
-    puts [info level 0]
+    # puts [info level 0]
     variable Info
     upvar [namespace current]::${w}::data d
 
@@ -391,7 +391,7 @@ proc wsurf::handleDnDEvent {w event data type} {
 	}
 	drop {
 
-	    puts "invoking $d(dropFileProc) $data"
+	    #puts "invoking $d(dropFileProc) $data"
 	    after idle [namespace code [list $d(dropFileProc) $data]]
 	    return copy
 	}
@@ -790,7 +790,7 @@ proc wsurf::ChooseConfigurationDialog {{defaultconfigvar ""}} {
 	    set res [lindex $tmp $index]
 	}
     }
-    parray ::wsPriv
+    # parray ::wsPriv
     if {$defaultconfigvar != ""} {
 	uplevel [list set $defaultconfigvar $::wsPriv(defaultconfig)]
 
@@ -3007,12 +3007,12 @@ proc wsurf::_miscPage {p} {
 		     timeFormat yaxisWidth prefsWithConf theme beg play playall \
 		     playloop pause \
 		     stop record close end print zoomin zoomout zoomall zoomsel] {
-	puts var=$var
+	# puts var=$var
 	if [info exists Info(Prefs,$var)] {
-	    puts "set Info(Prefs,t,$var) $Info(Prefs,$var)"
+	    # puts "set Info(Prefs,t,$var) $Info(Prefs,$var)"
 	    set Info(Prefs,t,$var) $Info(Prefs,$var)
 	} else {
-	    puts "no Info(Prefs,$var)"
+	    # puts "no Info(Prefs,$var)"
 	}
     }
     if {$Info(Prefs,t,defaultConfig)==""} {
