@@ -8,15 +8,10 @@ RUNTIME_linux64  = $(ROOT)/build/kit/tclkit-8.6.6-linux-amd64
 
 # for 32-bit OSX builds, uncomment these
 
-OSXBIN	       = osx-i386
-WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.6.8.app.tgz
-#WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon.app.tgz
-#WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.6b2.app.tgz
+OSXBIN	       = macos
+WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.6.9.app.tgz
 
 # for 64-bit OSX builds, uncomment these
-
-#OSXBIN	       = osx-x86_64
-#WISHAPP_osx    = $(ROOT)/build/osx-app-kit/Wish-8.5.9-decarbon-x86_64.app.tgz
 
 LOCAL_BINARIES = $(HOME)/Dropbox/wavesurfer
 
@@ -74,44 +69,36 @@ CONFIGURATIONS = \
 	src/configurations/Transcription.conf \
 	src/configurations/Waveform.conf
 
-ICONS =	icons/icon48.xpm
+ICONS            = icons/icon48.xpm
+DEMOS            = demos/wsapp?.tcl demos/embed.tcl demos/speecon.tcl demos/Wsurf.py demos/wsapp?.py demos/wsplugapp.py demos/WsurfPlugin.py
+MSGS             = msgs/*.msg
+TOOLS            = tools/*.tcl
+PODFILES         = doc/plugin-api.pod doc/widget.pod doc/wsurf.pod
+READMEFILES      = README.txt demos/README-Python.txt demos/README.txt msgs/README.txt src/plugins/README.txt LICENSE.txt
+PACKAGEVER       = $(shell grep "package provide wsurf" src/wsurf.tcl | cut -f 4 -d " ")
+BUILD            = $(shell echo puts [clock format [clock seconds] -format %y%m%d%H%M] | $(TCLSH))
+BUNDLEEXTENSIONS = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd snd nsp raw mp3 ogg} </string><string>]</string>\'" | $(TCLSH))
 
-DEMOS = demos/wsapp?.tcl demos/embed.tcl demos/speecon.tcl demos/Wsurf.py demos/wsapp?.py demos/wsplugapp.py demos/WsurfPlugin.py
+VER_A	         = 1
+VER_B 	         = 8
+VER_C            = 8
+PATCHLEVEL       = p6
 
-MSGS = msgs/*.msg
+MAJORVERSION     = $(VER_A).$(VER_B)
+RELEASE          = $(VER_A).$(VER_B).$(VER_C)
+WINRELEASE       = $(VER_A)$(VER_B)$(VER_C)
+MANVERSION       = $(VER_A)$(VER_B)
+RELEASETAG       = release_$(VER_A)_$(VER_B)_$(VER_C)_$(PATCHLEVEL)
 
-TOOLS = tools/*.tcl
+SNACKMAJORV      = 2.2
+SNACKARCH        =
+WSURF            = wsurf$(PACKAGEVER)
+INSTDIR          = $(PREFIX)/lib/$(WSURF)
+STYLESHEET       = /wavesurfer/wsstyle.css
+COPYRIGHT        = Copyright (c): 2000-2019 Jonas Beskow and Kare Sjolander
+ABOUTWAVESURFER  = WaveSurfer $(RELEASE)$(PATCHLEVEL)\\\nBuild:$(BUILD)\\\n$(COPYRIGHT)
 
-PODFILES = doc/plugin-api.pod doc/widget.pod doc/wsurf.pod
-
-READMEFILES = README.txt demos/README-Python.txt demos/README.txt msgs/README.txt src/plugins/README.txt LICENSE.txt
-
-PACKAGEVER    = $(shell grep "package provide wsurf" src/wsurf.tcl | cut -f 4 -d " ")
-BUILD         = $(shell echo puts [clock format [clock seconds] -format %y%m%d%H%M] | $(TCLSH))
-BUNDLEEXTENSIONS    = $(shell echo puts "\'<string>[join {wav au aif aiff smp sd snd nsp raw mp3 ogg} </string><string>]</string>\'" | $(TCLSH))
-
-VER_A	= 1
-VER_B 	= 8
-VER_C   = 8
-PATCHLEVEL = p5
-
-MAJORVERSION  = $(VER_A).$(VER_B)
-RELEASE       = $(VER_A).$(VER_B).$(VER_C)
-WINRELEASE    = $(VER_A)$(VER_B)$(VER_C)
-MANVERSION    = $(VER_A)$(VER_B)
-RELEASETAG    = release_$(VER_A)_$(VER_B)_$(VER_C)_$(PATCHLEVEL)
-
-SNACKMAJORV   = 2.2
-SNACKARCH     =
-WSURF         = wsurf$(PACKAGEVER)
-INSTDIR       = $(PREFIX)/lib/$(WSURF)
-STYLESHEET    = /wavesurfer/wsstyle.css
-
-COPYRIGHT     = Copyright (c): 2000-2018 Jonas Beskow and Kare Sjolander
-
-ABOUTWAVESURFER = WaveSurfer $(RELEASE)$(PATCHLEVEL)\\\nBuild:$(BUILD)\\\n$(COPYRIGHT)
-
-release: src-release win-release linux-release linux-64-release osx-release
+release: src-release win-release linux-release linux-64-release mac-release
 
 upload:
 	rm -rf $(TMP)/$(RELEASE)$(PATCHLEVEL)
@@ -119,7 +106,6 @@ upload:
 	cp  release/$(RELEASE).txt $(TMP)/$(RELEASE)$(PATCHLEVEL)/README.txt
 	cp  release/wavesurfer-$(RELEASE)$(PATCHLEVEL)*.* $(TMP)/$(RELEASE)$(PATCHLEVEL)
 	scp -r $(TMP)/$(RELEASE)$(PATCHLEVEL) $(USER),wavesurfer@frs.sourceforge.net:/home/frs/project/w/wa/wavesurfer/wavesurfer/
-
 
 src-release: pkgIndex
 	rm -rf $(TMP)
@@ -169,7 +155,7 @@ win-release:
 	cd $(TMP); mv wavesurfer wavesurfer.exe; zip $(ROOT)/release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-win-i386.zip wavesurfer.exe
 	cp $(TMP)/wavesurfer.exe $(LOCAL_BINARIES)/wavesurfer-win-i386.exe
 
-osx-release: macbundle
+mac-release: macbundle
 	rm -rf $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
 	mkdir $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)
 	cd $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL); tar xfz $(ROOT)/build/osx-app-kit/mac-alias-to-Applications.tgz
@@ -177,11 +163,19 @@ osx-release: macbundle
 	rm -f release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-$(OSXBIN).dmg
 	hdiutil create -srcfolder $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL) release/wavesurfer-$(RELEASE)$(PATCHLEVEL)-$(OSXBIN).dmg
 
+
+macsnack:
+	cd build && ./build-snack-macos.sh
+
+mactcltk:
+	cd build && ./build-tcltk-macos.sh
+
 macbundle: src-release
 	rm -rf $(TMP)/WaveSurfer.app
 	cd $(TMP); tar xfz $(WISHAPP_osx)
 	mv $(TMP)/Wish.app $(TMP)/WaveSurfer.app
 	chmod -R a+w $(TMP)/WaveSurfer.app
+	cd  $(TMP)/WaveSurfer.app/Contents/MacOS && mv Wish WaveSurfer
 	mkdir $(TMP)/WaveSurfer.app/Contents/Resources/Scripts/ 
 	mkdir $(TMP)/WaveSurfer.app/Contents/Resources/icons
 	mkdir $(TMP)/WaveSurfer.app/Contents/lib
@@ -199,9 +193,8 @@ macbundle: src-release
 	cp build/snack-fix/*.tcl build/binpkg/$(OSXBIN)/snack$(SNACKMAJORV)
 	cp -r build/binpkg/$(OSXBIN)/snack$(SNACKMAJORV) $(TMP)/WaveSurfer.app/Contents/lib
 	rm $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsound.dylib
-	cp -a build/binpkg/osx/libportaudio.2.0.0.dylib $(TMP)/WaveSurfer.app/Contents/Frameworks
-	cd $(TMP)/WaveSurfer.app/Contents/Frameworks; ln -s libportaudio.2.0.0.dylib libportaudio.2.dylib
-	cd $(TMP)/WaveSurfer.app/Contents/Frameworks; ln -s libportaudio.2.0.0.dylib libportaudio.dylib
+	cp -a build/binpkg/$(OSXBIN)/libportaudio.2.dylib $(TMP)/WaveSurfer.app/Contents/Frameworks
+	cd $(TMP)/WaveSurfer.app/Contents/Frameworks; ln -s libportaudio.2.dylib libportaudio.dylib
 	cp -r build/binpkg/$(OSXBIN)/tkdnd2.2 $(TMP)/WaveSurfer.app/Contents/lib
 
 	install_name_tool -id @executable_path/../Frameworks/libportaudio.dylib	\
@@ -216,7 +209,6 @@ _wrap: src-release
 	rm -rf $(TMP)/wavesurfer.vfs
 	mkdir -p $(TMP)/wavesurfer.vfs/lib
 	cp -r $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/* $(TMP)/wavesurfer.vfs/lib
-	# cp -r tclxml3.3 $(TMP)/wavesurfer.vfs/lib
 	rm $(TMP)/wavesurfer-$(RELEASE)$(PATCHLEVEL)/src/plugins/example*.plug
 	cp build/kit/main.tcl $(TMP)/wavesurfer.vfs
 	cp -f $(TCLKIT) $(TMP)/tclkit
@@ -234,7 +226,6 @@ pkgIndex:
 	build/mkPkgIndex.tcl $(PKGFILES) > src/wsurf/pkgIndex.tcl
 	build/mkPkgIndex.tcl src/app-wavesurfer/wavesurfer.tcl > src/app-wavesurfer/pkgIndex.tcl
 
-
 psphere:
 	tar cf sphere.tar sphere/libsnacksphere.dll sphere/libsnacksphere.so sphere/sphere.plug sphere/sphere.txt ; gzip -f sphere.tar
 	zip sphere.zip sphere/libsnacksphere.dll sphere/libsnacksphere.so sphere/sphere.plug sphere/sphere.txt
@@ -242,4 +233,3 @@ psphere:
 pogg:
 	tar cf ogg.tar ogg/ogg.plug ogg/libsnackogg.so ogg/license.txt ogg/libsnackogg.dll ogg/ogg.txt ; gzip -f ogg.tar
 	zip ogg.zip ogg/ogg.plug ogg/libsnackogg.so ogg/license.txt ogg/libsnackogg.dll ogg/ogg.txt
-
