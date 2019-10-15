@@ -175,7 +175,7 @@ macbundle: src-release
 	cd $(TMP); tar xfz $(WISHAPP_osx)
 	mv $(TMP)/Wish.app $(TMP)/WaveSurfer.app
 	chmod -R a+w $(TMP)/WaveSurfer.app
-	cd  $(TMP)/WaveSurfer.app/Contents/MacOS && mv Wish WaveSurfer
+	cd  $(TMP)/WaveSurfer.app/Contents/MacOS && mv Wish WaveSurfer && chmod a+x WaveSurfer
 	mkdir $(TMP)/WaveSurfer.app/Contents/Resources/Scripts/ 
 	mkdir $(TMP)/WaveSurfer.app/Contents/Resources/icons
 	mkdir $(TMP)/WaveSurfer.app/Contents/lib

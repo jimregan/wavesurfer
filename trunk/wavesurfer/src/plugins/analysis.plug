@@ -2238,7 +2238,8 @@ proc analysis::drawSectMarks {w pane x y flag} {
    $e.c coords df [expr {$rx + ($xc-$rx)/2}] $ry
    $e.c coords db $rx [expr {$ry + ($yc-$ry)/2}]
      
-   set df [expr {abs(int($v(topfr2) * ($rx - $xc)/ $v(sectw)))}]
+      set df [expr {abs(int($v(topfr2) * ($rx - $xc)/ $v(sectw)))}]
+      puts df=$df
    $e.c itemconfigure df -text "df: $df" 
    set ddb [format "%.1f" [expr {-double($v(srange)) \
 	   * ($ry - $yc) / $v(secth)}]]

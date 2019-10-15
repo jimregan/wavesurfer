@@ -45,3 +45,10 @@ patchlevel 6 (2019-10-15):
 + added Snack (2.2.10) source code to project, with improved PortAudio backend
   	(used for MacOS) + MacOS build script
 + added TclTk (8.6.9) MacOS download + build scripts
+
+  NOTE Re. Recording on MacOS (Catalina & Mojave):
+	 For recording to work on MacOS, WaveSurfer must presently be started from Terminal
+  	 (press cmd + space, type Terminal, then in the Terminal window, type
+  	 /Applications/WaveSurfer.app/Contents/MacOS/WaveSurfer)
+	 The issue, and it's work-around, is similar to the one discussed here:
+	 https://www.audacityteam.org/macos-10-15-catalina-is-not-yet-supported-by-audacity/
