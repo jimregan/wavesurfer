@@ -199,7 +199,7 @@ macbundle: src-release
 
 	install_name_tool -id @executable_path/../Frameworks/libportaudio.dylib	\
 		$(TMP)/WaveSurfer.app/Contents/Frameworks/libportaudio.dylib
-	install_name_tool -change /usr/local/lib/libportaudio.2.dylib @executable_path/../Frameworks/libportaudio.2.dylib $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsnack.dylib
+	install_name_tool -change /usr/local/opt/portaudio/lib/libportaudio.2.dylib @loader_path/../../Frameworks/libportaudio.2.dylib $(TMP)/WaveSurfer.app/Contents/lib/snack$(SNACKMAJORV)/libsnack.dylib
 	touch $(TMP)/WaveSurfer.app
 	rm -rf $(LOCAL_BINARIES)/WaveSurfer-$(OSXBIN).app
 	cp -r $(TMP)/WaveSurfer.app $(LOCAL_BINARIES)/WaveSurfer-$(OSXBIN).app
