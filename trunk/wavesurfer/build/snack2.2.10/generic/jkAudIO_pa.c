@@ -46,6 +46,8 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
   PaStreamParameters      params, *inparams_p, *outparams_p;
   PaError                 err;
 
+  printf("SnackAudioOpen...%lf\n",SnackCurrentTime());
+
   // First set device to default 
   if (mode == PLAY) {  
     params.device = Pa_GetDefaultOutputDevice();
@@ -57,7 +59,7 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
 
   // Then set to named device, if existing
   for (int i = 0; i < Pa_GetDeviceCount(); i++) {
-    PaDeviceInfo* dev =  Pa_GetDeviceInfo(i);
+    const PaDeviceInfo* dev =  Pa_GetDeviceInfo(i);
     if (strncmp(dev->name,device,strlen(device)) == 0) {
       if (mode == PLAY && dev->maxOutputChannels >= nchannels) {
 	params.device = i;
@@ -137,7 +139,9 @@ SnackAudioOpen(ADesc *A, Tcl_Interp *interp, char *device, int mode, int freq,
     Tcl_SetObjResult(interp,Tcl_ObjPrintf("PortAudio error %s",Pa_GetErrorText(err)));
     return TCL_ERROR;
   }
+  printf("out of SnackAudioOpen...%lf\n",SnackCurrentTime());
 
+  
   return TCL_OK;
 }
 
@@ -145,9 +149,7 @@ int
 SnackAudioClose(ADesc *A)
 {  
 
-  //  printf("  Pa_CloseStream()\n");
-
-  Pa_CloseStream(A->stream);
+  Pa_StopStream(A->stream);
   return(0);
 }
 
@@ -191,7 +193,7 @@ SnackAudioRead(ADesc *A, void *buf, int nFrames)
 int
 SnackAudioWrite(ADesc *A, void *buf, int nFrames)
 {
-  // printf("writing audio: nframes=%d\n",nFrames);
+  //printf("writing audio: nframes=%d\n",nFrames);
   if (Pa_WriteStream(A->stream, buf, nFrames) == paNoError) {
     //printf("  wrote %d\n",nFrames);
     A->wpos += nFrames;
@@ -218,7 +220,16 @@ long
 SnackAudioPlayed(ADesc *A)
 {
   //printf("SnackAudioPlayed()\n");
-  return A->wpos;
+  long pos = 0;
+  const PaStreamInfo* I = Pa_GetStreamInfo(A->stream);
+  if (I) {
+    pos = A->wpos - (int)(I->outputLatency/I->sampleRate);
+    pos = max(0,pos);
+  } else {
+    pos = A->wpos;
+  }
+  //printf("%d, %d\n",A->wpos,pos);
+  return pos;
 }
 
 void
@@ -304,7 +315,7 @@ int
 SnackAudioMaxNumberChannels(char *device)
 {
   for (int i = 0; i < Pa_GetDeviceCount(); i++) {
-    PaDeviceInfo* dev =  Pa_GetDeviceInfo(i);
+    const PaDeviceInfo* dev =  Pa_GetDeviceInfo(i);
     if (strncmp(dev->name,device,strlen(device)) == 0) {
       return(max(dev->maxInputChannels,dev->maxOutputChannels));
     }
@@ -486,7 +497,7 @@ SnackGetOutputDevices(char **arr, int n)
   //arr[0] = (char *) SnackStrDup("default");
   int count = 0;
   for (int i = 0; i < Pa_GetDeviceCount(); i++) {
-    PaDeviceInfo* dev =  Pa_GetDeviceInfo(i);
+    const PaDeviceInfo* dev =  Pa_GetDeviceInfo(i);
     if (dev->maxOutputChannels > 0) {
       arr[count++] = SnackStrDup(dev->name);
     }
@@ -502,7 +513,7 @@ SnackGetInputDevices(char **arr, int n)
   // arr[0] = (char *) SnackStrDup("default");
   int count = 0;
   for (int i = 0; i < Pa_GetDeviceCount(); i++) {
-    PaDeviceInfo* dev =  Pa_GetDeviceInfo(i);
+    const PaDeviceInfo* dev =  Pa_GetDeviceInfo(i);
     if (dev->maxInputChannels > 0) {
       arr[count++] = SnackStrDup(dev->name);
     }
